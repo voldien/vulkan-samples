@@ -1,8 +1,9 @@
 # Vulkan Samples #
 
 
-## Startup Window ##
+apt install libfmt-dev libvulkan-dev libglm-dev libsdl2-dev
 
+## Startup Window ##
 
 ## Triangle ## 
 
@@ -11,3 +12,4 @@
 
 ## Particle System - Compute Shader ##
 
+##  Shader Uniforms - Cube ##
