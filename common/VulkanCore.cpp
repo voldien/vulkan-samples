@@ -45,7 +45,7 @@ void VulkanCore::Initialize(void){
 
 		/*  Check if exists.    */
 		for (uint32_t i = 0; i < availableLayers.size(); i++) {
-
+			
 		}
 	}
 
@@ -140,17 +140,11 @@ void VulkanCore::Initialize(void){
 
 	/*  TODO add selection function. */
 	std::vector<VkPhysicalDevice> gpucandiates;
-	// for (int i = 0; i < this->num_physical_devices; i++) {
-	// 	if (isDeviceSuitable(this->physical_devices[i])) {
-	// 		this->gpu = this->physical_devices[i];
-	// 		gpucandiates.push_back(this->physical_devices[i]);
-	// 		break;
-	// 	}
-	// }
 
 	std::vector<VkPhysicalDevice> selectedDevices;
 	VKHelper::selectDefaultDevices(physicalDevices, selectedDevices);
 
+	/*	*/
 	this->gpu = selectedDevices[0];
 
 	/*  */
@@ -190,11 +184,13 @@ void VulkanCore::Initialize(void){
 
 	/*  Required extensions.    */
 	std::vector<const char *> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		// VK_NV_RAY_TRACING_EXTENSION_NAME
 		// VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME
 		// VK_NV_GLSL_SHADER_EXTENSION_NAME
 	};
+
+	//TODO resolve that it does if debug is enabled
 	if (this->enableValidationLayers) {
 		// TODO determine
 		deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);

@@ -123,8 +123,10 @@ VkShaderModule VKHelper::createShaderModule(VkDevice device, std::vector<char> &
 // 		   deviceFeatures.geometryShader && deviceFeatures.samplerAnisotropy && displayCount > 0;
 // }
 
+//TODO add option filter of what device you want.
 void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 									std::vector<VkPhysicalDevice> &selectDevices) {
+	std::vector<VkPhysicalDevice> preliminaryDevices;
 	/*  Check for matching. */
 	// VK_KHR_device_group_creation
 	// VK_KHR_device_group_creation
@@ -143,16 +145,19 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 
 		// Determine the type of the physical device
 		if (props.deviceType == VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-			selectDevices.push_back(device);
+			preliminaryDevices.push_back(device);
 		} else if (props.deviceType == VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
 			/*	TODO determine if it can draw and display.	*/
 
-			// selectDevices.push_back(device);
+			preliminaryDevices.push_back(device);
 			// You've got yourself an integrated GPU.
 		} else {
 			// I don't even...
 		}
+	}
 
+	for(int i = 0; i < preliminaryDevices.size(); i++){
+				const VkPhysicalDevice &device = devices[i];
 		// Determine the available device local memory.
 		VkPhysicalDeviceMemoryProperties memoryProps = {};
 		vkGetPhysicalDeviceMemoryProperties(device, &memoryProps);
@@ -164,6 +169,7 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 		for (int j = 0; j < heaps.size(); j++) {
 			VkMemoryHeap &heap = heaps[j];
 			if (heap.flags & VkMemoryHeapFlagBits::VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+				selectDevices.push_back(device);
 				// Device local heap, should be size of total GPU VRAM.
 				// heap.size will be the size of VRAM in bytes. (bigger
 				// is better)
