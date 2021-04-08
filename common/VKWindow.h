@@ -36,6 +36,7 @@ class VKWindow : public SDLWindow {
 	VkImage getDefaultImage(void) const;
 	VkQueue getGraphicQueue(void) const;
 	VkPhysicalDevice physicalDevice() const;
+	std::vector<VkQueue> getQueues(void) const noexcept;
 	std::vector<VkPhysicalDevice> getPhyiscalDevices(void);
 	std::vector<VkCommandBuffer>& getCommandBuffers(void);
 	std::vector<VkFramebuffer> &getFrameBuffers(void) const;

@@ -1,4 +1,5 @@
 #include "VKHelper.h"
+#include <common.hpp>
 #include <vulkan/vulkan.h>
 
 uint32_t VKHelper::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
@@ -18,16 +19,15 @@ uint32_t VKHelper::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t type
 uint32_t VKHelper::findMemoryType(VkPhysicalDeviceMemoryProperties *memProperties, uint32_t typeFilter,
 								  VkMemoryPropertyFlags properties) {
 	for (uint32_t i = 0; i < memProperties->memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) &&
-			(memProperties->memoryTypes[i].propertyFlags & properties) == properties) {
+		if ((typeFilter & (1 << i)) && (memProperties->memoryTypes[i].propertyFlags & properties) == properties) {
 			return i;
 		}
 	}
 }
 
-void VKHelper::createBuffer(VkDevice device, VkDeviceSize size,
-							VkPhysicalDeviceMemoryProperties* memoryProperies, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-							VkBuffer &buffer, VkDeviceMemory &bufferMemory) {
+void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, VkPhysicalDeviceMemoryProperties *memoryProperies,
+							VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer,
+							VkDeviceMemory &bufferMemory) {
 	VkResult result;
 
 	/**/
@@ -123,9 +123,9 @@ VkShaderModule VKHelper::createShaderModule(VkDevice device, std::vector<char> &
 // 		   deviceFeatures.geometryShader && deviceFeatures.samplerAnisotropy && displayCount > 0;
 // }
 
-//TODO add option filter of what device you want.
+// TODO add option filter of what device you want.
 void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
-									std::vector<VkPhysicalDevice> &selectDevices) {
+									std::vector<VkPhysicalDevice> &selectDevices, uint32_t device_type_filter) {
 	std::vector<VkPhysicalDevice> preliminaryDevices;
 	/*  Check for matching. */
 	// VK_KHR_device_group_creation
@@ -133,31 +133,44 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 	/*	Check for the device with the best specs and can display.	*/
 
 	for (int i = 0; i < devices.size(); i++) {
-		const VkPhysicalDevice &device = devices[i];
+		const VkPhysicalDevice device = devices[i];
 		VkPhysicalDeviceProperties props = {};
 		vkGetPhysicalDeviceProperties(device, &props);
 
-		uint32_t count;
-		std::vector<VkDisplayPropertiesKHR> displayProperties;
-		vkGetPhysicalDeviceDisplayPropertiesKHR(device, &count, NULL);
-		displayProperties.resize(count);
-		vkGetPhysicalDeviceDisplayPropertiesKHR(device, &count, displayProperties.data());
+		if((props.deviceType & device_type_filter) == 0)
+			continue;
+
+		uint32_t nrDisplayProperties = 0;
+		VK_CHECK(vkGetPhysicalDeviceDisplayPropertiesKHR(device, &nrDisplayProperties, nullptr));
+		// if (nrDisplayProperties <= 0)
+		// 	continue;
+
+		std::vector<VkDisplayPropertiesKHR> displayProperties(nrDisplayProperties);
+		VK_CHECK(vkGetPhysicalDeviceDisplayPropertiesKHR(device, &nrDisplayProperties, displayProperties.data()));
+
+		/* Find all supported planes.	*/
+		uint32_t planeCount;
+		VK_CHECK(vkGetPhysicalDeviceDisplayPlanePropertiesKHR(device, &planeCount, nullptr));
+		// if (planeCount <= 0)
+		// 	continue;
+
+		for (int x = 0; x < displayProperties.size(); x++) {
+
+		}
 
 		// Determine the type of the physical device
 		if (props.deviceType == VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
 			preliminaryDevices.push_back(device);
 		} else if (props.deviceType == VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
 			/*	TODO determine if it can draw and display.	*/
-
-			preliminaryDevices.push_back(device);
-			// You've got yourself an integrated GPU.
+			//preliminaryDevices.push_back(device);
 		} else {
-			// I don't even...
+
 		}
 	}
 
-	for(int i = 0; i < preliminaryDevices.size(); i++){
-				const VkPhysicalDevice &device = devices[i];
+	for (int i = 0; i < preliminaryDevices.size(); i++) {
+		const VkPhysicalDevice device = devices[i];
 		// Determine the available device local memory.
 		VkPhysicalDeviceMemoryProperties memoryProps = {};
 		vkGetPhysicalDeviceMemoryProperties(device, &memoryProps);
@@ -197,7 +210,7 @@ VkPresentModeKHR VKHelper::chooseSwapPresentMode(const std::vector<VkPresentMode
 
 	for (const auto &availablePresentMode : availablePresentModes) {
 		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-			//return availablePresentMode;
+			// return availablePresentMode;
 		}
 	}
 

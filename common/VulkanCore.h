@@ -7,6 +7,8 @@
 #include <vulkan/vulkan.h>
 
 class VulkanCore {
+	friend class VKWindow;
+
   public:
 	VulkanCore(int argc, const char **argv);
 	VulkanCore(const VulkanCore &other) = delete;
@@ -14,33 +16,37 @@ class VulkanCore {
 
 	virtual void Initialize(void);
 
-  public:
+	std::vector<VkExtensionProperties> &getInstanceExtensions(void) noexcept { return this->instanceExtensions; }
+
+  protected:
 
 	/*	*/
+	std::vector<VkExtensionProperties> instanceExtensions;
 	VkInstance inst;
 	VkDebugUtilsMessengerEXT debugMessenger;
 	VkDebugReportCallbackEXT debugReport;
-	VkExtensionProperties *extension_names;
-	std::vector<VkExtensionProperties> instanceExtensions;
+
 	/*  Physical device.    */
 	VkPhysicalDevice gpu;
 
 	VkPhysicalDeviceProperties gpu_props;
 	VkQueueFamilyProperties *queue_props;
 	uint32_t graphics_queue_node_index;
+	uint32_t compute_queue_node_index;
 
 	bool enableValidationLayers;
 	bool enableDebugTracer;
 
 	uint32_t queue_count;
 	std::vector<VkPhysicalDevice> physicalDevices;
-	VkPhysicalDevice *physical_devices;
+	std::vector<VkPhysicalDeviceMemoryProperties> memProper;
 
 	VkDevice device;
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	VkQueue graphicsQueue; // TODO rename graphicsQueue
+	VkQueue graphicsQueue;
 	VkQueue presentQueue;
+	VkQueue computeQueue;
 };
 
 #endif

@@ -36,6 +36,7 @@ void VulkanCore::Initialize(void){
 	VK_CHECK(
 		vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, instanceExtensions.data()));
 
+
 	/*  Check for supported validation layers.  */
 	uint32_t layerCount;
 	VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, NULL));
@@ -74,9 +75,9 @@ void VulkanCore::Initialize(void){
 	VkApplicationInfo ai = {};
 	ai.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	ai.pNext = NULL;
-	ai.pApplicationName = "FragCore";
+	ai.pApplicationName = "Vulkan Sample";
 	ai.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	ai.pEngineName = "FragCore-Engine";
+	ai.pEngineName = "Vulkan Sample Engine";
 	ai.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 	ai.apiVersion = version;
 
@@ -131,16 +132,13 @@ void VulkanCore::Initialize(void){
 	VK_CHECK(vkEnumeratePhysicalDevices(this->inst, &nrPhysicalDevices, &this->physicalDevices[0]));
 
 	/*	*/
-	uint32_t pPhysicalDeviceGroupCount;
-	VK_CHECK(vkEnumeratePhysicalDeviceGroups(this->inst, &pPhysicalDeviceGroupCount, NULL));
+	uint32_t nrPhysicalDeviceGroupCount;
+	VK_CHECK(vkEnumeratePhysicalDeviceGroups(this->inst, &nrPhysicalDeviceGroupCount, NULL));
 
-	std::vector<VkPhysicalDeviceGroupProperties> phyiscalGroupDevices;
-	phyiscalGroupDevices.resize(pPhysicalDeviceGroupCount);
-	VK_CHECK(vkEnumeratePhysicalDeviceGroups(this->inst, &pPhysicalDeviceGroupCount, phyiscalGroupDevices.data()));
+	std::vector<VkPhysicalDeviceGroupProperties> phyiscalGroupDevices(nrPhysicalDeviceGroupCount);
+	VK_CHECK(vkEnumeratePhysicalDeviceGroups(this->inst, &nrPhysicalDeviceGroupCount, phyiscalGroupDevices.data()));
 
 	/*  TODO add selection function. */
-	std::vector<VkPhysicalDevice> gpucandiates;
-
 	std::vector<VkPhysicalDevice> selectedDevices;
 	VKHelper::selectDefaultDevices(physicalDevices, selectedDevices);
 
@@ -166,13 +164,20 @@ void VulkanCore::Initialize(void){
 
 	/*  Select queue with graphic.  */ // TODO add queue for compute and etc.
 	uint32_t graphicsQueueNodeIndex = UINT32_MAX;
+	uint32_t computeQueueNodeIndex;
 	for (uint32_t i = 0; i < this->queue_count; i++) {
 		if ((this->queue_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
 			if (graphicsQueueNodeIndex == UINT32_MAX)
 				graphicsQueueNodeIndex = i;
 		}
+		if ((this->queue_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) != 0) {
+			if (computeQueueNodeIndex == UINT32_MAX)
+				computeQueueNodeIndex = i;
+		}
 	}
+	//TODO resolve in case compute is not supported on the graphic queue.
 	this->graphics_queue_node_index = graphicsQueueNodeIndex;
+	this->compute_queue_node_index = graphicsQueueNodeIndex;
 
 	float queue_priorities[1] = {1.0};
 	const VkDeviceQueueCreateInfo queue = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -184,7 +189,7 @@ void VulkanCore::Initialize(void){
 
 	/*  Required extensions.    */
 	std::vector<const char *> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,	/*	*/
 		// VK_NV_RAY_TRACING_EXTENSION_NAME
 		// VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME
 		// VK_NV_GLSL_SHADER_EXTENSION_NAME
@@ -194,7 +199,6 @@ void VulkanCore::Initialize(void){
 	if (this->enableValidationLayers) {
 		// TODO determine
 		deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-		// deviceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 	}
 
 	VkDeviceGroupDeviceCreateInfo deviceGroupDeviceCreateInfo = {
@@ -237,7 +241,7 @@ void VulkanCore::Initialize(void){
 		device.enabledLayerCount = 0;
 	}
 
-	/*	Enable group.	*/
+	/*	Enable group if supported.	*/
 	if (deviceGroupDeviceCreateInfo.physicalDeviceCount > 1) {
 		deviceShaderDrawParametersFeatures.pNext = &deviceGroupDeviceCreateInfo;
 	}
@@ -247,9 +251,11 @@ void VulkanCore::Initialize(void){
 
 	/*  Create device.  */
 	VK_CHECK(vkCreateDevice(this->gpu, &device, NULL, &this->device));
+
 	/*  Get all queues.    */
 	vkGetDeviceQueue(this->device, this->graphics_queue_node_index, 0, &this->graphicsQueue);
 	vkGetDeviceQueue(this->device, this->graphics_queue_node_index, 0, &this->presentQueue);
+	vkGetDeviceQueue(this->device, this->compute_queue_node_index, 0, &this->computeQueue);
 }
 
 VulkanCore::~VulkanCore(void){

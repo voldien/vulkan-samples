@@ -30,7 +30,9 @@ class VKHelper {
 	// static bool isDeviceSuitable(VkPhysicalDevice device);
 
 	static void selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
-									 std::vector<VkPhysicalDevice> &selectDevices);
+									 std::vector<VkPhysicalDevice> &selectDevices,
+									 uint32_t device_type_filter = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU |
+																   VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);
 
 	// TODO improve to accomudate the configurations.
 	static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
