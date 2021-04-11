@@ -1,17 +1,23 @@
-#include"VulkanCore.h"
-#include"VKHelper.h"
-#include<SDL2/SDL.h>
-#include<SDL2/SDL_vulkan.h>
-#include<stdexcept>
-#include<cassert>
-#include"common.hpp"
+#include "VulkanCore.h"
+#include "VKHelper.h"
+#include "common.hpp"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
+#include <cassert>
+#include <cstdio>
+#include <fmt/core.h>
+#include <stdexcept>
 
 VulkanCore::VulkanCore(int argc, const char **argv) { Initialize(); }
 
-void VulkanCore::Initialize(void){
+static VkBool32 myDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType,
+										 uint64_t object, size_t location, int32_t messageCode,
+										 const char *pLayerPrefix, const char *pMessage, void *pUserData) {}
+
+void VulkanCore::Initialize(void) {
 	/*  Initialize video support.   */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
-		// throw std::runtime_error("Failed enumerate Vulkan extension properties");
+		throw std::runtime_error(fmt::format("Failed init SDL video: {}", SDL_GetError()));
 	}
 
 	VkResult result;
@@ -33,9 +39,7 @@ void VulkanCore::Initialize(void){
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL));
 	this->instanceExtensions.resize(extensionCount);
 	/*	*/
-	VK_CHECK(
-		vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, instanceExtensions.data()));
-
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, instanceExtensions.data()));
 
 	/*  Check for supported validation layers.  */
 	uint32_t layerCount;
@@ -46,7 +50,6 @@ void VulkanCore::Initialize(void){
 
 		/*  Check if exists.    */
 		for (uint32_t i = 0; i < availableLayers.size(); i++) {
-			
 		}
 	}
 
@@ -82,12 +85,13 @@ void VulkanCore::Initialize(void){
 	ai.apiVersion = version;
 
 	VkDebugReportCallbackCreateInfoEXT callbackCreateInfoExt = {
-		VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT, // sType
-		NULL,													 // pNext
-		VK_DEBUG_REPORT_ERROR_BIT_EXT |							 // flags
-		VK_DEBUG_REPORT_WARNING_BIT_EXT,
-		NULL, // myOutputDebugString,                                        // pfnCallback
-		NULL  // pUserData
+		.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT, // sType
+		.pNext = NULL,													  // pNext
+		.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |						  // flags
+				 VK_DEBUG_REPORT_WARNING_BIT_EXT,
+		.pfnCallback =
+			&myDebugReportCallbackEXT, // myOutputDebugString,                                        // pfnCallback
+		.pUserData = NULL			   // pUserData
 	};
 	VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoExt = {
 		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -103,7 +107,7 @@ void VulkanCore::Initialize(void){
 	VkInstanceCreateInfo ici = {};
 	ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	if (this->enableValidationLayers)
-		ici.pNext = NULL;
+		ici.pNext = &callbackCreateInfoExt;
 	else
 		ici.pNext = NULL;
 	ici.flags = 0;
@@ -145,6 +149,8 @@ void VulkanCore::Initialize(void){
 	/*	*/
 	this->gpu = selectedDevices[0];
 
+	// vkEnumerateDeviceLayerProperties
+
 	/*  */
 	VkPhysicalDeviceFeatures supportedFeatures = {};
 	vkGetPhysicalDeviceFeatures(this->gpu, &supportedFeatures);
@@ -175,7 +181,7 @@ void VulkanCore::Initialize(void){
 				computeQueueNodeIndex = i;
 		}
 	}
-	//TODO resolve in case compute is not supported on the graphic queue.
+	// TODO resolve in case compute is not supported on the graphic queue.
 	this->graphics_queue_node_index = graphicsQueueNodeIndex;
 	this->compute_queue_node_index = graphicsQueueNodeIndex;
 
@@ -189,13 +195,13 @@ void VulkanCore::Initialize(void){
 
 	/*  Required extensions.    */
 	std::vector<const char *> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME,	/*	*/
-		// VK_NV_RAY_TRACING_EXTENSION_NAME
-		// VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME
-		// VK_NV_GLSL_SHADER_EXTENSION_NAME
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME, /*	*/
+										 // VK_NV_RAY_TRACING_EXTENSION_NAME
+										 // VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME
+										 // VK_NV_GLSL_SHADER_EXTENSION_NAME
 	};
 
-	//TODO resolve that it does if debug is enabled
+	// TODO resolve that it does if debug is enabled
 	if (this->enableValidationLayers) {
 		// TODO determine
 		deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
@@ -258,7 +264,7 @@ void VulkanCore::Initialize(void){
 	vkGetDeviceQueue(this->device, this->compute_queue_node_index, 0, &this->computeQueue);
 }
 
-VulkanCore::~VulkanCore(void){
+VulkanCore::~VulkanCore(void) {
 
 	if (device)
 		vkDestroyDevice(device, NULL);
