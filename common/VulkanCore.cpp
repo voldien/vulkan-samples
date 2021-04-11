@@ -4,17 +4,24 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include <cassert>
+#include<getopt.h>
+#include <csignal>
 #include <cstdio>
+#include <cstdlib>
+#define FMT_HEADER_ONLY
 #include <fmt/core.h>
+#include <getopt.h>
 #include <stdexcept>
 
-VulkanCore::VulkanCore(int argc, const char **argv) { Initialize(); }
+VulkanCore::VulkanCore(int argc, const char **argv, const std::vector<const char *> &layers) { Initialize(layers); }
 
 static VkBool32 myDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType,
 										 uint64_t object, size_t location, int32_t messageCode,
-										 const char *pLayerPrefix, const char *pMessage, void *pUserData) {}
+										 const char *pLayerPrefix, const char *pMessage, void *pUserData) {
+	return VK_TRUE;
+}
 
-void VulkanCore::Initialize(void) {
+void VulkanCore::Initialize(const std::vector<const char *> &layers) {
 	/*  Initialize video support.   */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
 		throw std::runtime_error(fmt::format("Failed init SDL video: {}", SDL_GetError()));
@@ -28,9 +35,11 @@ void VulkanCore::Initialize(void) {
 		VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
 		VK_KHR_DISPLAY_EXTENSION_NAME,
 	};
-	const std::vector<const char *> validationLayers = {
+	std::vector<const char *> validationLayers = {
 		"VK_LAYER_KHRONOS_validation",
 	};
+
+	validationLayers.insert(validationLayers.begin(), layers.begin(), layers.end());
 
 	this->enableValidationLayers = 1;
 
@@ -262,6 +271,39 @@ void VulkanCore::Initialize(void) {
 	vkGetDeviceQueue(this->device, this->graphics_queue_node_index, 0, &this->graphicsQueue);
 	vkGetDeviceQueue(this->device, this->graphics_queue_node_index, 0, &this->presentQueue);
 	vkGetDeviceQueue(this->device, this->compute_queue_node_index, 0, &this->computeQueue);
+}
+
+void VulkanCore::parseOptions(int argc, const char **argv) {
+
+	/*	TODO reorder    */
+	static const char *shortarg = "vVdqh"
+									"D:";
+	static struct option longoptions[] = {
+		/*  First pass arguments.   */
+		{"version", no_argument, NULL, 'v'},	  /*	Print version of application.	*/
+		{"verbose", no_argument, NULL, 'V'},	  /*	Print.	*/
+		{"debug", no_argument, NULL, 'd'},		  /*	Debug.	*/
+		{"quite", no_argument, NULL, 'q'},		  /*	Quite .	*/
+		{"help", no_argument, NULL, 'h'},		  /*	Help.	*/
+		{"device-index", no_argument, NULL, 'D'},
+		/*  Texture arguments.  16 texture unit support by default. */
+		{"texture0", required_argument, NULL, 't'},	   /*	Texture on index 0. */
+
+		{NULL, 0, NULL, 0},
+	};
+
+	int c, index;
+	while ((c = getopt_long(argc, (char *const *)argv, shortarg, longoptions, &index)) != EOF) {
+		const char *option = NULL;
+		if (index >= 0 && index < sizeof(longoptions) / sizeof(longoptions[0]))
+			option = longoptions[index].name;
+
+	}
+
+	/*	Reset getopt.	*/
+	optind = 0;
+	optopt = 0;
+	opterr = 0;
 }
 
 VulkanCore::~VulkanCore(void) {

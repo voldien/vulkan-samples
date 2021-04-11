@@ -1,0 +1,5 @@
+#ifndef _VK_SAMPLES_COMMON_VK_DEVICE_H_
+#define _VK_SAMPLES_COMMON_VK_DEVICE_H_ 1
+
+
+#endif

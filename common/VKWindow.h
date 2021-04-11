@@ -20,7 +20,7 @@ class VKWindow : public SDLWindow {
 	virtual void run(void);
 	virtual void onResize(int width, int height);
 
-	virtual void createLogisticDevice(VkQueueFlags queues);
+	//virtual void createLogisticDevice(VkQueueFlags queues);
 
   public:
   /*	Vulkan methods.	*/
