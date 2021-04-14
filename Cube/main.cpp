@@ -217,7 +217,7 @@ class CubeWindow : public VKWindow {
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
 		for (size_t i = 0; i < swapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, &memProperties, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VKHelper::createBuffer(getDevice(), bufferSize, &memProperties, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   uniformBuffers[i], uniformBuffersMemory[i]);
 		}
@@ -299,13 +299,16 @@ class CubeWindow : public VKWindow {
 
 	virtual void onResize(int width, int height) override {
 
+		ntime = SDL_GetPerformanceCounter();
+
 		VK_CHECK(vkQueueWaitIdle(getGraphicQueue()));
 		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
+		this->mvp.model = glm::mat4(1.0f);
+		this->mvp.view = glm::mat4(1.0f);
+		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 
 		for (int i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
-
-
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -328,7 +331,31 @@ class CubeWindow : public VKWindow {
 			renderPassInfo.clearValueCount = 1;
 			renderPassInfo.pClearValues = &clearColor;
 
+			vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp );
+
+		VkBufferMemoryBarrier ub_barrier = {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+			.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+			.buffer = uniformBuffers[i],
+			.offset = 0,
+			.size =  sizeof(mvp),
+		};
+			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
+
+			vkCmdPipelineBarrier(
+				cmd,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+				0,
+				0, NULL,
+				1, &ub_barrier,
+				0, NULL);
+
+
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
 			/*	*/
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
@@ -349,16 +376,18 @@ class CubeWindow : public VKWindow {
 
 	virtual void draw(void) override {
 
-		float elapsedTime = ((float)(SDL_GetPerformanceCounter() - ntime) / (float)SDL_GetPerformanceFrequency());
-		ntime = SDL_GetPerformanceCounter();
 
+		float elapsedTime = ((float)(SDL_GetPerformanceCounter() - ntime) / (float)SDL_GetPerformanceFrequency());
+
+
+		printf("%f\n", elapsedTime );
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime),  glm::vec3(0.0f, 1.0f, 0.0f));
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
-		void *data;
+		 void *data;
 		VK_CHECK(vkMapMemory(getDevice(), uniformBuffersMemory[getCurrentFrame()], 0, (size_t)sizeof(this->mvp), 0, &data));
 		memcpy(data, &mvp, (size_t)sizeof(this->mvp));
 		vkUnmapMemory(getDevice(), uniformBuffersMemory[getCurrentFrame()]);
