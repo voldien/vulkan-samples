@@ -3,6 +3,7 @@
 #include "VkPhysicalDevice.h"
 #include "VulkanCore.h"
 #include <unordered_map>
+#include<fmt/core.h>
 
 class VKDevice {
   public:
@@ -32,6 +33,18 @@ class VKDevice {
 	VkQueue getDefaultCompute(void) const noexcept { return this->computeQueue; }
 
 	uint32_t getDefaultGraphicQueueIndex(void) const noexcept { return this->graphics_queue_node_index; }
+
+	uint32_t findMemoryType(uint32_t typeFilter,
+									VkMemoryPropertyFlags properties) const {
+		
+		/*	Iterate throw each memory types.	*/
+		for (uint32_t i = 0; i < mDevices[0]->getMemoryProperties().memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) && (mDevices[0]->getMemoryProperties().memoryTypes[i].propertyFlags & properties) == properties) {
+				return i;
+			}
+		}
+		throw std::runtime_error(fmt::format("failed to find suitable memory type {}!", typeFilter));
+	}
 
   private:
 	uint32_t graphics_queue_node_index;

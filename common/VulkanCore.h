@@ -17,7 +17,7 @@ class VulkanCore {
 
   public:
 	VulkanCore(int argc, const char **argv,
-			   const std::unordered_map<const char *, bool>& requested_extensions = {{"", true}},
+			   const std::unordered_map<const char *, bool>& requested_extensions = {{"VK_KHR_DISPLAY_EXTENSION_NAME", true}},
 			   const std::unordered_map<const char *, bool>& requested_layers = {{"VK_LAYER_KHRONOS_validation", true}});
 	VulkanCore(const VulkanCore &other) = delete;
 	VulkanCore(VulkanCore &&other) = delete;
@@ -31,6 +31,9 @@ class VulkanCore {
 
 	const std::vector<VkExtensionProperties> &getInstanceExtensions(void) const noexcept {
 		return this->instanceExtensions;
+	}
+	const std::vector<VkLayerProperties>& getInstanceLayers(void) const noexcept{
+		return this->instanceLayers;
 	}
 	const std::vector<VkPhysicalDevice> &getPhysicalDevices(void) const noexcept { return this->physicalDevices; }
 	virtual VkInstance getHandle(void) const noexcept { return this->inst; }
@@ -47,6 +50,7 @@ class VulkanCore {
   protected:
 	/*	*/
 	std::vector<VkExtensionProperties> instanceExtensions;
+	std::vector<VkLayerProperties> instanceLayers;
 	VkInstance inst;
 	VkDebugUtilsMessengerEXT debugMessenger;
 	VkDebugReportCallbackEXT debugReport;

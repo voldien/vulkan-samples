@@ -61,7 +61,7 @@ class VKWindow : public SDLWindow {
 	VkImage getDefaultImage(void) const;
 	VkQueue getDefaultGraphicQueue(void) const;
 
-	// const std::shared_ptr<VKDevice> &getLogicalDevice(void) const noexcept { return this->device; }
+	const std::shared_ptr<VKDevice> &getLogicalDevice(void) const noexcept { return this->device; }
 
 	VkPhysicalDevice physicalDevice() const;
 	std::vector<VkQueue> getQueues(void) const noexcept;

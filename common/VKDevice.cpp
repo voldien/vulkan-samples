@@ -35,6 +35,8 @@ VKDevice::VKDevice(const std::vector<PhysicalDevice *> &devices,
 	this->graphics_queue_node_index = graphicsQueueNodeIndex;
 	this->compute_queue_node_index = graphicsQueueNodeIndex;
 
+	std::vector<VkDeviceQueueCreateInfo> queueCreations;
+	std::vector<float> queuePriorities;
 	float queue_priorities[1] = {1.0};
 	const VkDeviceQueueCreateInfo queue = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 										   .pNext = NULL,

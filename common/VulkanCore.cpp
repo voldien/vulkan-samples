@@ -43,9 +43,9 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 
 	/*	*/
 	std::vector<const char *> validationLayers;
-	validationLayers.resize(validationLayers.size() + requested_layers.size());
+	validationLayers.reserve(validationLayers.size() + requested_layers.size());
 	for (const std::pair<const char *, bool> &n : requested_layers) {
-		// vkEnumerateDeviceExtensionProperties
+		// TODO add logic to determine if supported.
 		if (n.second) {
 			validationLayers.push_back(n.first);
 			this->enableValidationLayers = true;
@@ -54,20 +54,18 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 
 	/*  Check for supported extensions.*/
 	uint32_t extensionCount = 0;
-	VK_CHECK(vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL));
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensionCount, VK_NULL_HANDLE));
 	this->instanceExtensions.resize(extensionCount);
-	/*	*/
-	VK_CHECK(vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, instanceExtensions.data()));
+	VK_CHECK(vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensionCount, instanceExtensions.data()));
 
 	/*  Check for supported validation layers.  */
 	uint32_t layerCount;
-	VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, NULL));
-	std::vector<VkLayerProperties> availableLayers(layerCount);
+	VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, VK_NULL_HANDLE));
+	instanceLayers.resize(layerCount);
+	VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, instanceLayers.data()));
 	if (this->enableValidationLayers) {
-		VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data()));
-
 		/*  Check if exists.    */
-		for (uint32_t i = 0; i < availableLayers.size(); i++) {
+		for (uint32_t i = 0; i < instanceLayers.size(); i++) {
 		}
 	}
 
@@ -76,11 +74,10 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	/*  Create Vulkan window.   */
 	SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
 	if (tmpWindow == NULL)
-		throw std::runtime_error("");
-
+		throw std::runtime_error(fmt::format("Failed to create Tmp Vulkan window - {}", SDL_GetError()));
 	/*	*/
 	unsigned int count;
-	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, NULL))
+	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, nullptr))
 		throw std::runtime_error("SDL_Vulkan_GetInstanceExtensions");
 	unsigned int additional_extension_count = (unsigned int)usedInstanceExtensionNames.size();
 	usedInstanceExtensionNames.resize((size_t)(additional_extension_count + count));
@@ -88,14 +85,14 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 		throw std::runtime_error("SDL_Vulkan_GetInstanceExtensions");
 	SDL_DestroyWindow(tmpWindow);
 
-	/*  Get Vulkan version. */
+	/*  Get Latest Vulkan version. */
 	uint32_t version;
 	VK_CHECK(vkEnumerateInstanceVersion(&version));
 
 	/*	Primary Vulkan instance Object. */
 	VkApplicationInfo ai = {};
 	ai.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	ai.pNext = NULL;
+	ai.pNext = VK_NULL_HANDLE;
 	ai.pApplicationName = "Vulkan Sample";
 	ai.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	ai.pEngineName = "Vulkan Sample Engine";
@@ -109,7 +106,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 				 VK_DEBUG_REPORT_WARNING_BIT_EXT,
 		.pfnCallback =
 			&myDebugReportCallbackEXT, // myOutputDebugString,                                        // pfnCallback
-		.pUserData = NULL			   // pUserData
+		.pUserData = VK_NULL_HANDLE			   // pUserData
 	};
 	VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoExt = {
 		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -117,7 +114,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	};
 	VkValidationCheckEXT validationCheckExt[] = {VK_VALIDATION_CHECK_ALL_EXT};
 	VkValidationFlagsEXT validationFlagsExt = {.sType = VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT,
-											   .pNext = NULL, //&debugUtilsMessengerCreateInfoExt,
+											   .pNext = VK_NULL_HANDLE, //&debugUtilsMessengerCreateInfoExt,
 											   .disabledValidationCheckCount = 1,
 											   .pDisabledValidationChecks = validationCheckExt};
 
@@ -135,19 +132,19 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 		ici.ppEnabledLayerNames = validationLayers.data();
 	} else {
 		ici.enabledLayerCount = 0;
-		ici.ppEnabledLayerNames = NULL;
+		ici.ppEnabledLayerNames = VK_NULL_HANDLE;
 	}
 	ici.enabledExtensionCount = usedInstanceExtensionNames.size();
 	ici.ppEnabledExtensionNames = usedInstanceExtensionNames.data();
 
 	/*	Create Vulkan instance.	*/
-	VK_CHECK(vkCreateInstance(&ici, NULL, &inst));
+	VK_CHECK(vkCreateInstance(&ici, VK_NULL_HANDLE, &inst));
 
 	/*	/////////////////////////////////////////*/
 
 	/*	Get number of physical devices. */
 	unsigned int nrPhysicalDevices;
-	VK_CHECK(vkEnumeratePhysicalDevices(this->inst, &nrPhysicalDevices, NULL));
+	VK_CHECK(vkEnumeratePhysicalDevices(this->inst, &nrPhysicalDevices, VK_NULL_HANDLE));
 	/*  Get all physical devices.    */
 
 	physicalDevices.resize(nrPhysicalDevices);
@@ -155,7 +152,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 
 	/*	*/
 	uint32_t nrPhysicalDeviceGroupCount;
-	VK_CHECK(vkEnumeratePhysicalDeviceGroups(this->inst, &nrPhysicalDeviceGroupCount, NULL));
+	VK_CHECK(vkEnumeratePhysicalDeviceGroups(this->inst, &nrPhysicalDeviceGroupCount, VK_NULL_HANDLE));
 
 	std::vector<VkPhysicalDeviceGroupProperties> phyiscalGroupDevices(nrPhysicalDeviceGroupCount);
 	VK_CHECK(vkEnumeratePhysicalDeviceGroups(this->inst, &nrPhysicalDeviceGroupCount, phyiscalGroupDevices.data()));
@@ -163,124 +160,6 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	/*  TODO add selection function. */
 	std::vector<VkPhysicalDevice> selectedDevices;
 	VKHelper::selectDefaultDevices(physicalDevices, selectedDevices);
-
-	return;
-	// /*	*/
-	// this->gpu = selectedDevices[0];
-
-	// // vkEnumerateDeviceLayerProperties
-
-	// /*  */
-	// VkPhysicalDeviceFeatures supportedFeatures = {};
-	// vkGetPhysicalDeviceFeatures(this->gpu, &supportedFeatures);
-	// /*  Fetch memory properties.   */
-	// vkGetPhysicalDeviceMemoryProperties(this->gpu, &this->memProperties);
-
-	// /*  Select queue family.    */
-	// /*  TODO improve queue selection.   */
-	// vkGetPhysicalDeviceQueueFamilyProperties(this->gpu, &this->queue_count, NULL);
-
-	// this->queue_props = (VkQueueFamilyProperties *)malloc(sizeof(VkQueueFamilyProperties) * this->queue_count);
-	// vkGetPhysicalDeviceQueueFamilyProperties(this->gpu, &this->queue_count, this->queue_props);
-	// assert(this->queue_count >= 1);
-
-	// VkPhysicalDeviceFeatures features;
-	// vkGetPhysicalDeviceFeatures(this->gpu, &features);
-
-	// /*  Select queue with graphic.  */ // TODO add queue for compute and etc.
-	// uint32_t graphicsQueueNodeIndex = UINT32_MAX;
-	// uint32_t computeQueueNodeIndex;
-	// for (uint32_t i = 0; i < this->queue_count; i++) {
-	// 	if ((this->queue_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
-	// 		if (graphicsQueueNodeIndex == UINT32_MAX)
-	// 			graphicsQueueNodeIndex = i;
-	// 	}
-	// 	if ((this->queue_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) != 0) {
-	// 		if (computeQueueNodeIndex == UINT32_MAX)
-	// 			computeQueueNodeIndex = i;
-	// 	}
-	// }
-	// // TODO resolve in case compute is not supported on the graphic queue.
-	// this->graphics_queue_node_index = graphicsQueueNodeIndex;
-	// this->compute_queue_node_index = graphicsQueueNodeIndex;
-
-	// float queue_priorities[1] = {1.0};
-	// const VkDeviceQueueCreateInfo queue = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-	// 									   .pNext = NULL,
-	// 									   .flags = 0,
-	// 									   .queueFamilyIndex = this->graphics_queue_node_index,
-	// 									   .queueCount = 1,
-	// 									   .pQueuePriorities = queue_priorities};
-
-	// /*  Required extensions.    */
-	// std::vector<const char *> deviceExtensions = {
-	// 	VK_KHR_SWAPCHAIN_EXTENSION_NAME, /*	*/
-	// 									 // VK_NV_RAY_TRACING_EXTENSION_NAME
-	// 									 // VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME
-	// 									 // VK_NV_GLSL_SHADER_EXTENSION_NAME
-	// };
-
-	// // TODO resolve that it does if debug is enabled
-	// if (this->enableValidationLayers) {
-	// 	// TODO determine
-	// 	deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-	// }
-
-	// VkDeviceGroupDeviceCreateInfo deviceGroupDeviceCreateInfo = {
-	// 	.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO,
-	// };
-	// if (phyiscalGroupDevices.size() > 0) {
-	// 	if (phyiscalGroupDevices[0].physicalDeviceCount > 1) {
-	// 		deviceGroupDeviceCreateInfo.physicalDeviceCount = phyiscalGroupDevices[0].physicalDeviceCount;
-	// 		deviceGroupDeviceCreateInfo.pPhysicalDevices = phyiscalGroupDevices[0].physicalDevices;
-	// 	}
-	// }
-
-	// VkPhysicalDeviceShaderDrawParameterFeatures deviceShaderDrawParametersFeatures = {
-	// 	.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES,
-	// 	.pNext = NULL,
-	// 	.shaderDrawParameters = VK_TRUE};
-	// VkPhysicalDeviceMultiviewFeatures deviceMultiviewFeatures = {
-	// 	.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
-	// 	.pNext = &deviceShaderDrawParametersFeatures,
-	// 	.multiview = VK_TRUE,
-	// 	.multiviewGeometryShader = VK_TRUE,
-	// 	.multiviewTessellationShader = VK_TRUE};
-	// VkPhysicalDeviceConditionalRenderingFeaturesEXT conditionalRenderingFeaturesExt = {
-	// 	.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT,
-	// 	.pNext = &deviceMultiviewFeatures,
-	// 	.conditionalRendering = VK_TRUE,
-	// 	.inheritedConditionalRendering = VK_TRUE};
-
-	// VkDeviceCreateInfo device = {};
-	// VkPhysicalDeviceFeatures deviceFeatures{};
-	// device.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	// device.pNext = &conditionalRenderingFeaturesExt;
-	// device.queueCreateInfoCount = 1;
-	// device.pQueueCreateInfos = &queue;
-	// if (this->enableValidationLayers) {
-	// 	// device.enabledLayerCount = this->enabled_layer_count;
-	// 	// device.ppEnabledLayerNames =
-	// 	// 	(const char *const *)((this->enableValidationLayers) ? this->device_validation_layers : NULL);
-	// } else {
-	// 	device.enabledLayerCount = 0;
-	// }
-
-	// /*	Enable group if supported.	*/
-	// if (deviceGroupDeviceCreateInfo.physicalDeviceCount > 1) {
-	// 	deviceShaderDrawParametersFeatures.pNext = &deviceGroupDeviceCreateInfo;
-	// }
-	// device.enabledExtensionCount = deviceExtensions.size();
-	// device.ppEnabledExtensionNames = deviceExtensions.data();
-	// device.pEnabledFeatures = &deviceFeatures;
-
-	// /*  Create device.  */
-	// VK_CHECK(vkCreateDevice(this->gpu, &device, NULL, &this->device));
-
-	// /*  Get all queues.    */
-	// vkGetDeviceQueue(this->device, this->graphics_queue_node_index, 0, &this->graphicsQueue);
-	// vkGetDeviceQueue(this->device, this->graphics_queue_node_index, 0, &this->presentQueue);
-	// vkGetDeviceQueue(this->device, this->compute_queue_node_index, 0, &this->computeQueue);
 }
 
 void VulkanCore::parseOptions(int argc, const char **argv) {
