@@ -66,6 +66,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	if (this->enableValidationLayers) {
 		/*  Check if exists.    */
 		for (uint32_t i = 0; i < instanceLayers.size(); i++) {
+			
 		}
 	}
 
