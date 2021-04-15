@@ -1,4 +1,5 @@
 #include "VKWindow.h"
+#include "VKDevice.h"
 #include "VKHelper.h"
 #include "common.hpp"
 #include <SDL2/SDL_vulkan.h>
@@ -25,12 +26,12 @@ VKWindow::~VKWindow(void) {
 	/*	*/
 	vkDestroyCommandPool(getDevice(), this->cmd_pool, nullptr);
 
-	vkDestroySurfaceKHR(core->inst, this->surface, nullptr);
+	vkDestroySurfaceKHR(core->getHandle(), this->surface, nullptr);
 
 	this->close();
 }
 
-VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, int x, int y, int width, int height) {
+VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width, int height) {
 
 	if (!SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO)) {
 	}
@@ -54,19 +55,20 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, int x, int y, int width, i
 	}
 
 	/*  Create surface. */
-	bool surfaceResult = SDL_Vulkan_CreateSurface(this->window, core->inst, &this->surface);
+	bool surfaceResult = SDL_Vulkan_CreateSurface(this->window, core->getHandle(), &this->surface);
 	if (surfaceResult == SDL_FALSE) {
 		throw std::runtime_error("failed create vulkan surface - %s");
 	}
 
 	/*	*/
+	this->device = device;
 	this->core = core;
 	this->swapChain = new SwapchainBuffers();
 
 	/*  Create command pool.    */
 	VkCommandPoolCreateInfo cmdPoolCreateInfo = {};
 	cmdPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	cmdPoolCreateInfo.queueFamilyIndex = core->graphics_queue_node_index;
+	cmdPoolCreateInfo.queueFamilyIndex = device->getDefaultGraphicQueueIndex();
 	cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	/*  Create command pool.    */
@@ -144,7 +146,8 @@ void VKWindow::swapBuffer(void) {
 
 	vkResetFences(getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame]);
 
-	VK_CHECK(vkQueueSubmit(core->graphicsQueue, 1, &submitInfo, this->inFlightFences[this->swapChain->currentFrame]));
+	VK_CHECK(vkQueueSubmit(device->getDefaultGraphicQueue(), 1, &submitInfo,
+						   this->inFlightFences[this->swapChain->currentFrame]));
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -160,7 +163,7 @@ void VKWindow::swapBuffer(void) {
 	/*	*/
 	presentInfo.pImageIndices = &imageIndex;
 
-	result = vkQueuePresentKHR(this->core->presentQueue, &presentInfo);
+	result = vkQueuePresentKHR(this->device->getDefaultPresent(), &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		// framebufferResized = false;
 		recreateSwapChain();
@@ -175,7 +178,7 @@ void VKWindow::swapBuffer(void) {
 void VKWindow::createSwapChain(void) {
 
 	/*  */
-	VKHelper::SwapChainSupportDetails swapChainSupport = VKHelper::querySwapChainSupport(core->gpu, this->surface);
+	VKHelper::SwapChainSupportDetails swapChainSupport = VKHelper::querySwapChainSupport(device->getPhysicalDevices()[0]->getHandle(), this->surface);
 
 	/*	*/
 	VkSurfaceFormatKHR surfaceFormat = VKHelper::chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -190,7 +193,8 @@ void VKWindow::createSwapChain(void) {
 		imageCount = swapChainSupport.capabilities.maxImageCount;
 	}
 
-	VKHelper::QueueFamilyIndices indices = VKHelper::findQueueFamilies(core->gpu, this->surface);
+	VKHelper::QueueFamilyIndices indices =
+		VKHelper::findQueueFamilies(device->getPhysicalDevices()[0]->getHandle(), this->surface);
 	uint32_t queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
 
 	/*  */
@@ -364,8 +368,7 @@ int VKWindow::swapChainImageCount() const { return this->swapChain->swapChainIma
 
 int VKWindow::getCurrentFrame(void) const { return this->swapChain->currentFrame; }
 
-VkDevice VKWindow::getDevice(void) const { return core->device; }
-
+VkDevice VKWindow::getDevice(void) const { return device->getHandle(); }
 
 VkFramebuffer VKWindow::getDefaultFrameBuffer(void) const {
 	return this->swapChain->swapChainFramebuffers[this->swapChain->currentFrame];
@@ -380,10 +383,10 @@ VkImage VKWindow::getDefaultImage(void) const {
 	return this->swapChain->swapChainImages[this->swapChain->currentFrame];
 }
 
-VkQueue VKWindow::getGraphicQueue(void) const { return this->core->graphicsQueue; }
+VkQueue VKWindow::getGraphicQueue(void) const { return this->device->getDefaultGraphicQueue(); }
 
 VkPhysicalDevice VKWindow::physicalDevice() const {
-	return core->gpu;
+	return device->getPhysicalDevices()[0]->getHandle();
 	// physicalDevices[0];
 }
 

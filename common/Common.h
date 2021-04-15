@@ -1,9 +1,12 @@
 #ifndef _VK_COMMON_SAMPLES_H_
 #define _VK_COMMON_SAMPLES_H_ 1
+#include "VKDevice.h"
+
+#include "VKHelper.h"
+#include "VKWindow.h"
+#include "VkPhysicalDevice.h"
+#include "VulkanCore.h"
+#include <fmt/core.h>
 #include <stdexcept>
-#include<fmt/core.h>
-#include"VKHelper.h"
-#include"VulkanCore.h"
-#include"VKWindow.h"
 
 #endif

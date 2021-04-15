@@ -10,17 +10,19 @@ class VulkanCore {
 	friend class VKWindow;
 
   public:
-	VulkanCore(int argc, const char **argv, const std::vector<const char*>& layers = {});
+	VulkanCore(int argc, const char **argv, const std::vector<const char *> &layers = {});
 	VulkanCore(const VulkanCore &other) = delete;
+	VulkanCore(VulkanCore &&other) = delete;
 	~VulkanCore(void);
+
+	VulkanCore &operator=(const VulkanCore &) = delete;
+	VulkanCore &operator=(VulkanCore &&) = delete;
 
 	virtual void Initialize(const std::vector<const char *> &layers);
 
-	std::vector<VkExtensionProperties> &getInstanceExtensions(void) noexcept { return this->instanceExtensions; }
+	const std::vector<VkExtensionProperties> &getInstanceExtensions(void) const noexcept { return this->instanceExtensions; }
 	const std::vector<VkPhysicalDevice> &getPhysicalDevices(void) const noexcept { return this->physicalDevices; }
-	const std::vector<VkPhysicalDeviceMemoryProperties> &getPhysicalDeviceMemoryProperties(void) const noexcept {
-		return this->memProper;
-	}
+	virtual VkInstance getHandle(void) const noexcept { return this->inst; }
 
   private:
 	void parseOptions(int argc, const char **argv);
@@ -45,12 +47,12 @@ class VulkanCore {
 
 	uint32_t queue_count;
 	std::vector<VkPhysicalDevice> physicalDevices;
-	std::vector<VkPhysicalDeviceMemoryProperties> memProper;
+	// std::vector<VkPhysicalDeviceMemoryProperties> memProper;
 
 	VkDevice device;
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-//TODO
+	// TODO
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 	VkQueue computeQueue;

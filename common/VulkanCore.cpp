@@ -4,10 +4,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include <cassert>
-#include<getopt.h>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
+#include <getopt.h>
 #define FMT_HEADER_ONLY
 #include <fmt/core.h>
 #include <getopt.h>
@@ -155,6 +155,7 @@ void VulkanCore::Initialize(const std::vector<const char *> &layers) {
 	std::vector<VkPhysicalDevice> selectedDevices;
 	VKHelper::selectDefaultDevices(physicalDevices, selectedDevices);
 
+	return;
 	/*	*/
 	this->gpu = selectedDevices[0];
 
@@ -277,17 +278,17 @@ void VulkanCore::parseOptions(int argc, const char **argv) {
 
 	/*	TODO reorder    */
 	static const char *shortarg = "vVdqh"
-									"D:";
+								  "D:";
 	static struct option longoptions[] = {
 		/*  First pass arguments.   */
-		{"version", no_argument, NULL, 'v'},	  /*	Print version of application.	*/
-		{"verbose", no_argument, NULL, 'V'},	  /*	Print.	*/
-		{"debug", no_argument, NULL, 'd'},		  /*	Debug.	*/
-		{"quite", no_argument, NULL, 'q'},		  /*	Quite .	*/
-		{"help", no_argument, NULL, 'h'},		  /*	Help.	*/
+		{"version", no_argument, NULL, 'v'}, /*	Print version of application.	*/
+		{"verbose", no_argument, NULL, 'V'}, /*	Print.	*/
+		{"debug", no_argument, NULL, 'd'},	 /*	Debug.	*/
+		{"quite", no_argument, NULL, 'q'},	 /*	Quite .	*/
+		{"help", no_argument, NULL, 'h'},	 /*	Help.	*/
 		{"device-index", no_argument, NULL, 'D'},
 		/*  Texture arguments.  16 texture unit support by default. */
-		{"texture0", required_argument, NULL, 't'},	   /*	Texture on index 0. */
+		{"texture0", required_argument, NULL, 't'}, /*	Texture on index 0. */
 
 		{NULL, 0, NULL, 0},
 	};
@@ -297,7 +298,6 @@ void VulkanCore::parseOptions(int argc, const char **argv) {
 		const char *option = NULL;
 		if (index >= 0 && index < sizeof(longoptions) / sizeof(longoptions[0]))
 			option = longoptions[index].name;
-
 	}
 
 	/*	Reset getopt.	*/

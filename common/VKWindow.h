@@ -1,15 +1,16 @@
 #ifndef _STARTUP_WINDOW_SAMPLE_H_
 #define _STARTUP_WINDOW_SAMPLE_H_ 1
+#include "SDLWindow.h"
+#include "VKDevice.h"
 #include "VulkanCore.h"
 #include <SDL2/SDL.h>
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.h>
-#include"SDLWindow.h"
 
 class VKWindow : public SDLWindow {
   public:
-	VKWindow(std::shared_ptr<VulkanCore> &core, int x, int y, int width, int height);
+	VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width, int height);
 	VKWindow(const VKWindow &other) = delete;
 	~VKWindow(void);
 
@@ -20,10 +21,10 @@ class VKWindow : public SDLWindow {
 	virtual void run(void);
 	virtual void onResize(int width, int height);
 
-	//virtual void createLogisticDevice(VkQueueFlags queues);
+	// virtual void createLogisticDevice(VkQueueFlags queues);
 
   public:
-  /*	Vulkan methods.	*/
+	/*	Vulkan methods.	*/
 	VkDevice getDevice(void) const;
 	int getCurrentFrame(void) const;
 	int swapChainImageCount() const;
@@ -34,18 +35,17 @@ class VKWindow : public SDLWindow {
 	/*	*/
 	VkCommandBuffer getCurrentCommandBuffer(void) const;
 	VkRenderPass getDefaultRenderPass(void) const;
-	VkCommandPool getGraphicCommandPool(void)const;
+	VkCommandPool getGraphicCommandPool(void) const;
 	VkImage getDefaultImage(void) const;
 	VkQueue getGraphicQueue(void) const;
 	VkPhysicalDevice physicalDevice() const;
 	std::vector<VkQueue> getQueues(void) const noexcept;
 	std::vector<VkPhysicalDevice> getPhyiscalDevices(void);
-	std::vector<VkCommandBuffer>& getCommandBuffers(void);
+	std::vector<VkCommandBuffer> &getCommandBuffers(void);
 	std::vector<VkFramebuffer> &getFrameBuffers(void) const;
 	// virtual void std::vector<SupportedExtensions> getSupportedExtensions(void);
 
   public:
-
 	virtual void vsync(bool state);
 
 	virtual void setFullScreen(bool fullscreen);
@@ -58,6 +58,7 @@ class VKWindow : public SDLWindow {
 	virtual void cleanSwapChain(void);
 
   private:
+	std::shared_ptr<VKDevice> device;
 	std::shared_ptr<VulkanCore> core;
 	typedef struct _SwapchainBuffers {
 		struct SwapChainSupportDetails {
