@@ -301,7 +301,7 @@ class CubeWindow : public VKWindow {
 
 		ntime = SDL_GetPerformanceCounter();
 
-		VK_CHECK(vkQueueWaitIdle(getGraphicQueue()));
+		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);

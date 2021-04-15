@@ -13,13 +13,12 @@ class TriangleWindow : public VKWindow {
 	VkDeviceMemory vertexMemory;
 
   public:
-	TriangleWindow(std::shared_ptr<VulkanCore> &core) : VKWindow(core, -1, -1, -1, -1) {
-	//	this->setTitle(std::string("Triangle"));
+	TriangleWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+		: VKWindow(core, device, -1, -1, -1, -1) {
+		//		SDL_InitSubSystem(SDL_INIT_EVENTS);
 	}
-	~TriangleWindow(void) {
-
-	}
-	typedef struct _vertex_t{
+	~TriangleWindow(void) {}
+	typedef struct _vertex_t {
 		float pos[2];
 		float color[3];
 	} Vertex;
@@ -32,8 +31,8 @@ class TriangleWindow : public VKWindow {
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
 
-	const std::vector<Vertex> vertices = { {0.0f, -0.5f, 1.0f,  1.0f, 1.0f}, {0.5f, 0.5f, 0.0f,
-										  1.0f, 0.0f},  {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f}};
+	const std::vector<Vertex> vertices = {
+		{0.0f, -0.5f, 1.0f, 1.0f, 1.0f}, {0.5f, 0.5f, 0.0f, 1.0f, 0.0f}, {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f}};
 
 	VkPipeline createGraphicPipeline() {
 
@@ -186,9 +185,8 @@ class TriangleWindow : public VKWindow {
 		VkMemoryAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex =
-			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		allocInfo.memoryTypeIndex = getLogicalDevice()->findMemoryType(
+			memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		VK_CHECK(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
@@ -204,7 +202,7 @@ class TriangleWindow : public VKWindow {
 
 	virtual void onResize(int width, int height) override {
 
-		VK_CHECK(vkQueueWaitIdle(getGraphicQueue()));
+		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
 		for (int i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
@@ -247,10 +245,13 @@ class TriangleWindow : public VKWindow {
 };
 
 int main(int argc, const char **argv) {
-
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
-		TriangleWindow window(core);
+		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
+		printf("%s\n", p[0]->getDeviceName());
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p, required_device_extensions);
+		TriangleWindow window(core, d);
 
 		window.run();
 	} catch (std::exception &ex) {

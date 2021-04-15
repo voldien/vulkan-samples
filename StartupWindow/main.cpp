@@ -5,15 +5,20 @@
 
 class StartUpWindow : public VKWindow {
   public:
-	StartUpWindow(std::shared_ptr<VulkanCore> &core) : VKWindow(core, -1, -1, -1, -1) {
-		SDL_InitSubSystem(SDL_INIT_EVENTS);
+	StartUpWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+		: VKWindow(core, device, -1, -1, -1, -1) {
+		//		SDL_InitSubSystem(SDL_INIT_EVENTS);
 	}
 
-	virtual void Initialize(void) override { onResize(width(), height()); }
+	virtual void Initialize(void) override {
+		/*	Check if supported.	*/
+
+		onResize(width(), height());
+	}
 
 	virtual void onResize(int width, int height) override {
 
-		VK_CHECK(vkQueueWaitIdle(getGraphicQueue()));
+		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
 		for (int i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
@@ -51,9 +56,16 @@ class StartUpWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
+	std::unordered_map<const char *, bool> required_device_extensions = {
+		{VK_NV_RAY_TRACING_EXTENSION_NAME, false},
+	};
+
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
-		StartUpWindow window(core);
+		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
+		printf("%s\n", p[0]->getDeviceName());
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p, required_device_extensions);
+		StartUpWindow window(core, d);
 
 		window.run();
 	} catch (std::exception &ex) {

@@ -219,7 +219,7 @@ class InstanceWindow : public VKWindow {
 
 	virtual void onResize(int width, int height) override {
 
-		VK_CHECK(vkQueueWaitIdle(getGraphicQueue()));
+		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
 		for (int i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
