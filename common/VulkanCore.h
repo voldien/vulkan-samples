@@ -4,13 +4,21 @@
 #include <vector>
 #define VK_USE_PLATFORM_XLIB_KHR
 #define VK_USE_PLATFORM_WAYLAND_KHR
+#include <unordered_map>
 #include <vulkan/vulkan.h>
 
+class PhysicalDevice;
+/**
+ * @brief 
+ * 
+ */
 class VulkanCore {
 	friend class VKWindow;
 
   public:
-	VulkanCore(int argc, const char **argv, const std::vector<const char *> &layers = {});
+	VulkanCore(int argc, const char **argv,
+			   const std::unordered_map<const char *, bool>& requested_extensions = {{"", true}},
+			   const std::unordered_map<const char *, bool>& requested_layers = {{"VK_LAYER_KHRONOS_validation", true}});
 	VulkanCore(const VulkanCore &other) = delete;
 	VulkanCore(VulkanCore &&other) = delete;
 	~VulkanCore(void);
@@ -18,11 +26,20 @@ class VulkanCore {
 	VulkanCore &operator=(const VulkanCore &) = delete;
 	VulkanCore &operator=(VulkanCore &&) = delete;
 
-	virtual void Initialize(const std::vector<const char *> &layers);
+	virtual void Initialize(const std::unordered_map<const char *, bool> &requested_extensions,
+							const std::unordered_map<const char *, bool> &requested_layers);
 
-	const std::vector<VkExtensionProperties> &getInstanceExtensions(void) const noexcept { return this->instanceExtensions; }
+	const std::vector<VkExtensionProperties> &getInstanceExtensions(void) const noexcept {
+		return this->instanceExtensions;
+	}
 	const std::vector<VkPhysicalDevice> &getPhysicalDevices(void) const noexcept { return this->physicalDevices; }
 	virtual VkInstance getHandle(void) const noexcept { return this->inst; }
+
+	int getNrGroupDevices(void) const noexcept { return this->nrGroupDevices; }
+	// std::vector<VkPhysicalDevice> getGroupDevice(void) const noexcept;
+
+	std::vector<PhysicalDevice *> createPhysicalDevices(void) const;
+	PhysicalDevice *createPhysicalDevice(unsigned int index) const;
 
   private:
 	void parseOptions(int argc, const char **argv);
@@ -34,28 +51,13 @@ class VulkanCore {
 	VkDebugUtilsMessengerEXT debugMessenger;
 	VkDebugReportCallbackEXT debugReport;
 
-	/*  Physical device.    */
-	VkPhysicalDevice gpu;
-
-	VkPhysicalDeviceProperties gpu_props;
-	VkQueueFamilyProperties *queue_props;
-	uint32_t graphics_queue_node_index;
-	uint32_t compute_queue_node_index;
+	int nrGroupDevices;
 
 	bool enableValidationLayers;
 	bool enableDebugTracer;
 
 	uint32_t queue_count;
 	std::vector<VkPhysicalDevice> physicalDevices;
-	// std::vector<VkPhysicalDeviceMemoryProperties> memProper;
-
-	VkDevice device;
-	VkPhysicalDeviceMemoryProperties memProperties;
-
-	// TODO
-	VkQueue graphicsQueue;
-	VkQueue presentQueue;
-	VkQueue computeQueue;
 };
 
 #endif

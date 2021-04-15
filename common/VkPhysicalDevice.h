@@ -34,6 +34,8 @@ class PhysicalDevice {
 		vkGetPhysicalDeviceFeatures2(getHandle(), &feature);
 	}
 
+	const char *getDeviceName(void) const noexcept { return this->properties.deviceName; }
+
   private:
 	VkPhysicalDevice mdevice;
 	VkPhysicalDeviceFeatures features;

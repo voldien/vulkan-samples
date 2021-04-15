@@ -10,6 +10,27 @@
 
 class VKWindow : public SDLWindow {
   public:
+	/**
+	 * @brief Construct a new VKWindow object
+	 *
+	 * @param core
+	 * @param x
+	 * @param y
+	 * @param width
+	 * @param height
+	 */
+	// VKWindow(std::shared_ptr<VulkanCore> &core, int x, int y, int width, int height);
+
+	/**
+	 * @brief Construct a new VKWindow object
+	 *
+	 * @param core
+	 * @param device
+	 * @param x
+	 * @param y
+	 * @param width
+	 * @param height
+	 */
 	VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width, int height);
 	VKWindow(const VKWindow &other) = delete;
 	~VKWindow(void);
@@ -19,6 +40,7 @@ class VKWindow : public SDLWindow {
 	virtual void Release(void);
 	virtual void draw(void);
 	virtual void run(void);
+	// virtual void run(VkCommandBuffer cmdBuffer);
 	virtual void onResize(int width, int height);
 
 	// virtual void createLogisticDevice(VkQueueFlags queues);
@@ -37,7 +59,10 @@ class VKWindow : public SDLWindow {
 	VkRenderPass getDefaultRenderPass(void) const;
 	VkCommandPool getGraphicCommandPool(void) const;
 	VkImage getDefaultImage(void) const;
-	VkQueue getGraphicQueue(void) const;
+	VkQueue getDefaultGraphicQueue(void) const;
+
+	// const std::shared_ptr<VKDevice> &getLogicalDevice(void) const noexcept { return this->device; }
+
 	VkPhysicalDevice physicalDevice() const;
 	std::vector<VkQueue> getQueues(void) const noexcept;
 	std::vector<VkPhysicalDevice> getPhyiscalDevices(void);
@@ -52,7 +77,7 @@ class VKWindow : public SDLWindow {
 
 	virtual void swapBuffer(void);
 
-  protected:
+  protected:	/*	Internal method for creating swapchains.	*/
 	virtual void createSwapChain(void);
 	virtual void recreateSwapChain(void);
 	virtual void cleanSwapChain(void);
@@ -88,14 +113,12 @@ class VKWindow : public SDLWindow {
 	VkQueue presentQueue;
 
 	/*  */
-	VkPhysicalDeviceProperties gpu_props;
-	VkQueueFamilyProperties *queue_props;
 	uint32_t graphics_queue_node_index;
 
 	VkSurfaceKHR surface;
 
 	/*  Collection of swap chain variables. */
-	SwapchainBuffers *swapChain;
+	SwapchainBuffers *swapChain;	//TODO remove as pointer
 
 	/*  */
 	// VkSemaphore imageAvailableSemaphore;

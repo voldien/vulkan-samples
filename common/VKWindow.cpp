@@ -383,7 +383,7 @@ VkImage VKWindow::getDefaultImage(void) const {
 	return this->swapChain->swapChainImages[this->swapChain->currentFrame];
 }
 
-VkQueue VKWindow::getGraphicQueue(void) const { return this->device->getDefaultGraphicQueue(); }
+VkQueue VKWindow::getDefaultGraphicQueue(void) const { return this->device->getDefaultGraphicQueue(); }
 
 VkPhysicalDevice VKWindow::physicalDevice() const {
 	return device->getPhysicalDevices()[0]->getHandle();
@@ -451,6 +451,6 @@ void VKWindow::run(void) {
 		this->swapBuffer();
 	}
 finished:
-	vkQueueWaitIdle(getGraphicQueue());
+	vkQueueWaitIdle(getDefaultGraphicQueue());
 	this->Release();
 }
