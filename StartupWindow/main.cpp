@@ -5,8 +5,8 @@
 
 class StartUpWindow : public VKWindow {
   public:
-	StartUpWindow(std::shared_ptr<VulkanCore> &core) : VKWindow(core, -1, -1, -1, -1) { SDL_InitSubSystem(SDL_INIT_EVENTS);
-		
+	StartUpWindow(std::shared_ptr<VulkanCore> &core) : VKWindow(core, -1, -1, -1, -1) {
+		SDL_InitSubSystem(SDL_INIT_EVENTS);
 	}
 
 	virtual void Initialize(void) override { onResize(width(), height()); }
@@ -46,13 +46,13 @@ class StartUpWindow : public VKWindow {
 
 	virtual void draw(void) override {}
 
-	virtual void update(void)  {}
+	virtual void update(void) {}
 };
 
 int main(int argc, const char **argv) {
 
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared < VulkanCore>(argc, argv);
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
 		StartUpWindow window(core);
 
 		window.run();
