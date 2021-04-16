@@ -36,11 +36,31 @@ class VKWindow : public SDLWindow {
 	~VKWindow(void);
 
   public:
+	/**
+	 * @brief
+	 *
+	 */
 	virtual void Initialize(void);
+	/**
+	 * @brief
+	 *
+	 */
 	virtual void Release(void);
+	/**
+	 * @brief
+	 *
+	 */
 	virtual void draw(void);
+	/**
+	 * @brief
+	 *
+	 */
 	virtual void run(void);
 	// virtual void run(VkCommandBuffer cmdBuffer);
+	/**
+	 * @brief
+	 *
+	 */
 	virtual void onResize(int width, int height);
 
 	// virtual void createLogisticDevice(VkQueueFlags queues);
@@ -66,8 +86,9 @@ class VKWindow : public SDLWindow {
 	VkPhysicalDevice physicalDevice() const;
 	std::vector<VkQueue> getQueues(void) const noexcept;
 	std::vector<VkPhysicalDevice> getPhyiscalDevices(void);
-	std::vector<VkCommandBuffer> &getCommandBuffers(void);
-	std::vector<VkFramebuffer> &getFrameBuffers(void) const;
+
+	std::vector<VkCommandBuffer> &getCommandBuffers(void) const noexcept;
+	std::vector<VkFramebuffer> &getFrameBuffers(void) const noexcept;
 	// virtual void std::vector<SupportedExtensions> getSupportedExtensions(void);
 
   public:

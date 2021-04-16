@@ -36,7 +36,7 @@ class VKDevice {
 
 	uint32_t findMemoryType(uint32_t typeFilter,
 									VkMemoryPropertyFlags properties) const {
-		
+
 		/*	Iterate throw each memory types.	*/
 		for (uint32_t i = 0; i < mDevices[0]->getMemoryProperties().memoryTypeCount; i++) {
 			if ((typeFilter & (1 << i)) && (mDevices[0]->getMemoryProperties().memoryTypes[i].propertyFlags & properties) == properties) {
@@ -46,15 +46,20 @@ class VKDevice {
 		throw std::runtime_error(fmt::format("failed to find suitable memory type {}!", typeFilter));
 	}
 
+	bool isFormatedSupported(VkFormat format) const noexcept;
+
   private:
 	uint32_t graphics_queue_node_index;
 	uint32_t compute_queue_node_index;
+	uint32_t transfer_queue_node_index;
+
 	std::vector<PhysicalDevice *> mDevices;
 	VkDevice logicalDevice;
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 	VkQueue computeQueue;
+	VkQueue transferQueue;
 };
 
 #endif

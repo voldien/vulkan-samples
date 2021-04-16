@@ -2,6 +2,10 @@
 #define _VULKAN_COMMON_PHYSICAL_DEVICE_H_ 1
 #include "VulkanCore.h"
 
+/**
+ * @brief
+ * 
+ */
 class PhysicalDevice {
   public:
 	PhysicalDevice(const VulkanCore &core, VkPhysicalDevice device);
@@ -25,8 +29,13 @@ class PhysicalDevice {
 
 	// TODO add extensions
 
-	// TODO add query of features.
-
+	/**
+	 * @brief
+	 *
+	 * @tparam T
+	 * @param type
+	 * @param requestFeature
+	 */
 	template <typename T> void checkFeature(VkStructureType type, T &requestFeature) {
 
 		VkPhysicalDeviceFeatures2 feature = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR,

@@ -392,9 +392,11 @@ VkPhysicalDevice VKWindow::physicalDevice() const {
 
 std::vector<VkPhysicalDevice> VKWindow::getPhyiscalDevices(void) {}
 
-std::vector<VkCommandBuffer> &VKWindow::getCommandBuffers(void) { return this->swapChain->commandBuffers; }
+std::vector<VkCommandBuffer> &VKWindow::getCommandBuffers(void) const noexcept {
+	return this->swapChain->commandBuffers;
+}
 
-std::vector<VkFramebuffer> &VKWindow::getFrameBuffers(void) const { return this->swapChain->swapChainFramebuffers; }
+std::vector<VkFramebuffer> &VKWindow::getFrameBuffers(void) const noexcept { return this->swapChain->swapChainFramebuffers; }
 
 void VKWindow::vsync(bool state) {}
 
