@@ -53,46 +53,48 @@ class CubeWindow : public VKWindow {
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
 
-	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 1, 1}, // triangle 1 : begin
-										  {-1.0f, -1.0f, 1.0f, 1, 1},
+	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 0, 0}, // triangle 1 : begin
+										  {-1.0f, -1.0f, 1.0f, 0, 1},
 										  {-1.0f, 1.0f, 1.0f, 1, 1}, // triangle 1 : end
-										  {1.0f, 1.0f, -1.0f, 1, 0}, // triangle 2 : begin
-										  {-1.0f, -1.0f, -1.0f, 0.5, 1},
-										  {-1.0f, 1.0f, -1.0f, 0.5f, 0.5}, // triangle 2 : end
+										  {1.0f, 1.0f, -1.0f, 0, 0}, // triangle 2 : begin
+										  {-1.0f, -1.0f, -1.0f, 1, 1},
+										  {-1.0f, 1.0f, -1.0f, 1, 0}, // triangle 2 : end
 										  {1.0f, -1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, -1.0f, 0, 0},
-										  {1.0f, -1.0f, -1.0f, 0, 0},
+										  {-1.0f, -1.0f, -1.0f, 0, 1},
+										  {1.0f, -1.0f, -1.0f, 1, 1},
 										  {1.0f, 1.0f, -1.0f, 0, 0},
-										  {1.0f, -1.0f, -1.0f, 0, 0},
+										  {1.0f, -1.0f, -1.0f, 1, 1},
+										  {-1.0f, -1.0f, -1.0f, 1, 0},
 										  {-1.0f, -1.0f, -1.0f, 0, 0},
-										  {-1.0f, -1.0f, -1.0f, 0, 0},
-										  {-1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, 1.0f, -1.0f, 0, 0},
+										  {-1.0f, 1.0f, 1.0f, 0, 1},
+										  {-1.0f, 1.0f, -1.0f, 1, 1},
 										  {1.0f, -1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, -1.0f, 0, 0},
+										  {-1.0f, -1.0f, 1.0f, 1, 1},
+										  {-1.0f, -1.0f, -1.0f, 0, 1},
 										  {-1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, 1.0f, 0, 0},
-										  {1.0f, -1.0f, 1.0f, 0, 0},
+										  {-1.0f, -1.0f, 1.0f, 0, 1},
+										  {1.0f, -1.0f, 1.0f, 1, 1},
 										  {1.0f, 1.0f, 1.0f, 0, 0},
+										  {1.0f, -1.0f, -1.0f, 1, 1},
+										  {1.0f, 1.0f, -1.0f, 1, 0},
 										  {1.0f, -1.0f, -1.0f, 0, 0},
-										  {1.0f, 1.0f, -1.0f, 0, 0},
-										  {1.0f, -1.0f, -1.0f, 0, 0},
+										  {1.0f, 1.0f, 1.0f, 0, 1},
+										  {1.0f, -1.0f, 1.0f, 1, 1},
 										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, -1.0f, 1.0f, 0, 0},
+										  {1.0f, 1.0f, -1.0f, 1, 1},
+										  {-1.0f, 1.0f, -1.0f, 0, 1},
 										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, 1.0f, -1.0f, 0, 0},
-										  {-1.0f, 1.0f, -1.0f, 0, 0},
+										  {-1.0f, 1.0f, -1.0f, 0, 1},
+										  {-1.0f, 1.0f, 1.0f, 1, 1},
 										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, 1.0f, -1.0f, 0, 0},
-										  {-1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, -1.0f, 1.0f, 0, 0}
+										  {-1.0f, 1.0f, 1.0f, 1, 1},
+										  {1.0f, -1.0f, 1.0f, 1, 0}
 
 	};
+	
 
-	VkPipeline createGraphicPipeline() {
+		VkPipeline
+		createGraphicPipeline() {
 
 		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
 		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
@@ -443,7 +445,7 @@ int main(int argc, const char **argv) {
 
 		window.run();
 	} catch (std::exception &ex) {
-		// std::cerr << ex.what();
+		std::cerr << ex.what();
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
