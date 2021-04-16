@@ -19,13 +19,14 @@ class CubeWindow : public VKWindow {
 	std::vector<VkDescriptorSet> descriptorSets;
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	std::vector<void *> mapMemory;
 	long ntime;
 
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
-	}mvp;
+	} mvp;
 
 	typedef struct _vertex_t {
 		float pos[3];
@@ -33,8 +34,8 @@ class CubeWindow : public VKWindow {
 	} Vertex;
 
   public:
-	CubeWindow(std::shared_ptr<VulkanCore> &core) : VKWindow(core, -1, -1, -1, -1) {
-		//	this->setTitle(std::string("Triangle"));
+	CubeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+		: VKWindow(core, device, -1, -1, -1, -1) {
 		ntime = SDL_GetPerformanceCounter();
 	}
 	~CubeWindow(void) {}
@@ -50,12 +51,46 @@ class CubeWindow : public VKWindow {
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
-
-
 	}
 
-	const std::vector<float> vertices = {0.0f, -0.5f, 1.0f,	 1.0f, 1.0f, 0.5f, 0.5f, 0.0f,
-										 1.0f, 0.0f,  -0.5f, 0.5f, 0.0f, 0.0f, 1.0f};
+	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 1, 1}, // triangle 1 : begin
+										  {-1.0f, -1.0f, 1.0f, 1, 1},
+										  {-1.0f, 1.0f, 1.0f, 1, 1}, // triangle 1 : end
+										  {1.0f, 1.0f, -1.0f, 1, 0}, // triangle 2 : begin
+										  {-1.0f, -1.0f, -1.0f, 0.5, 1},
+										  {-1.0f, 1.0f, -1.0f, 0.5f, 0.5}, // triangle 2 : end
+										  {1.0f, -1.0f, 1.0f, 0, 0},
+										  {-1.0f, -1.0f, -1.0f, 0, 0},
+										  {1.0f, -1.0f, -1.0f, 0, 0},
+										  {1.0f, 1.0f, -1.0f, 0, 0},
+										  {1.0f, -1.0f, -1.0f, 0, 0},
+										  {-1.0f, -1.0f, -1.0f, 0, 0},
+										  {-1.0f, -1.0f, -1.0f, 0, 0},
+										  {-1.0f, 1.0f, 1.0f, 0, 0},
+										  {-1.0f, 1.0f, -1.0f, 0, 0},
+										  {1.0f, -1.0f, 1.0f, 0, 0},
+										  {-1.0f, -1.0f, 1.0f, 0, 0},
+										  {-1.0f, -1.0f, -1.0f, 0, 0},
+										  {-1.0f, 1.0f, 1.0f, 0, 0},
+										  {-1.0f, -1.0f, 1.0f, 0, 0},
+										  {1.0f, -1.0f, 1.0f, 0, 0},
+										  {1.0f, 1.0f, 1.0f, 0, 0},
+										  {1.0f, -1.0f, -1.0f, 0, 0},
+										  {1.0f, 1.0f, -1.0f, 0, 0},
+										  {1.0f, -1.0f, -1.0f, 0, 0},
+										  {1.0f, 1.0f, 1.0f, 0, 0},
+										  {1.0f, -1.0f, 1.0f, 0, 0},
+										  {1.0f, 1.0f, 1.0f, 0, 0},
+										  {1.0f, 1.0f, -1.0f, 0, 0},
+										  {-1.0f, 1.0f, -1.0f, 0, 0},
+										  {1.0f, 1.0f, 1.0f, 0, 0},
+										  {-1.0f, 1.0f, -1.0f, 0, 0},
+										  {-1.0f, 1.0f, 1.0f, 0, 0},
+										  {1.0f, 1.0f, 1.0f, 0, 0},
+										  {-1.0f, 1.0f, 1.0f, 0, 0},
+										  {1.0f, -1.0f, 1.0f, 0, 0}
+
+	};
 
 	VkPipeline createGraphicPipeline() {
 
@@ -84,20 +119,20 @@ class CubeWindow : public VKWindow {
 
 		VkVertexInputBindingDescription bindingDescription = {};
 		bindingDescription.binding = 0;
-		bindingDescription.stride = 5 * 4;
+		bindingDescription.stride = sizeof(Vertex);
 		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
 
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
-		attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[0].offset = 0;
 
 		attributeDescriptions[1].binding = 0;
 		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[1].offset = 8;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[1].offset = 12;
 
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -150,7 +185,7 @@ class CubeWindow : public VKWindow {
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
-		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizer.cullMode = VK_CULL_MODE_NONE;
 		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -217,9 +252,14 @@ class CubeWindow : public VKWindow {
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
 		for (size_t i = 0; i < swapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, &memProperties, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			VKHelper::createBuffer(getDevice(), bufferSize, &memProperties,
+								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   uniformBuffers[i], uniformBuffersMemory[i]);
+			void *_data;
+			VK_CHECK(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
+			mapMemory.push_back(_data);
 		}
 
 		VkDescriptorPoolSize poolSize{};
@@ -317,7 +357,7 @@ class CubeWindow : public VKWindow {
 			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			/*	Transfer the new data 	*/
-			//vkCmdTran
+			// vkCmdTran
 
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -331,7 +371,7 @@ class CubeWindow : public VKWindow {
 			renderPassInfo.clearValueCount = 1;
 			renderPassInfo.pClearValues = &clearColor;
 
-			vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp );
+			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
 
 		VkBufferMemoryBarrier ub_barrier = {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -339,20 +379,13 @@ class CubeWindow : public VKWindow {
 			.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
 			.buffer = uniformBuffers[i],
 			.offset = 0,
-			.size =  sizeof(mvp),
+				.size = sizeof(mvp),
 		};
 			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
 
-			vkCmdPipelineBarrier(
-				cmd,
-				VK_PIPELINE_STAGE_TRANSFER_BIT,
-				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-				0,
-				0, NULL,
-				1, &ub_barrier,
-				0, NULL);
-
+			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
+			// 1, 					 &ub_barrier, 0, NULL);
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -363,10 +396,10 @@ class CubeWindow : public VKWindow {
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
 
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
-									&descriptorSets[i], 0, nullptr);
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0,
+									nullptr);
 
-			vkCmdDraw(cmd, 3, 1, 0, 0);
+			vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
 
 			vkCmdEndRenderPass(cmd);
 
@@ -379,18 +412,20 @@ class CubeWindow : public VKWindow {
 
 		float elapsedTime = ((float)(SDL_GetPerformanceCounter() - ntime) / (float)SDL_GetPerformanceFrequency());
 
-
-		printf("%f\n", elapsedTime );
+		printf("%f\n", elapsedTime);
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime),  glm::vec3(0.0f, 1.0f, 0.0f));
+		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45), glm::vec3(0.0f, 1.0f, 0.0f));
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
-		 void *data;
-		VK_CHECK(vkMapMemory(getDevice(), uniformBuffersMemory[getCurrentFrame()], 0, (size_t)sizeof(this->mvp), 0, &data));
-		memcpy(data, &mvp, (size_t)sizeof(this->mvp));
-		vkUnmapMemory(getDevice(), uniformBuffersMemory[getCurrentFrame()]);
+		// Setup the range
+		memcpy(mapMemory[getCurrentFrame()], &mvp, (size_t)sizeof(this->mvp));
+		VkMappedMemoryRange stagingRange = {.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+											.memory = uniformBuffersMemory[getCurrentFrame()],
+											.offset = 0,
+											.size = (size_t)sizeof(this->mvp)};
+		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
 	virtual void update(void) {}
@@ -398,9 +433,13 @@ class CubeWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
-		CubeWindow window(core);
+		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
+		printf("%s\n", p[0]->getDeviceName());
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p);
+		CubeWindow window(core, d);
 
 		window.run();
 	} catch (std::exception &ex) {
