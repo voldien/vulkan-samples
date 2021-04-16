@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
+#include<iostream>
 
 class TriangleWindow : public VKWindow {
   private:
@@ -253,7 +254,7 @@ int main(int argc, const char **argv) {
 
 		window.run();
 	} catch (std::exception &ex) {
-		// std::cerr << ex.what();
+		std::cerr << ex.what();
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
