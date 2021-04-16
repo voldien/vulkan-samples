@@ -34,7 +34,7 @@ VKWindow::~VKWindow(void) {
 VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
 				   int height) {
 
-	if (!SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO)) {
+	if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
 		throw std::runtime_error(fmt::format("Failed to init subsystem {}", SDL_GetError()));
 	}
 
