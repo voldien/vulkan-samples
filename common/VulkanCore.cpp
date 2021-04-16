@@ -208,10 +208,6 @@ PhysicalDevice *VulkanCore::createPhysicalDevice(unsigned int index) const {
 }
 
 VulkanCore::~VulkanCore(void) {
-
-	// if (device)
-	// 	vkDestroyDevice(device, NULL);
-
 	if (inst)
 		vkDestroyInstance(inst, NULL);
 }
