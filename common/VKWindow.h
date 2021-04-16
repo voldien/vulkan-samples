@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 #include <memory>
 #include <vector>
+#include<iostream>
 #include <vulkan/vulkan.h>
 
 class VKWindow : public SDLWindow {
@@ -78,6 +79,7 @@ class VKWindow : public SDLWindow {
 	VkCommandBuffer getCurrentCommandBuffer(void) const;
 	VkRenderPass getDefaultRenderPass(void) const;
 	VkCommandPool getGraphicCommandPool(void) const;
+	//VkCommandPool getComputeCommandPool(void) const noexcept;
 	VkImage getDefaultImage(void) const;
 	VkQueue getDefaultGraphicQueue(void) const;
 
@@ -120,6 +122,10 @@ class VKWindow : public SDLWindow {
 		std::vector<VkFramebuffer> swapChainFramebuffers;
 		std::vector<VkCommandBuffer> commandBuffers;
 
+		VkImage depthImage;
+		VkDeviceMemory depthImageMemory;
+		VkImageView depthImageView;
+
 		/*	*/
 		VkFormat swapChainImageFormat;
 		VkRenderPass renderPass;
@@ -153,7 +159,6 @@ class VKWindow : public SDLWindow {
 	VkCommandPool cmd_pool;
 	VkCommandPool compute_pool;
 	VkCommandPool transfer_pool;
-	// VkQueueFamilyIndices indices
 };
 
 #endif

@@ -467,5 +467,4 @@ void VKWindow::run(void) {
 	}
 finished:
 	vkQueueWaitIdle(getDefaultGraphicQueue());
-	this->Release();
 }

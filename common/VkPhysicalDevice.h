@@ -24,12 +24,12 @@ class PhysicalDevice {
 	}
 
 	/**
-	 * @brief 
-	 * 
-	 * @param surface 
-	 * @param queueFamilyIndex 
-	 * @return true 
-	 * @return false 
+	 * @brief
+	 *
+	 * @param surface
+	 * @param queueFamilyIndex
+	 * @return true
+	 * @return false
 	 */
 	bool isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const;
 
@@ -37,17 +37,17 @@ class PhysicalDevice {
 
 	/**
 	 * @brief Get the Extensions object
-	 * 
-	 * @return const std::vector<VkExtensionProperties>& 
+	 *
+	 * @return const std::vector<VkExtensionProperties>&
 	 */
 	const std::vector<VkExtensionProperties> &getExtensions(void) const noexcept { return this->extensions; }
 
 	/**
-	 * @brief 
-	 * 
-	 * @param extension 
-	 * @return true 
-	 * @return false 
+	 * @brief
+	 *
+	 * @param extension
+	 * @return true
+	 * @return false
 	 */
 	bool isExtensionSupported(const std::string &extension) const {
 		return std::find_if(getExtensions().begin(), getExtensions().end(),
@@ -67,7 +67,16 @@ class PhysicalDevice {
 
 		VkPhysicalDeviceFeatures2 feature = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR,
 											 .pNext = &requestFeature};
+		requestFeature.sType = type;
 		vkGetPhysicalDeviceFeatures2(getHandle(), &feature);
+	}
+
+	template <typename T> void getProperties(VkStructureType type, T &requestProperties) {
+		VkPhysicalDeviceProperties2 properties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+		.pNext = &requestProperties
+		};
+		requestProperties.sType = type;
+		vkGetPhysicalDeviceProperties2(getHandle(), &properties);
 	}
 
 	const char *getDeviceName(void) const noexcept { return this->properties.deviceName; }
