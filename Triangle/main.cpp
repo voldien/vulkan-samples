@@ -14,9 +14,7 @@ class TriangleWindow : public VKWindow {
 
   public:
 	TriangleWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {
-		//		SDL_InitSubSystem(SDL_INIT_EVENTS);
-	}
+		: VKWindow(core, device, -1, -1, -1, -1) {}
 	~TriangleWindow(void) {}
 	typedef struct _vertex_t {
 		float pos[2];
