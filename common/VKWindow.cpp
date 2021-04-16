@@ -31,9 +31,11 @@ VKWindow::~VKWindow(void) {
 	this->close();
 }
 
-VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width, int height) {
+VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
+				   int height) {
 
 	if (!SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO)) {
+		throw std::runtime_error(fmt::format("Failed to init subsystem {}", SDL_GetError()));
 	}
 
 	SDL_DisplayMode displaymode;
@@ -93,6 +95,7 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
+	// TODO improve error message.
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		if (vkCreateSemaphore(getDevice(), &semaphoreInfo, nullptr, &this->imageAvailableSemaphores[i]) != VK_SUCCESS ||
 			vkCreateSemaphore(getDevice(), &semaphoreInfo, nullptr, &this->renderFinishedSemaphores[i]) != VK_SUCCESS ||
@@ -178,7 +181,8 @@ void VKWindow::swapBuffer(void) {
 void VKWindow::createSwapChain(void) {
 
 	/*  */
-	VKHelper::SwapChainSupportDetails swapChainSupport = VKHelper::querySwapChainSupport(device->getPhysicalDevices()[0]->getHandle(), this->surface);
+	VKHelper::SwapChainSupportDetails swapChainSupport =
+		VKHelper::querySwapChainSupport(device->getPhysicalDevices()[0]->getHandle(), this->surface);
 
 	/*	*/
 	VkSurfaceFormatKHR surfaceFormat = VKHelper::chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -396,7 +400,9 @@ std::vector<VkCommandBuffer> &VKWindow::getCommandBuffers(void) const noexcept {
 	return this->swapChain->commandBuffers;
 }
 
-std::vector<VkFramebuffer> &VKWindow::getFrameBuffers(void) const noexcept { return this->swapChain->swapChainFramebuffers; }
+std::vector<VkFramebuffer> &VKWindow::getFrameBuffers(void) const noexcept {
+	return this->swapChain->swapChainFramebuffers;
+}
 
 void VKWindow::vsync(bool state) {}
 

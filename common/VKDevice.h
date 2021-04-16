@@ -48,6 +48,8 @@ class VKDevice {
 
 	bool isFormatedSupported(VkFormat format) const noexcept;
 
+
+
   private:
 	uint32_t graphics_queue_node_index;
 	uint32_t compute_queue_node_index;

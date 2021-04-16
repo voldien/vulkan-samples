@@ -48,7 +48,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 		// TODO add logic to determine if supported.
 		if (n.second) {
 			validationLayers.push_back(n.first);
-			this->enableValidationLayers = true;
+			this->useValidationLayers = true;
 		}
 	}
 
@@ -63,7 +63,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, VK_NULL_HANDLE));
 	instanceLayers.resize(layerCount);
 	VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, instanceLayers.data()));
-	if (this->enableValidationLayers) {
+	if (this->useValidationLayers) {
 		/*  Check if exists.    */
 		for (uint32_t i = 0; i < instanceLayers.size(); i++) {
 			
@@ -122,13 +122,13 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	/*	Prepare the instance object. */
 	VkInstanceCreateInfo ici = {};
 	ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	if (this->enableValidationLayers)
+	if (this->useValidationLayers)
 		ici.pNext = &callbackCreateInfoExt;
 	else
 		ici.pNext = NULL;
 	ici.flags = 0;
 	ici.pApplicationInfo = &ai;
-	if (this->enableValidationLayers) {
+	if (this->useValidationLayers) {
 		ici.enabledLayerCount = validationLayers.size();
 		ici.ppEnabledLayerNames = validationLayers.data();
 	} else {

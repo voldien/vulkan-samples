@@ -4,7 +4,7 @@
 
 /**
  * @brief
- * 
+ *
  */
 class PhysicalDevice {
   public:
@@ -23,11 +23,38 @@ class PhysicalDevice {
 		return queueFamilyProperties;
 	}
 
+	/**
+	 * @brief 
+	 * 
+	 * @param surface 
+	 * @param queueFamilyIndex 
+	 * @return true 
+	 * @return false 
+	 */
 	bool isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const;
 
 	VkPhysicalDevice getHandle(void) const noexcept { return this->mdevice; }
 
-	// TODO add extensions
+	/**
+	 * @brief Get the Extensions object
+	 * 
+	 * @return const std::vector<VkExtensionProperties>& 
+	 */
+	const std::vector<VkExtensionProperties> &getExtensions(void) const noexcept { return this->extensions; }
+
+	/**
+	 * @brief 
+	 * 
+	 * @param extension 
+	 * @return true 
+	 * @return false 
+	 */
+	bool isExtensionSupported(const std::string &extension) const {
+		return std::find_if(getExtensions().begin(), getExtensions().end(),
+							[extension](const VkExtensionProperties &device_extension) {
+								return std::strcmp(device_extension.extensionName, extension.c_str()) == 0;
+							}) != getExtensions().cend();
+	}
 
 	/**
 	 * @brief
@@ -51,6 +78,7 @@ class PhysicalDevice {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	VkPhysicalDeviceProperties properties;
 	std::vector<VkQueueFamilyProperties> queueFamilyProperties;
+	std::vector<VkExtensionProperties> extensions;
 };
 
 #endif
