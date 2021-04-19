@@ -18,10 +18,10 @@ class VulkanCore {
 	friend class VKWindow;
 
   public:
-	VulkanCore(
-		int argc, const char **argv,
-		const std::unordered_map<const char *, bool> &requested_extensions = {{"VK_KHR_DISPLAY_EXTENSION_NAME", true}},
-		const std::unordered_map<const char *, bool> &requested_layers = {{"VK_LAYER_KHRONOS_validation", true}});
+	VulkanCore(int argc, const char **argv,
+			   const std::unordered_map<const char *, bool> &requested_extensions = {},
+			   const std::unordered_map<const char *, bool> &requested_layers = {
+				   {"VK_LAYER_KHRONOS_validation", true}});
 	VulkanCore(const VulkanCore &other) = delete;
 	VulkanCore(VulkanCore &&other) = delete;
 	~VulkanCore(void);

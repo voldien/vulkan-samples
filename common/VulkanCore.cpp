@@ -41,6 +41,17 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 		VK_KHR_DISPLAY_EXTENSION_NAME,
 	};
 
+	for (const std::pair<const char *, bool> &n : requested_extensions) {
+		// TODO add logic to determine if supported.
+		if (n.second) {
+			if(isInstanceExtensionSupported(n.first)){
+				usedInstanceExtensionNames.push_back(n.first);
+				this->useValidationLayers = true;
+			}else
+				throw std::runtime_error(fmt::format("Vulkan Instance does not supported: {}\n", n.first));
+		}
+	}
+
 	/*	*/
 	std::vector<const char *> validationLayers;
 	validationLayers.reserve(validationLayers.size() + requested_layers.size());

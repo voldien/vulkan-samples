@@ -48,21 +48,18 @@ VKDevice::VKDevice(const std::vector<PhysicalDevice *> &devices,
 	/*  Required extensions.    */
 	std::vector<const char *> deviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME, /*	*/
-										 // VK_NV_RAY_TRACING_EXTENSION_NAME
-										 // VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME
-										 // VK_NV_GLSL_SHADER_EXTENSION_NAME
 	};
-	for (const std::pair<const char *, bool> &n : requested_extensions) {
-		// vkEnumerateDeviceExtensionProperties
-		if (n.second)
-			deviceExtensions.push_back(n.first);
-	}
 
-	// // TODO resolve that it does if debug is enabled
-	// if (this->enableValidationLayers) {
-	// 	// TODO determine
-	// 	deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-	// }
+	/*	Iterate through each extension and add if supported.	*/
+	for (const std::pair<const char *, bool> &n : requested_extensions) {
+		if (n.second) {
+			if (devices[0]->isExtensionSupported(n.first))
+				deviceExtensions.push_back(n.first);
+			else
+				throw std::runtime_error(
+					fmt::format("{} does not support: {}\n", devices[0]->getDeviceName(), n.first));
+		}
+	}
 
 	VkDeviceGroupDeviceCreateInfo deviceGroupDeviceCreateInfo = {
 		.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO,
@@ -74,35 +71,11 @@ VKDevice::VKDevice(const std::vector<PhysicalDevice *> &devices,
 		// }
 	}
 
-	// VkPhysicalDeviceShaderDrawParameterFeatures deviceShaderDrawParametersFeatures = {
-	// 	.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES,
-	// 	.pNext = NULL,
-	// 	.shaderDrawParameters = VK_TRUE};
-	// VkPhysicalDeviceMultiviewFeatures deviceMultiviewFeatures = {
-	// 	.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
-	// 	.pNext = &deviceShaderDrawParametersFeatures,
-	// 	.multiview = VK_TRUE,
-	// 	.multiviewGeometryShader = VK_TRUE,
-	// 	.multiviewTessellationShader = VK_TRUE};
-	// VkPhysicalDeviceConditionalRenderingFeaturesEXT conditionalRenderingFeaturesExt = {
-	// 	.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT,
-	// 	.pNext = &deviceMultiviewFeatures,
-	// 	.conditionalRendering = VK_TRUE,
-	// 	.inheritedConditionalRendering = VK_TRUE};
-
 	VkDeviceCreateInfo device = {};
-	VkPhysicalDeviceFeatures deviceFeatures{};
 	device.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	device.pNext = NULL;
+	device.pNext = VK_NULL_HANDLE;
 	device.queueCreateInfoCount = 1;
 	device.pQueueCreateInfos = &queue;
-	// if (this->enableValidationLayers) {
-	// 	// device.enabledLayerCount = this->enabled_layer_count;
-	// 	// device.ppEnabledLayerNames =
-	// 	// 	(const char *const *)((this->enableValidationLayers) ? this->device_validation_layers : NULL);
-	// } else {
-	// 	device.enabledLayerCount = 0;
-	// }
 
 	// /*	Enable group if supported.	*/
 	// if (deviceGroupDeviceCreateInfo.physicalDeviceCount > 1) {
@@ -110,10 +83,9 @@ VKDevice::VKDevice(const std::vector<PhysicalDevice *> &devices,
 	// }
 	device.enabledExtensionCount = deviceExtensions.size();
 	device.ppEnabledExtensionNames = deviceExtensions.data();
-	// device.pEnabledFeatures = &deviceFeatures;
 
 	/*  Create device.  */
-	vkCreateDevice(devices[0]->getHandle(), &device, NULL, &this->logicalDevice);
+	vkCreateDevice(devices[0]->getHandle(), &device, VK_NULL_HANDLE, &this->logicalDevice);
 
 	/*  Get all queues.    */
 	vkGetDeviceQueue(getHandle(), this->graphics_queue_node_index, 0, &this->graphicsQueue);
@@ -125,5 +97,5 @@ VKDevice::VKDevice(const std::vector<PhysicalDevice *> &devices,
 
 VKDevice::~VKDevice(void) {
 	if (getHandle() != VK_NULL_HANDLE)
-		vkDestroyDevice(getHandle(), NULL);
+		vkDestroyDevice(getHandle(), VK_NULL_HANDLE);
 }
