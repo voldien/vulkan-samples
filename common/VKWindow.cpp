@@ -192,9 +192,10 @@ void VKWindow::createSwapChain(void) {
 	/*	*/
 	this->swapChain->currentFrame = 0;
 
-	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+	/*	TODO evoluate if this is thec correct.	*/
+	uint32_t imageCount = std::max((uint32_t)swapChainSupport.capabilities.minImageCount, (uint32_t)1);
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-		imageCount = swapChainSupport.capabilities.maxImageCount;
+		imageCount = std::max(swapChainSupport.capabilities.maxImageCount, (uint32_t)imagesInFlight.size());
 	}
 
 	VKHelper::QueueFamilyIndices indices =
