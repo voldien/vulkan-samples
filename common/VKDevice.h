@@ -5,6 +5,10 @@
 #include <unordered_map>
 #include<fmt/core.h>
 
+/**
+ * @brief 
+ * 
+ */
 class VKDevice {
   public:
 	// TODO add support for group device.!
@@ -47,8 +51,6 @@ class VKDevice {
 	}
 
 	bool isFormatedSupported(VkFormat format) const noexcept;
-
-
 
   private:
 	uint32_t graphics_queue_node_index;

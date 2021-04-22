@@ -33,6 +33,8 @@ class PhysicalDevice {
 	 */
 	bool isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const;
 
+	bool isFormatedSupported(VkFormat format) const noexcept;
+
 	VkPhysicalDevice getHandle(void) const noexcept { return this->mdevice; }
 
 	/**
@@ -55,6 +57,8 @@ class PhysicalDevice {
 								return std::strcmp(device_extension.extensionName, extension.c_str()) == 0;
 							}) != getExtensions().cend();
 	}
+
+
 
 	/**
 	 * @brief

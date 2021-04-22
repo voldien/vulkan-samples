@@ -2,8 +2,8 @@
 #define _COMMON_VULKAN_CORE_H_ 1
 #include <string>
 #include <vector>
-#define VK_USE_PLATFORM_XLIB_KHR
-#define VK_USE_PLATFORM_WAYLAND_KHR
+// #define VK_USE_PLATFORM_XLIB_KHR
+// #define VK_USE_PLATFORM_WAYLAND_KHR
 #include <algorithm>
 #include <cstring>
 #include <unordered_map>
@@ -54,8 +54,16 @@ class VulkanCore {
 	const std::vector<VkPhysicalDevice> &getPhysicalDevices(void) const noexcept { return this->physicalDevices; }
 	virtual VkInstance getHandle(void) const noexcept { return this->inst; }
 
+	std::vector<VkPhysicalDeviceGroupProperties> getDeviceGroupProperties(void) const noexcept{
+
+		uint32_t nrGroups;
+		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, nullptr);
+		std::vector<VkPhysicalDeviceGroupProperties> prop(nrGroups);
+		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, prop.data());
+		return prop;
+	}
 	int getNrGroupDevices(void) const noexcept { return this->nrGroupDevices; }
-	// std::vector<VkPhysicalDevice> getGroupDevice(void) const noexcept;
+	// std::vector<VkPhysicalDevice> getGroupDevices(unsigned int index) const noexcept;
 
 	std::vector<PhysicalDevice *> createPhysicalDevices(void) const;
 	PhysicalDevice *createPhysicalDevice(unsigned int index) const;
