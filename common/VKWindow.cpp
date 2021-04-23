@@ -17,7 +17,7 @@ VKWindow::~VKWindow(void) {
 	cleanSwapChain();
 
 	/*	*/
-	for (size_t i = 0; i < this->imagesInFlight.size(); i++) {
+	for (size_t i = 0; i < this->renderFinishedSemaphores.size(); i++) {
 		vkDestroySemaphore(getDevice(), renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(getDevice(), imageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(getDevice(), inFlightFences[i], nullptr);
@@ -84,8 +84,6 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	this->imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	this->renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	this->inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-	this->imagesInFlight.resize(this->swapChain->swapChainImages.size(),
-								VK_NULL_HANDLE); // TODO resolve this->swapChainImages.size()
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -175,7 +173,8 @@ void VKWindow::swapBuffer(void) {
 	}
 
 	/*  Compute current frame.  */
-	this->swapChain->currentFrame = (this->swapChain->currentFrame + 1) % this->inFlightFences.size();
+	this->swapChain->currentFrame =
+		(this->swapChain->currentFrame + 1) % std::min((int)this->inFlightFences.size(), swapChainImageCount());
 }
 
 void VKWindow::createSwapChain(void) {
@@ -186,7 +185,7 @@ void VKWindow::createSwapChain(void) {
 
 	/*	*/
 	VkSurfaceFormatKHR surfaceFormat = VKHelper::chooseSwapSurfaceFormat(swapChainSupport.formats);
-	VkPresentModeKHR presentMode = VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes);
+	VkPresentModeKHR presentMode = VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes, swapChain->vsync);
 	VkExtent2D extent = VKHelper::chooseSwapExtent(swapChainSupport.capabilities, {width(), height()});
 
 	/*	*/
@@ -245,6 +244,7 @@ void VKWindow::createSwapChain(void) {
 
 	this->swapChain->swapChainImageFormat = surfaceFormat.format;
 	this->swapChain->chainExtend = extent;
+	this->imagesInFlight.resize(this->swapChain->swapChainImages.size(), VK_NULL_HANDLE);
 
 	/*	*/
 	this->swapChain->swapChainImageViews.resize(this->swapChain->swapChainImages.size());
@@ -352,8 +352,6 @@ void VKWindow::recreateSwapChain(void) {
 	cleanSwapChain();
 
 	createSwapChain();
-
-	imagesInFlight.resize(this->swapChain->swapChainImages.size(), VK_NULL_HANDLE);
 }
 
 void VKWindow::cleanSwapChain(void) {
@@ -412,7 +410,12 @@ std::vector<VkFramebuffer> &VKWindow::getFrameBuffers(void) const noexcept {
 	return this->swapChain->swapChainFramebuffers;
 }
 
-void VKWindow::vsync(bool state) {}
+void VKWindow::vsync(bool state) {
+	if (state != this->swapChain->vsync) {
+		this->swapChain->vsync = state;
+		recreateSwapChain();
+	}
+}
 
 void VKWindow::setFullScreen(bool fullscreen) { SDLWindow::setFullScreen(fullscreen); }
 

@@ -137,7 +137,7 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 		VkPhysicalDeviceProperties props = {};
 		vkGetPhysicalDeviceProperties(device, &props);
 
-		if((props.deviceType & device_type_filter) == 0)
+		if ((props.deviceType & device_type_filter) == 0)
 			continue;
 
 		uint32_t nrDisplayProperties = 0;
@@ -155,7 +155,6 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 		// 	continue;
 
 		for (int x = 0; x < displayProperties.size(); x++) {
-
 		}
 
 		// Determine the type of the physical device
@@ -163,9 +162,8 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 			preliminaryDevices.push_back(device);
 		} else if (props.deviceType == VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
 			/*	TODO determine if it can draw and display.	*/
-			//preliminaryDevices.push_back(device);
+			// preliminaryDevices.push_back(device);
 		} else {
-
 		}
 	}
 
@@ -205,12 +203,19 @@ VkSurfaceFormatKHR VKHelper::chooseSwapSurfaceFormat(const std::vector<VkSurface
 	return availableFormats[0];
 }
 
-VkPresentModeKHR VKHelper::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes) {
+VkPresentModeKHR VKHelper::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes,
+												 bool vsync) {
 	VkPresentModeKHR bestMode = VK_PRESENT_MODE_FIFO_KHR;
 
 	for (const auto &availablePresentMode : availablePresentModes) {
-		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-			// return availablePresentMode;
+		if (vsync && availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+			return VK_PRESENT_MODE_MAILBOX_KHR;
+		}
+	}
+
+	for (const auto &availablePresentMode : availablePresentModes) {
+		if (vsync && availablePresentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR) {
+			return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 		}
 	}
 
