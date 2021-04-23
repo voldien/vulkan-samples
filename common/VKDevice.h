@@ -12,6 +12,13 @@
 class VKDevice {
   public:
 	// TODO add support for group device.!
+	/**
+	 * @brief Construct a new VKDevice object
+	 * 
+	 * @param physicalDevices 
+	 * @param requested_extensions 
+	 * @param requiredQueues 
+	 */
 	VKDevice(const std::vector<PhysicalDevice *> &physicalDevices,
 			 const std::unordered_map<const char *, bool>& requested_extensions = {},
 			 VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
@@ -38,6 +45,13 @@ class VKDevice {
 
 	uint32_t getDefaultGraphicQueueIndex(void) const noexcept { return this->graphics_queue_node_index; }
 
+	/**
+	 * @brief 
+	 * 
+	 * @param typeFilter 
+	 * @param properties 
+	 * @return uint32_t 
+	 */
 	uint32_t findMemoryType(uint32_t typeFilter,
 									VkMemoryPropertyFlags properties) const {
 
@@ -50,6 +64,13 @@ class VKDevice {
 		throw std::runtime_error(fmt::format("failed to find suitable memory type {}!", typeFilter));
 	}
 
+	/**
+	 * @brief 
+	 * 
+	 * @param format 
+	 * @return true 
+	 * @return false 
+	 */
 	bool isFormatedSupported(VkFormat format) const noexcept;
 
   private:

@@ -33,7 +33,27 @@ class PhysicalDevice {
 	 */
 	bool isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const;
 
-	bool isFormatedSupported(VkFormat format) const noexcept;
+	/**
+	 * @brief 
+	 * 
+	 * @param format 
+	 * @param imageType 
+	 * @param tiling 
+	 * @param usage 
+	 * @return true 
+	 * @return false 
+	 */
+	bool isFormatedSupported(VkFormat format, VkImageType imageType, VkImageTiling tiling,
+							 VkImageUsageFlags usage) const noexcept {
+		VkImageFormatProperties prop;
+		VkResult result =
+			vkGetPhysicalDeviceImageFormatProperties(this->getHandle(), format, imageType, tiling, usage, 0, &prop);
+		if (result == VK_SUCCESS)
+			return true;
+		else if (result == VK_ERROR_FORMAT_NOT_SUPPORTED)
+		return false;
+		else throw std::runtime_error("");
+	}
 
 	VkPhysicalDevice getHandle(void) const noexcept { return this->mdevice; }
 
@@ -58,8 +78,6 @@ class PhysicalDevice {
 							}) != getExtensions().cend();
 	}
 
-
-
 	/**
 	 * @brief
 	 *
@@ -77,8 +95,7 @@ class PhysicalDevice {
 
 	template <typename T> void getProperties(VkStructureType type, T &requestProperties) {
 		VkPhysicalDeviceProperties2 properties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-		.pNext = &requestProperties
-		};
+												  .pNext = &requestProperties};
 		requestProperties.sType = type;
 		vkGetPhysicalDeviceProperties2(getHandle(), &properties);
 	}
