@@ -92,9 +92,7 @@ class CubeWindow : public VKWindow {
 
 	};
 	
-
-		VkPipeline
-		createGraphicPipeline() {
+	VkPipeline createGraphicPipeline() {
 
 		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
 		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
@@ -410,7 +408,6 @@ class CubeWindow : public VKWindow {
 	}
 
 	virtual void draw(void) override {
-
 
 		float elapsedTime = ((float)(SDL_GetPerformanceCounter() - ntime) / (float)SDL_GetPerformanceFrequency());
 
