@@ -35,19 +35,19 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	VkResult result;
 	std::vector<const char *> usedInstanceExtensionNames = {
 		/*	*/
-		VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME,
-		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-		VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
-		VK_KHR_DISPLAY_EXTENSION_NAME,
+		//		VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME,
+		//		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+		//		VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
+		//		VK_KHR_DISPLAY_EXTENSION_NAME,
 	};
 
 	for (const std::pair<const char *, bool> &n : requested_extensions) {
 		// TODO add logic to determine if supported.
 		if (n.second) {
-			if(isInstanceExtensionSupported(n.first)){
+			if (isInstanceExtensionSupported(n.first)) {
 				usedInstanceExtensionNames.push_back(n.first);
 				this->useValidationLayers = true;
-			}else
+			} else
 				throw std::runtime_error(fmt::format("Vulkan Instance does not supported: {}\n", n.first));
 		}
 	}
@@ -77,7 +77,6 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	if (this->useValidationLayers) {
 		/*  Check if exists.    */
 		for (uint32_t i = 0; i < instanceLayers.size(); i++) {
-			
 		}
 	}
 
@@ -118,7 +117,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 				 VK_DEBUG_REPORT_WARNING_BIT_EXT,
 		.pfnCallback =
 			&myDebugReportCallbackEXT, // myOutputDebugString,                                        // pfnCallback
-		.pUserData = VK_NULL_HANDLE			   // pUserData
+		.pUserData = VK_NULL_HANDLE	   // pUserData
 	};
 	VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoExt = {
 		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,

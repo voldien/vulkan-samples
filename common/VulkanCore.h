@@ -18,8 +18,7 @@ class VulkanCore {
 	friend class VKWindow;
 
   public:
-	VulkanCore(int argc, const char **argv,
-			   const std::unordered_map<const char *, bool> &requested_extensions = {},
+	VulkanCore(int argc, const char **argv, const std::unordered_map<const char *, bool> &requested_extensions = {},
 			   const std::unordered_map<const char *, bool> &requested_layers = {
 				   {"VK_LAYER_KHRONOS_validation", true}});
 	VulkanCore(const VulkanCore &other) = delete;
@@ -54,7 +53,12 @@ class VulkanCore {
 	const std::vector<VkPhysicalDevice> &getPhysicalDevices(void) const noexcept { return this->physicalDevices; }
 	virtual VkInstance getHandle(void) const noexcept { return this->inst; }
 
-	std::vector<VkPhysicalDeviceGroupProperties> getDeviceGroupProperties(void) const noexcept{
+	/**
+	 * @brief Get the Device Group Properties object
+	 * 
+	 * @return std::vector<VkPhysicalDeviceGroupProperties> 
+	 */
+	std::vector<VkPhysicalDeviceGroupProperties> getDeviceGroupProperties(void) const noexcept {
 
 		uint32_t nrGroups;
 		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, nullptr);
@@ -62,10 +66,21 @@ class VulkanCore {
 		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, prop.data());
 		return prop;
 	}
-	int getNrGroupDevices(void) const noexcept { return this->nrGroupDevices; }
-	// std::vector<VkPhysicalDevice> getGroupDevices(unsigned int index) const noexcept;
 
+	//TODO add smart pointer
+	/**
+	 * @brief Create a Physical Devices object
+	 *
+	 * @return std::vector<PhysicalDevice *>
+	 */
 	std::vector<PhysicalDevice *> createPhysicalDevices(void) const;
+
+	/**
+	 * @brief Create a Physical Device object
+	 *
+	 * @param index
+	 * @return PhysicalDevice*
+	 */
 	PhysicalDevice *createPhysicalDevice(unsigned int index) const;
 
   private:

@@ -109,6 +109,7 @@ class PhysicalDevice {
 	VkPhysicalDeviceProperties properties;
 	std::vector<VkQueueFamilyProperties> queueFamilyProperties;
 	std::vector<VkExtensionProperties> extensions;
+	//std::unique<VulkanCore> core;
 };
 
 #endif
