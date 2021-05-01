@@ -132,6 +132,7 @@ class VKWindow : public SDLWindow {
 		VkSwapchainKHR swapchain; /*  */
 		VkExtent2D chainExtend;	  /*  */
 		int currentFrame;
+		bool vsync = false;
 	} SwapchainBuffers;
 
 	/*  */

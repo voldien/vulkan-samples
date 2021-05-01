@@ -42,7 +42,7 @@ class CubeWindow : public VKWindow {
 
 	virtual void Release(void) override {
 
-		//vkFreeDescriptorSets 
+		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -91,10 +91,10 @@ class CubeWindow : public VKWindow {
 										  {1.0f, -1.0f, 1.0f, 1, 0}
 
 	};
-	
+
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
+		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp-pushconstant.vert.spv");
 		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
@@ -210,11 +210,16 @@ class CubeWindow : public VKWindow {
 		colorBlending.blendConstants[2] = 0.0f;
 		colorBlending.blendConstants[3] = 0.0f;
 
+		VkPushConstantRange pushRange = {
+			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+			.offset = 0, .size = sizeof(glm::mat4x4) };
+
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = 1;
 		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-		pipelineLayoutInfo.pushConstantRangeCount = 0;
+		pipelineLayoutInfo.pushConstantRangeCount = 1;
+		pipelineLayoutInfo.pPushConstantRanges = &pushRange;
 
 		VK_CHECK(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
@@ -373,14 +378,14 @@ class CubeWindow : public VKWindow {
 
 			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
 
-		VkBufferMemoryBarrier ub_barrier = {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-			.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-			.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-			.buffer = uniformBuffers[i],
-			.offset = 0,
+			VkBufferMemoryBarrier ub_barrier = {
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+				.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+				.buffer = uniformBuffers[i],
+				.offset = 0,
 				.size = sizeof(mvp),
-		};
+			};
 			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
 
@@ -395,6 +400,8 @@ class CubeWindow : public VKWindow {
 			VkBuffer vertexBuffers[] = {vertexBuffer};
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
+
+			vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4x4), &mvp.model);
 
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0,
 									nullptr);
@@ -432,12 +439,14 @@ class CubeWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_device_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {{"VK_EXT_tooling_info", false}};
+	std::unordered_map<const char *, bool> required_layers = {{"VK_LAYER_LUNARG_monitor", false}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {{}};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
+		std::shared_ptr<VulkanCore> core =
+			std::make_shared<VulkanCore>(argc, argv, required_instance_extensions, required_layers);
 		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
-		printf("%s\n", p[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p);
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p, required_device_extensions);
 		CubeWindow window(core, d);
 
 		window.run();

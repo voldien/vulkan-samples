@@ -2,8 +2,8 @@
 #define _COMMON_VULKAN_CORE_H_ 1
 #include <string>
 #include <vector>
-#define VK_USE_PLATFORM_XLIB_KHR
-#define VK_USE_PLATFORM_WAYLAND_KHR
+// #define VK_USE_PLATFORM_XLIB_KHR
+// #define VK_USE_PLATFORM_WAYLAND_KHR
 #include <algorithm>
 #include <cstring>
 #include <unordered_map>
@@ -18,10 +18,9 @@ class VulkanCore {
 	friend class VKWindow;
 
   public:
-	VulkanCore(
-		int argc, const char **argv,
-		const std::unordered_map<const char *, bool> &requested_extensions = {{"VK_KHR_DISPLAY_EXTENSION_NAME", true}},
-		const std::unordered_map<const char *, bool> &requested_layers = {{"VK_LAYER_KHRONOS_validation", true}});
+	VulkanCore(int argc, const char **argv, const std::unordered_map<const char *, bool> &requested_extensions = {},
+			   const std::unordered_map<const char *, bool> &requested_layers = {
+				   {"VK_LAYER_KHRONOS_validation", true}});
 	VulkanCore(const VulkanCore &other) = delete;
 	VulkanCore(VulkanCore &&other) = delete;
 	~VulkanCore(void);
@@ -54,10 +53,34 @@ class VulkanCore {
 	const std::vector<VkPhysicalDevice> &getPhysicalDevices(void) const noexcept { return this->physicalDevices; }
 	virtual VkInstance getHandle(void) const noexcept { return this->inst; }
 
-	int getNrGroupDevices(void) const noexcept { return this->nrGroupDevices; }
-	// std::vector<VkPhysicalDevice> getGroupDevice(void) const noexcept;
+	/**
+	 * @brief Get the Device Group Properties object
+	 * 
+	 * @return std::vector<VkPhysicalDeviceGroupProperties> 
+	 */
+	std::vector<VkPhysicalDeviceGroupProperties> getDeviceGroupProperties(void) const noexcept {
 
+		uint32_t nrGroups;
+		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, nullptr);
+		std::vector<VkPhysicalDeviceGroupProperties> prop(nrGroups);
+		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, prop.data());
+		return prop;
+	}
+
+	//TODO add smart pointer
+	/**
+	 * @brief Create a Physical Devices object
+	 *
+	 * @return std::vector<PhysicalDevice *>
+	 */
 	std::vector<PhysicalDevice *> createPhysicalDevices(void) const;
+
+	/**
+	 * @brief Create a Physical Device object
+	 *
+	 * @param index
+	 * @return PhysicalDevice*
+	 */
 	PhysicalDevice *createPhysicalDevice(unsigned int index) const;
 
   private:
