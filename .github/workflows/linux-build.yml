@@ -14,9 +14,8 @@ jobs:
     - name: Configure dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install pkg-config libjson-c-dev libxml2-dev libyaml-dev libsdl2-dev \
-        fswatch libfreeimage-dev libavcodec-dev libavfilter-dev libavformat-dev libfreetype6-dev libssl-dev
-        sudo apt-get install libsdl2-dev libglew-dev libvulkan-dev glslang-tools spirv-cross-dev mesa-vulkan-drivers
+        sudo apt-get install pkg-config  libsdl2-dev libfreeimage-dev libfreetype6-dev \
+        sudo apt-get install libvulkan-dev glslang-tools mesa-vulkan-drivers
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
