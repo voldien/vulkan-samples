@@ -5,11 +5,14 @@
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 
-class InstanceWindow : public VKWindow {
+class MandelBrotWindow : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+	VkPipeline computePipeline = VK_NULL_HANDLE;
+	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory;
 	struct UniformBufferObject {
@@ -19,11 +22,10 @@ class InstanceWindow : public VKWindow {
 };
 
   public:
-	InstanceWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {
+	MandelBrotWindow(std::shared_ptr<VulkanCore> &core) : VKWindow(core, -1, -1, -1, -1) {
 		//	this->setTitle(std::string("Triangle"));
 	}
-	~InstanceWindow(void) {}
+	~MandelBrotWindow(void) {}
 
 	virtual void Release(void) override {
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -266,10 +268,7 @@ int main(int argc, const char **argv) {
 
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
-		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p);
-
-		InstanceWindow window(core, d);
+		MandelBrotWindow window(core);
 
 		window.run();
 	} catch (std::exception &ex) {
