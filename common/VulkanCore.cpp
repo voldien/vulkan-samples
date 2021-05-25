@@ -151,13 +151,11 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	/*	Create Vulkan instance.	*/
 	VK_CHECK(vkCreateInstance(&ici, VK_NULL_HANDLE, &inst));
 
-	/*	/////////////////////////////////////////*/
-
 	/*	Get number of physical devices. */
-	unsigned int nrPhysicalDevices;
+	uint32_t nrPhysicalDevices;
 	VK_CHECK(vkEnumeratePhysicalDevices(this->inst, &nrPhysicalDevices, VK_NULL_HANDLE));
-	/*  Get all physical devices.    */
 
+	/*  Get all physical devices.    */
 	physicalDevices.resize(nrPhysicalDevices);
 	VK_CHECK(vkEnumeratePhysicalDevices(this->inst, &nrPhysicalDevices, &this->physicalDevices[0]));
 
@@ -205,16 +203,16 @@ void VulkanCore::parseOptions(int argc, const char **argv) {
 	opterr = 0;
 }
 
-std::vector<PhysicalDevice *> VulkanCore::createPhysicalDevices(void) const {
-	std::vector<PhysicalDevice *> _physicalDevices(getPhysicalDevices().size());
+std::vector<std::shared_ptr<PhysicalDevice>> VulkanCore::createPhysicalDevices(void) const {
+	std::vector<std::shared_ptr<PhysicalDevice>> _physicalDevices(getPhysicalDevices().size());
 	for (int i = 0; i < getPhysicalDevices().size(); i++) {
-		_physicalDevices[i] = createPhysicalDevice(i);
+		_physicalDevices[i] = std::move(createPhysicalDevice(i));
 	}
 	return _physicalDevices;
 }
 
-PhysicalDevice *VulkanCore::createPhysicalDevice(unsigned int index) const {
-	return new PhysicalDevice(getHandle(), getPhysicalDevices()[index]);
+std::shared_ptr<PhysicalDevice> VulkanCore::createPhysicalDevice(unsigned int index) const {
+	return std::make_shared<PhysicalDevice>(getHandle(), getPhysicalDevices()[index]);
 }
 
 VulkanCore::~VulkanCore(void) {

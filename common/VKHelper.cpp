@@ -2,30 +2,31 @@
 #include <common.hpp>
 #include <vulkan/vulkan.h>
 
-uint32_t VKHelper::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
-								  VkMemoryPropertyFlags properties) {
+std::optional<uint32_t> VKHelper::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
+												 VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
 		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
+			return {i};
 		}
 	}
 
-	throw std::runtime_error("failed to find suitable memory type!");
+	return {};
 }
 
-uint32_t VKHelper::findMemoryType(VkPhysicalDeviceMemoryProperties *memProperties, uint32_t typeFilter,
-								  VkMemoryPropertyFlags properties) {
-	for (uint32_t i = 0; i < memProperties->memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) && (memProperties->memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
+std::optional<uint32_t> VKHelper::findMemoryType(const VkPhysicalDeviceMemoryProperties &memProperties,
+												 uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return {i};
 		}
 	}
+	return {};
 }
 
-void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, VkPhysicalDeviceMemoryProperties *memoryProperies,
+void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, const VkPhysicalDeviceMemoryProperties &memoryProperies,
 							VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer,
 							VkDeviceMemory &bufferMemory) {
 	VkResult result;
@@ -49,7 +50,11 @@ void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, VkPhysicalDevice
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memoryProperies, memRequirements.memoryTypeBits, properties);
+	const auto typeIndex = findMemoryType(memoryProperies, memRequirements.memoryTypeBits, properties);
+	if (typeIndex)
+		allocInfo.memoryTypeIndex = typeIndex.value();
+	else
+		throw std::runtime_error("");
 
 	/**/
 	if (vkAllocateMemory(device, &allocInfo, NULL, &bufferMemory) != VK_SUCCESS) {
@@ -60,26 +65,27 @@ void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, VkPhysicalDevice
 	vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
-// VkImageView VKHelper::createImageView(VulkanCore *vulkanCore, VkImage image, VkFormat format) {
-// 	/**/
-// 	VkImageViewCreateInfo viewInfo = {};
-// 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-// 	viewInfo.image = image;
-// 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-// 	viewInfo.format = format;
-// 	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-// 	viewInfo.subresourceRange.baseMipLevel = 0;
-// 	viewInfo.subresourceRange.levelCount = 1;
-// 	viewInfo.subresourceRange.baseArrayLayer = 0;
-// 	viewInfo.subresourceRange.layerCount = 1;
+VkImageView VKHelper::createImageView(VkDevice device, VkImage image, VkFormat format) {
 
-// 	VkImageView imageView;
-// 	if (vkCreateImageView(vulkanCore->device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-// 		throw std::runtime_error("");
-// 	}
+	/**/
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
 
-// 	return imageView;
-// }
+	VkImageView imageView;
+	if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+		throw std::runtime_error("");
+	}
+
+	return imageView;
+}
 
 VkShaderModule VKHelper::createShaderModule(VkDevice device, std::vector<char> &data) {
 	VkShaderModuleCreateInfo createInfo{};
@@ -289,4 +295,38 @@ VKHelper::SwapChainSupportDetails VKHelper::querySwapChainSupport(VkPhysicalDevi
 	}
 
 	return details;
+}
+
+void VKHelper::stageBufferCopy(VkDevice device, VkQueue queue, VkCommandPool commandPool, VkBuffer src, VkBuffer dst,
+							   VkDeviceSize size) {
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = commandPool;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	VkBufferCopy copyRegion{};
+	copyRegion.size = size;
+	vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(queue);
+
+	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }

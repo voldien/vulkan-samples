@@ -1,3 +1,7 @@
+/**
+	Vulkan common and core library
+	Copyright (C) 2021  Valdemar Lindberg
+*/
 #ifndef _VKCOMMON_WINDOW_H_
 #define _VKCOMMON_WINDOW_H_ 1
 #include <SDL2/SDL.h>

@@ -51,7 +51,9 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	}
 
 	/*  Create Vulkan window.   */
-	this->window = SDL_CreateWindow("Vulkan Sample", x, y, width, height, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN);
+	this->window =
+		SDL_CreateWindow("Vulkan Sample", x, y, width, height,
+						 SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 	if (window == NULL) {
 		// throw std::runtime_error(fvformatf("failed create window - %s", SDL_GetError()));
 	}

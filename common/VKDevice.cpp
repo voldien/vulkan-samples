@@ -1,6 +1,6 @@
 #include "VKDevice.h"
 
-VKDevice::VKDevice(const std::vector<PhysicalDevice *> &devices,
+VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 				   const std::unordered_map<const char *, bool> &requested_extensions, VkQueueFlags requiredQueues) {
 
 	std::vector<VkPhysicalDevice> selectedDevices;

@@ -6,39 +6,111 @@
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
+#include<optional>
 
 #define ArraySize(a) (sizeof(a) / sizeof(*a))
 
 class VKHelper {
   public:
 	/*  Helper functions.   */
-	static uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
+
+	/**
+	 * @brief
+	 *
+	 * @param physicalDevice
+	 * @param typeFilter
+	 * @param properties
+	 * @return uint32_t
+	 */
+	static std::optional<uint32_t> findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
 								   VkMemoryPropertyFlags properties);
 
-	static uint32_t findMemoryType(VkPhysicalDeviceMemoryProperties *memProperties, uint32_t typeFilter,
-							VkMemoryPropertyFlags properties);
+	/**
+	 * @brief
+	 *
+	 * @param memProperties
+	 * @param typeFilter
+	 * @param properties
+	 * @return uint32_t
+	 */
+	static std::optional<uint32_t> findMemoryType(const VkPhysicalDeviceMemoryProperties &memProperties,
+												  uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
-	static void createBuffer(VkDevice device, VkDeviceSize size, VkPhysicalDeviceMemoryProperties *memoryProperies,
+	/**
+	 * @brief Create a Buffer object
+	 *
+	 * @param device
+	 * @param size
+	 * @param memoryProperies
+	 * @param usage
+	 * @param properties
+	 * @param buffer
+	 * @param bufferMemory
+	 */
+	static void createBuffer(VkDevice device, VkDeviceSize size, const VkPhysicalDeviceMemoryProperties & memoryProperies,
 							 VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer,
 							 VkDeviceMemory &bufferMemory);
 
-	// static VkImageView createImageView(VulkanCore *vulkanCore, VkImage image, VkFormat format);
+	/**
+	 * @brief Create a Image View object
+	 *
+	 * @param device
+	 * @param image
+	 * @param format
+	 * @return VkImageView
+	 */
+	static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format);
 
+	/**
+	 * @brief Create a Shader Module object
+	 *
+	 * @param device
+	 * @param data
+	 * @return VkShaderModule
+	 */
 	static VkShaderModule createShaderModule(VkDevice device, std::vector<char> &data);
 
 	//
 	// static bool isDeviceSuitable(VkPhysicalDevice device);
 
+	/**
+	 * @brief
+	 *
+	 * @param devices
+	 * @param selectDevices
+	 * @param device_type_filter
+	 */
 	static void selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 									 std::vector<VkPhysicalDevice> &selectDevices,
 									 uint32_t device_type_filter = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU |
 																   VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);
 
 	// TODO improve to accomudate the configurations.
+	/**
+	 * @brief
+	 *
+	 * @param availableFormats
+	 * @return VkSurfaceFormatKHR
+	 */
 	static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
 
-	static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes, bool vsync);
+	/**
+	 * @brief
+	 *
+	 * @param availablePresentModes
+	 * @param vsync
+	 * @return VkPresentModeKHR
+	 */
+	static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes,
+												  bool vsync);
 
+	/**
+	 * @brief
+	 *
+	 * @param capabilities
+	 * @param actualExtent
+	 * @return VkExtent2D
+	 */
 	static VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, VkExtent2D actualExtent);
 
 	struct QueueFamilyIndices {
@@ -48,6 +120,13 @@ class VKHelper {
 		bool isComplete() { return graphicsFamily != -1 && presentFamily != -1; }
 	};
 
+	/**
+	 * @brief
+	 *
+	 * @param device
+	 * @param surface
+	 * @return QueueFamilyIndices
+	 */
 	static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 	struct SwapChainSupportDetails {
@@ -57,6 +136,21 @@ class VKHelper {
 	};
 
 	static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
+
+	/**
+	 * @brief
+	 *
+	 * @param device
+	 * @param queue
+	 * @param commandPool
+	 * @param src
+	 * @param dst
+	 * @param size
+	 */
+	static void stageBufferCopy(VkDevice device, VkQueue queue, VkCommandPool commandPool, VkBuffer src, VkBuffer dst,
+								VkDeviceSize size);
+	static void stageBufferCmdCopy(VkDevice device, VkQueue queue, VkCommandBuffer cmd, VkBuffer src, VkBuffer dst,
+								VkDeviceSize size);
 };
 
 #define CHECK_VK_ERROR(result)

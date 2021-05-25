@@ -4,6 +4,7 @@
 PhysicalDevice::PhysicalDevice(const VulkanCore &core, VkPhysicalDevice device) {
 	PhysicalDevice(core.getHandle(), device);
 }
+
 PhysicalDevice::PhysicalDevice(VkInstance instance, VkPhysicalDevice device) {
 
 	/*  Get feature of the device.  */
@@ -12,6 +13,7 @@ PhysicalDevice::PhysicalDevice(VkInstance instance, VkPhysicalDevice device) {
 	/*  Get memory properties.   */
 	vkGetPhysicalDeviceMemoryProperties(device, &this->memProperties);
 
+	/*	Get device properties.	*/
 	vkGetPhysicalDeviceProperties(device, &this->properties);
 
 	/*  Select queue family.    */
@@ -24,7 +26,7 @@ PhysicalDevice::PhysicalDevice(VkInstance instance, VkPhysicalDevice device) {
 	this->mdevice = device;
 }
 
-bool PhysicalDevice::isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const {
+bool PhysicalDevice::isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const noexcept {
 	VkBool32 present_supported{VK_FALSE};
 
 	if (surface != VK_NULL_HANDLE) {

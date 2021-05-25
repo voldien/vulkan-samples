@@ -31,28 +31,29 @@ class PhysicalDevice {
 	 * @return true
 	 * @return false
 	 */
-	bool isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const;
+	bool isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const noexcept;
 
 	/**
-	 * @brief 
-	 * 
-	 * @param format 
-	 * @param imageType 
-	 * @param tiling 
-	 * @param usage 
-	 * @return true 
-	 * @return false 
+	 * @brief
+	 *
+	 * @param format
+	 * @param imageType
+	 * @param tiling
+	 * @param usage
+	 * @return true
+	 * @return false
 	 */
 	bool isFormatedSupported(VkFormat format, VkImageType imageType, VkImageTiling tiling,
-							 VkImageUsageFlags usage) const noexcept {
+							 VkImageUsageFlags usage) const {
 		VkImageFormatProperties prop;
 		VkResult result =
 			vkGetPhysicalDeviceImageFormatProperties(this->getHandle(), format, imageType, tiling, usage, 0, &prop);
 		if (result == VK_SUCCESS)
 			return true;
 		else if (result == VK_ERROR_FORMAT_NOT_SUPPORTED)
-		return false;
-		else throw std::runtime_error("");
+			return false;
+		else
+			throw std::runtime_error("");
 	}
 
 	VkPhysicalDevice getHandle(void) const noexcept { return this->mdevice; }
@@ -109,7 +110,9 @@ class PhysicalDevice {
 	VkPhysicalDeviceProperties properties;
 	std::vector<VkQueueFamilyProperties> queueFamilyProperties;
 	std::vector<VkExtensionProperties> extensions;
-	//std::unique<VulkanCore> core;
+	//TODO add instance pointer
+	//std::shared_ptr<VulkanCore> core;
+	// std::unique<VulkanCore> core;
 };
 
 #endif

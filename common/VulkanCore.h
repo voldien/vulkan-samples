@@ -8,6 +8,7 @@
 #include <cstring>
 #include <unordered_map>
 #include <vulkan/vulkan.h>
+#include<memory>
 
 class PhysicalDevice;
 /**
@@ -18,6 +19,7 @@ class VulkanCore {
 	friend class VKWindow;
 
   public:
+	//TODO remove argc and argv
 	VulkanCore(int argc, const char **argv, const std::unordered_map<const char *, bool> &requested_extensions = {},
 			   const std::unordered_map<const char *, bool> &requested_layers = {
 				   {"VK_LAYER_KHRONOS_validation", true}});
@@ -36,6 +38,13 @@ class VulkanCore {
 	}
 	const std::vector<VkLayerProperties> &getInstanceLayers(void) const noexcept { return this->instanceLayers; }
 
+	/**
+	 * @brief
+	 *
+	 * @param extension
+	 * @return true
+	 * @return false
+	 */
 	bool isInstanceExtensionSupported(const std::string &extension) const {
 		return std::find_if(getInstanceExtensions().begin(), getInstanceExtensions().end(),
 							[extension](const VkExtensionProperties &device_extension) {
@@ -43,6 +52,13 @@ class VulkanCore {
 							}) != getInstanceExtensions().cend();
 	}
 
+	/**
+	 * @brief
+	 *
+	 * @param extension
+	 * @return true
+	 * @return false
+	 */
 	bool isInstanceLayerSupported(const std::string &extension) const {
 		return std::find_if(getInstanceLayers().begin(), getInstanceLayers().end(),
 							[extension](const VkLayerProperties &device_layers) {
@@ -50,20 +66,32 @@ class VulkanCore {
 							}) != getInstanceLayers().cend();
 	}
 
+	/**
+	 * @brief Get the Physical Devices object
+	 *
+	 * @return const std::vector<VkPhysicalDevice>&
+	 */
 	const std::vector<VkPhysicalDevice> &getPhysicalDevices(void) const noexcept { return this->physicalDevices; }
+
+	/**
+	 * @brief Get the Handle object
+	 *
+	 * @return VkInstance
+	 */
 	virtual VkInstance getHandle(void) const noexcept { return this->inst; }
 
 	/**
 	 * @brief Get the Device Group Properties object
-	 * 
-	 * @return std::vector<VkPhysicalDeviceGroupProperties> 
+	 *
+	 * @return std::vector<VkPhysicalDeviceGroupProperties>
 	 */
 	std::vector<VkPhysicalDeviceGroupProperties> getDeviceGroupProperties(void) const noexcept {
 
 		uint32_t nrGroups;
 		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, nullptr);
 		std::vector<VkPhysicalDeviceGroupProperties> prop(nrGroups);
-		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, prop.data());
+		if(nrGroups > 0)
+			vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, prop.data());
 		return prop;
 	}
 
@@ -73,7 +101,7 @@ class VulkanCore {
 	 *
 	 * @return std::vector<PhysicalDevice *>
 	 */
-	std::vector<PhysicalDevice *> createPhysicalDevices(void) const;
+	std::vector<std::shared_ptr<PhysicalDevice>> createPhysicalDevices(void) const;
 
 	/**
 	 * @brief Create a Physical Device object
@@ -81,7 +109,7 @@ class VulkanCore {
 	 * @param index
 	 * @return PhysicalDevice*
 	 */
-	PhysicalDevice *createPhysicalDevice(unsigned int index) const;
+	std::shared_ptr<PhysicalDevice> createPhysicalDevice(unsigned int index) const;
 
   private:
 	void parseOptions(int argc, const char **argv);
