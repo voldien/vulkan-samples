@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
-#include<iostream>
+#include <iostream>
 
 class TriangleWindow : public VKWindow {
   private:
@@ -23,6 +23,7 @@ class TriangleWindow : public VKWindow {
 	} Vertex;
 
 	virtual void Release(void) override {
+
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 

@@ -13,13 +13,15 @@ class MandelBrotWindow : public VKWindow {
 	VkPipeline computePipeline = VK_NULL_HANDLE;
 	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
 
+	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-	VkDeviceMemory vertexMemory;
-	struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-};
+	VkDescriptorPool descpool;
+
+	std::vector<VkDescriptorSet> descriptorSets;
+	std::vector<VkBuffer> uniformBuffers;
+	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	std::vector<void *> mapMemory;
 
   public:
 	MandelBrotWindow(std::shared_ptr<VulkanCore> &core) : VKWindow(core, -1, -1, -1, -1) {
@@ -28,11 +30,17 @@ class MandelBrotWindow : public VKWindow {
 	~MandelBrotWindow(void) {}
 
 	virtual void Release(void) override {
+		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
+
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
+		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
+
+		vkDestroyPipeline(getDevice(), computePipeline, nullptr);
+		vkDestroyPipelineLayout(getDevice(), computePipelineLayout, nullptr);
 	}
 
 	const std::vector<float> vertices = {0.0f, -0.5f, 1.0f,	 1.0f, 1.0f, 0.5f, 0.5f, 0.0f,
@@ -40,25 +48,21 @@ class MandelBrotWindow : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle.frag.spv");
 
-		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
-		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
+	}
 
-		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-		vertShaderStageInfo.module = vertShaderModule;
-		vertShaderStageInfo.pName = "main";
+	void createComputePipeline(VkPipelineLayout *layout) {
+		auto compShaderCode = IOUtil::readFile("shaders/mandelbrot.comp.spv");
 
-		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-		fragShaderStageInfo.module = fragShaderModule;
-		fragShaderStageInfo.pName = "main";
+		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
-		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+		VkPipelineShaderStageCreateInfo compShaderStageInfo{};
+		compShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		compShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+		compShaderStageInfo.module = compShaderModule;
+		compShaderStageInfo.pName = "main";
+
+		VkPipelineShaderStageCreateInfo shaderStages[] = {compShaderStageInfo};
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -161,7 +165,7 @@ class MandelBrotWindow : public VKWindow {
 		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-		VK_CHECK(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
+		VK_CHECK(vkCreatePipelineLayout(getDevice(), layout, nullptr, &pipelineLayout));
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -188,7 +192,8 @@ class MandelBrotWindow : public VKWindow {
 
 	virtual void Initialize(void) override {
 		/*	Create pipeline.	*/
-		graphicsPipeline = createGraphicPipeline();
+
+		computePipeline = createComputePipeline(&computePipelineLayout);
 
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -246,8 +251,10 @@ class MandelBrotWindow : public VKWindow {
 			renderPassInfo.pClearValues = &clearColor;
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 			/*	*/
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+			//vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 			VkBuffer vertexBuffers[] = {vertexBuffer};
 			VkDeviceSize offsets[] = {0};

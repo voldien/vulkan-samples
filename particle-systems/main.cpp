@@ -1,9 +1,7 @@
 #include "common.hpp"
 #include <VKWindow.h>
 #include <stdexcept>
-/**
- *
- */
+
 class ParticleSystemWindow : public VKWindow {
   private:
 	VkPipeline particleSim;
