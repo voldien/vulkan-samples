@@ -1,20 +1,25 @@
+#include "Common.h"
 #include "common.hpp"
+#include <SDL2/SDL.h>
 #include <VKWindow.h>
-#include <stdexcept>
 
-class ParticleSystemWindow : public VKWindow {
-  private:
-	VkPipeline particleSim;
-	VkPipeline particleGraphicPipeline;
-
+class StartUpWindow : public VKWindow {
   public:
-	ParticleSystemWindow(std::shared_ptr<VulkanCore> &core) : VKWindow(core, -1, -1, -1, -1) {}
-
-	virtual void Initialize(void) { /*	*/
-	
-
+	StartUpWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+		: VKWindow(core, device, -1, -1, -1, -1) {
+		//		SDL_InitSubSystem(SDL_INIT_EVENTS);
 	}
+
+	virtual void Initialize(void) override {
+		/*	Check if supported.	*/
+
+		onResize(width(), height());
+	}
+
 	virtual void onResize(int width, int height) override {
+
+		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
+
 		for (int i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
 
@@ -38,31 +43,28 @@ class ParticleSystemWindow : public VKWindow {
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			// memoryBarrier(cmd, 0, 0, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-			// Bind the compute pipeline.
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, particleSim);
-			// Bind descriptor set.
-			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline.pipelineLayout, 0, 1,
-			// 						&computePipeline.descriptorSet, 0, nullptr);
-			// // Dispatch compute job.
-			// vkCmdDispatch(cmd, (positionBuffer.size / sizeof(vec2)) / NUM_PARTICLES_PER_WORKGROUP, 1, 1);
-
-			// Barrier between compute and vertex shading.
-			// memoryBarrier(cmd, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-			// 			  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
-
 			vkCmdEndRenderPass(cmd);
 
 			VK_CHECK(vkEndCommandBuffer(cmd));
 		}
 	}
+
+	virtual void draw(void) override {}
+
+	virtual void update(void) {}
 };
 
 int main(int argc, const char **argv) {
 
+	std::unordered_map<const char *, bool> required_device_extensions = {
+	};
+
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
-		ParticleSystemWindow window(core);
+		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
+		printf("%s\n", devices[0]->getDeviceName());
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices, required_device_extensions);
+		StartUpWindow window(core, d);
 
 		window.run();
 	} catch (std::exception &ex) {

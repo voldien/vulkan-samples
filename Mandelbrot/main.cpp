@@ -9,7 +9,7 @@ class MandelBrotWindow : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+	VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
 	VkPipeline computePipeline = VK_NULL_HANDLE;
 	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
 
@@ -37,7 +37,7 @@ class MandelBrotWindow : public VKWindow {
 
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
+		vkDestroyPipelineLayout(getDevice(), graphicPipelineLayout, nullptr);
 
 		vkDestroyPipeline(getDevice(), computePipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), computePipelineLayout, nullptr);
@@ -47,7 +47,6 @@ class MandelBrotWindow : public VKWindow {
 										 1.0f, 0.0f,  -0.5f, 0.5f, 0.0f, 0.0f, 1.0f};
 
 	VkPipeline createGraphicPipeline() {
-
 
 	}
 
@@ -102,6 +101,9 @@ class MandelBrotWindow : public VKWindow {
 		layoutInfo.pBindings = &uboLayoutBinding;
 
 		VK_CHECK(vkCreateDescriptorSetLayout(getDevice(), &layoutInfo, nullptr, &descriptorSetLayout));
+
+
+
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -165,7 +167,7 @@ class MandelBrotWindow : public VKWindow {
 		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-		VK_CHECK(vkCreatePipelineLayout(getDevice(), layout, nullptr, &pipelineLayout));
+		VK_CHECK(vkCreatePipelineLayout(getDevice(), layout, nullptr, &graphicPipelineLayout));
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -177,12 +179,13 @@ class MandelBrotWindow : public VKWindow {
 		pipelineInfo.pRasterizationState = &rasterizer;
 		pipelineInfo.pMultisampleState = &multisampling;
 		pipelineInfo.pColorBlendState = &colorBlending;
-		pipelineInfo.layout = pipelineLayout;
+		pipelineInfo.layout = graphicPipelineLayout;
 		pipelineInfo.renderPass = getDefaultRenderPass();
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 		VK_CHECK(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+
 
 		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -192,8 +195,8 @@ class MandelBrotWindow : public VKWindow {
 
 	virtual void Initialize(void) override {
 		/*	Create pipeline.	*/
-
 		computePipeline = createComputePipeline(&computePipelineLayout);
+		graphicsPipeline = createGraphicPipeline(&graphicPipelineLayout);
 
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;

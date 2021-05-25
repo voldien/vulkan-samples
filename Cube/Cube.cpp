@@ -42,7 +42,7 @@ class CubeWindow : public VKWindow {
 
 	virtual void Release(void) override {
 
-		//vkFreeDescriptorSets 
+		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -91,7 +91,7 @@ class CubeWindow : public VKWindow {
 										  {1.0f, -1.0f, 1.0f, 1, 0}
 
 	};
-	
+
 	VkPipeline createGraphicPipeline() {
 
 		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
@@ -176,7 +176,7 @@ class CubeWindow : public VKWindow {
 		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		viewportState.viewportCount = 1;
 		viewportState.pViewports = &viewport;
-		viewportState.scissorCount = 1;
+		viewportState.scissorCount = 0;
 		viewportState.pScissors = &scissor;
 
 		VkPipelineRasterizationStateCreateInfo rasterizer{};
@@ -216,6 +216,14 @@ class CubeWindow : public VKWindow {
 		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 
+		VkDynamicState dynamicStateEnables[1];
+		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
+		VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
+		dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicStateInfo.pNext = NULL;
+		dynamicStateInfo.pDynamicStates = dynamicStateEnables;
+		dynamicStateInfo.dynamicStateCount = 1;
+
 		VK_CHECK(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -232,6 +240,7 @@ class CubeWindow : public VKWindow {
 		pipelineInfo.renderPass = getDefaultRenderPass();
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineInfo.pDynamicState = &dynamicStateInfo;
 
 		VK_CHECK(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
 
@@ -252,7 +261,7 @@ class CubeWindow : public VKWindow {
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
 		for (size_t i = 0; i < swapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, &memProperties,
+			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
 								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -323,7 +332,8 @@ class CubeWindow : public VKWindow {
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex =
 			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+				.value();
 
 		VK_CHECK(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
@@ -373,19 +383,21 @@ class CubeWindow : public VKWindow {
 
 			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
 
-		VkBufferMemoryBarrier ub_barrier = {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-			.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-			.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-			.buffer = uniformBuffers[i],
-			.offset = 0,
+			VkBufferMemoryBarrier ub_barrier = {
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+				.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+				.buffer = uniformBuffers[i],
+				.offset = 0,
 				.size = sizeof(mvp),
-		};
+			};
 			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
 
 			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
 			// 1, 					 &ub_barrier, 0, NULL);
+			VkViewport viewport = {.x = 0, .y = 0, .width = width, .height = height, .minDepth = 0, .maxDepth = 1.0f};
+			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -435,9 +447,9 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
-		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
-		printf("%s\n", p[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p);
+		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
+		printf("%s\n", devices[0]->getDeviceName());
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
 		CubeWindow window(core, d);
 
 		window.run();

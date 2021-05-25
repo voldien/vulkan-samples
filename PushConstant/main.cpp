@@ -21,7 +21,6 @@ class CubeWindow : public VKWindow {
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
 	long ntime;
-
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
@@ -257,7 +256,7 @@ class CubeWindow : public VKWindow {
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
 		for (size_t i = 0; i < swapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, &memProperties,
+			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
 								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -328,7 +327,7 @@ class CubeWindow : public VKWindow {
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex =
 			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT).value();
 
 		VK_CHECK(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 

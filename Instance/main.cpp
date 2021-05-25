@@ -204,7 +204,7 @@ class InstanceWindow : public VKWindow {
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex =
 			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT).value();
 
 		VK_CHECK(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
@@ -266,8 +266,8 @@ int main(int argc, const char **argv) {
 
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
-		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p);
+		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
 
 		InstanceWindow window(core, d);
 

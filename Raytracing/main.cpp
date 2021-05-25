@@ -82,7 +82,7 @@ int main(int argc, const char **argv) {
 																		 {"VK_KHR_acceleration_structure", true}};
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
-		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
+		std::vector<std::shared_ptr<PhysicalDevice>> p = core->createPhysicalDevices();
 		printf("%s\n", p[0]->getDeviceName());
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p, required_device_extensions);
 		RayTracing window(core, d);
