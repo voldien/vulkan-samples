@@ -217,5 +217,5 @@ std::shared_ptr<PhysicalDevice> VulkanCore::createPhysicalDevice(unsigned int in
 
 VulkanCore::~VulkanCore(void) {
 	if (inst)
-		vkDestroyInstance(inst, NULL);
+		vkDestroyInstance(inst, nullptr);
 }

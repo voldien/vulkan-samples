@@ -23,7 +23,7 @@ class VKDevice {
 			 const std::unordered_map<const char *, bool> &requested_extensions = {},
 			 VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
 
-	VKDevice(const PhysicalDevice *physicalDevice);
+	VKDevice(const std::shared_ptr<PhysicalDevice>& physicalDevice);
 	VKDevice(const VKDevice &) = delete;
 	VKDevice(VKDevice &&) = delete;
 	~VKDevice(void);
