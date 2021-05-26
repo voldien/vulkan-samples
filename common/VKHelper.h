@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
-#include<optional>
 
 #define ArraySize(a) (sizeof(a) / sizeof(*a))
 
@@ -23,7 +22,7 @@ class VKHelper {
 	 * @return uint32_t
 	 */
 	static std::optional<uint32_t> findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
-								   VkMemoryPropertyFlags properties);
+												  VkMemoryPropertyFlags properties);
 
 	/**
 	 * @brief
@@ -47,9 +46,14 @@ class VKHelper {
 	 * @param buffer
 	 * @param bufferMemory
 	 */
-	static void createBuffer(VkDevice device, VkDeviceSize size, const VkPhysicalDeviceMemoryProperties & memoryProperies,
-							 VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer,
-							 VkDeviceMemory &bufferMemory);
+	static void createBuffer(VkDevice device, VkDeviceSize size,
+							 const VkPhysicalDeviceMemoryProperties &memoryProperies, VkBufferUsageFlags usage,
+							 VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
+
+	static void createImage(VkDevice device, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
+							VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+							const VkPhysicalDeviceMemoryProperties &memProperties, VkImage &image,
+							VkDeviceMemory &imageMemory);
 
 	/**
 	 * @brief Create a Image View object
@@ -59,7 +63,8 @@ class VKHelper {
 	 * @param format
 	 * @return VkImageView
 	 */
-	static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format);
+	static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags,
+									   uint32_t mipLevels);
 
 	/**
 	 * @brief Create a Shader Module object
@@ -92,7 +97,9 @@ class VKHelper {
 	 * @param availableFormats
 	 * @return VkSurfaceFormatKHR
 	 */
-	static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+	static VkSurfaceFormatKHR selectSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats,
+												  const std::vector<VkSurfaceFormatKHR> &requestFormats,
+												  VkColorSpaceKHR request_color_space);
 
 	/**
 	 * @brief
@@ -102,7 +109,7 @@ class VKHelper {
 	 * @return VkPresentModeKHR
 	 */
 	static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes,
-												  bool vsync);
+												  const std::vector<VkPresentModeKHR> &requestFormats, bool vsync);
 
 	/**
 	 * @brief
@@ -150,7 +157,7 @@ class VKHelper {
 	static void stageBufferCopy(VkDevice device, VkQueue queue, VkCommandPool commandPool, VkBuffer src, VkBuffer dst,
 								VkDeviceSize size);
 	static void stageBufferCmdCopy(VkDevice device, VkQueue queue, VkCommandBuffer cmd, VkBuffer src, VkBuffer dst,
-								VkDeviceSize size);
+								   VkDeviceSize size);
 };
 
 #define CHECK_VK_ERROR(result)

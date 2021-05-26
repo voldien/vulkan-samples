@@ -1,8 +1,9 @@
 #include "VkPhysicalDevice.h"
 #include "VKHelper.h"
 
-PhysicalDevice::PhysicalDevice(const VulkanCore &core, VkPhysicalDevice device) {
-	PhysicalDevice(core.getHandle(), device);
+PhysicalDevice::PhysicalDevice(const std::shared_ptr<VulkanCore> &core, VkPhysicalDevice device) {
+	PhysicalDevice(core->getHandle(), device);
+	vkCore = core;
 }
 
 PhysicalDevice::PhysicalDevice(VkInstance instance, VkPhysicalDevice device) {

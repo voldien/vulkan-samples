@@ -8,7 +8,7 @@
  */
 class PhysicalDevice {
   public:
-	PhysicalDevice(const VulkanCore &core, VkPhysicalDevice device);
+	PhysicalDevice(const std::shared_ptr<VulkanCore> &core, VkPhysicalDevice device);
 	PhysicalDevice(VkInstance instance, VkPhysicalDevice device);
 	PhysicalDevice(const PhysicalDevice &) = delete;
 	PhysicalDevice(PhysicalDevice &&) = delete;
@@ -110,9 +110,7 @@ class PhysicalDevice {
 	VkPhysicalDeviceProperties properties;
 	std::vector<VkQueueFamilyProperties> queueFamilyProperties;
 	std::vector<VkExtensionProperties> extensions;
-	//TODO add instance pointer
-	//std::shared_ptr<VulkanCore> core;
-	// std::unique<VulkanCore> core;
+	std::shared_ptr<VulkanCore> vkCore;
 };
 
 #endif

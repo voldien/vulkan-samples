@@ -186,8 +186,10 @@ void VKWindow::createSwapChain(void) {
 		VKHelper::querySwapChainSupport(device->getPhysicalDevices()[0]->getHandle(), this->surface);
 
 	/*	*/
-	VkSurfaceFormatKHR surfaceFormat = VKHelper::chooseSwapSurfaceFormat(swapChainSupport.formats);
-	VkPresentModeKHR presentMode = VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes, swapChain->vsync);
+	VkSurfaceFormatKHR surfaceFormat = VKHelper::selectSurfaceFormat(swapChainSupport.formats, swapChainSupport.formats,
+																	 VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
+	VkPresentModeKHR presentMode =
+		VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes, swapChainSupport.presentModes, swapChain->vsync);
 	VkExtent2D extent = VKHelper::chooseSwapExtent(swapChainSupport.capabilities, {width(), height()});
 
 	/*	*/

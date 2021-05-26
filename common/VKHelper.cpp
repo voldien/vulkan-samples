@@ -65,7 +65,46 @@ void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, const VkPhysical
 	vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
-VkImageView VKHelper::createImageView(VkDevice device, VkImage image, VkFormat format) {
+void VKHelper::createImage(VkDevice device, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
+						   VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+						   const VkPhysicalDeviceMemoryProperties &memProperties, VkImage &image,
+						   VkDeviceMemory &imageMemory) {
+	VkImageCreateInfo imageInfo{};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.width = width;
+	imageInfo.extent.height = height;
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = mipLevels;
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = format;
+	imageInfo.tiling = tiling;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.usage = usage;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create image!");
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(device, image, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memProperties, memRequirements.memoryTypeBits, properties).value();
+
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate image memory!");
+	}
+
+	vkBindImageMemory(device, image, imageMemory, 0);
+}
+
+VkImageView VKHelper::createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags,
+									  uint32_t mipLevels) {
 
 	/**/
 	VkImageViewCreateInfo viewInfo = {};
@@ -73,15 +112,15 @@ VkImageView VKHelper::createImageView(VkDevice device, VkImage image, VkFormat f
 	viewInfo.image = image;
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewInfo.format = format;
-	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	viewInfo.subresourceRange.aspectMask = aspectFlags;
 	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.levelCount = mipLevels;
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
 	VkImageView imageView;
 	if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-		throw std::runtime_error("");
+		throw std::runtime_error("failed to create texture image view!");
 	}
 
 	return imageView;
@@ -195,22 +234,23 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 	}
 }
 
-VkSurfaceFormatKHR VKHelper::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats) {
-	// if (availableFormats.size() == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED) {
-	// 	return {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
-	// }
+VkSurfaceFormatKHR VKHelper::selectSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats,
+												 const std::vector<VkSurfaceFormatKHR> &requestFormats,
+												 VkColorSpaceKHR request_color_space) {
 
-	for (const auto &availableFormat : availableFormats) {
-		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
-			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-			return availableFormat;
+	for (int request_i = 0; request_i < requestFormats.size(); request_i++) {
+		for (uint32_t avail_i = 0; avail_i < availableFormats.size(); avail_i++) {
+			if (availableFormats[avail_i].format == requestFormats[request_i].format &&
+				availableFormats[avail_i].colorSpace == request_color_space)
+				return availableFormats[avail_i];
 		}
 	}
+
 	return availableFormats[0];
 }
 
 VkPresentModeKHR VKHelper::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes,
-												 bool vsync) {
+												 const std::vector<VkPresentModeKHR> &requestFormats, bool vsync) {
 	VkPresentModeKHR bestMode = VK_PRESENT_MODE_FIFO_KHR;
 
 	for (const auto &availablePresentMode : availablePresentModes) {
@@ -299,6 +339,7 @@ VKHelper::SwapChainSupportDetails VKHelper::querySwapChainSupport(VkPhysicalDevi
 
 void VKHelper::stageBufferCopy(VkDevice device, VkQueue queue, VkCommandPool commandPool, VkBuffer src, VkBuffer dst,
 							   VkDeviceSize size) {
+
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;

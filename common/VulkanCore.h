@@ -1,14 +1,12 @@
-#ifndef _COMMON_VULKAN_CORE_H_
-#define _COMMON_VULKAN_CORE_H_ 1
-#include <string>
-#include <vector>
-// #define VK_USE_PLATFORM_XLIB_KHR
-// #define VK_USE_PLATFORM_WAYLAND_KHR
+#ifndef _COMMON_VULKAN_SAMPLES_CORE_H_
+#define _COMMON_VULKAN_SAMPLES_CORE_H_ 1
 #include <algorithm>
 #include <cstring>
+#include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 #include <vulkan/vulkan.h>
-#include<memory>
 
 class PhysicalDevice;
 /**
@@ -19,7 +17,7 @@ class VulkanCore {
 	friend class VKWindow;
 
   public:
-	//TODO remove argc and argv
+	// TODO remove argc and argv
 	VulkanCore(int argc, const char **argv, const std::unordered_map<const char *, bool> &requested_extensions = {},
 			   const std::unordered_map<const char *, bool> &requested_layers = {
 				   {"VK_LAYER_KHRONOS_validation", true}});
@@ -73,6 +71,8 @@ class VulkanCore {
 	 */
 	const std::vector<VkPhysicalDevice> &getPhysicalDevices(void) const noexcept { return this->physicalDevices; }
 
+	uint32_t getNrPhysicalDevices(void) const { return getPhysicalDevices().size(); }
+
 	/**
 	 * @brief Get the Handle object
 	 *
@@ -90,12 +90,11 @@ class VulkanCore {
 		uint32_t nrGroups;
 		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, nullptr);
 		std::vector<VkPhysicalDeviceGroupProperties> prop(nrGroups);
-		if(nrGroups > 0)
+		if (nrGroups > 0)
 			vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, prop.data());
 		return prop;
 	}
 
-	//TODO add smart pointer
 	/**
 	 * @brief Create a Physical Devices object
 	 *

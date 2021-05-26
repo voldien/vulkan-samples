@@ -15,7 +15,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	uint32_t graphicsQueueNodeIndex = UINT32_MAX;
 	uint32_t computeQueueNodeIndex;
 
-	int nrQueues = 1;
+	uint32_t nrQueues = 1;
 	for (uint32_t i = 0; i < devices[0]->getQueueFamilyProperties().size(); i++) {
 		/*  */
 		const VkQueueFamilyProperties &prop = devices[0]->getQueueFamilyProperties()[i];
