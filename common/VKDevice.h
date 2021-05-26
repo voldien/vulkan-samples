@@ -35,7 +35,7 @@ class VKDevice {
 	 * @return false
 	 */
 	bool isGroupDevice(void) const noexcept;
-	const std::vector<std::shared_ptr<PhysicalDevice>> &getPhysicalDevices(void) const noexcept { return mDevices; }
+	const std::vector<std::shared_ptr<PhysicalDevice>> &getPhysicalDevices(void) const noexcept { return physicalDevices; }
 
 	VkDevice getHandle(void) const noexcept { return this->logicalDevice; }
 
@@ -56,8 +56,8 @@ class VKDevice {
 									VkMemoryPropertyFlags properties) const {
 
 		/*	Iterate throw each memory types.	*/
-		for (uint32_t i = 0; i < mDevices[0]->getMemoryProperties().memoryTypeCount; i++) {
-			if ((typeFilter & (1 << i)) && (mDevices[0]->getMemoryProperties().memoryTypes[i].propertyFlags & properties) == properties) {
+		for (uint32_t i = 0; i < physicalDevices[0]->getMemoryProperties().memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) && (physicalDevices[0]->getMemoryProperties().memoryTypes[i].propertyFlags & properties) == properties) {
 				return i;
 			}
 		}
@@ -78,7 +78,7 @@ class VKDevice {
 	uint32_t compute_queue_node_index;
 	uint32_t transfer_queue_node_index;
 
-	std::vector<std::shared_ptr<PhysicalDevice>> mDevices;
+	std::vector<std::shared_ptr<PhysicalDevice>> physicalDevices;
 	VkDevice logicalDevice;
 
 	VkQueue graphicsQueue;

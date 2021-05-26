@@ -92,7 +92,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	vkGetDeviceQueue(getHandle(), this->graphics_queue_node_index, 0, &this->presentQueue);
 	vkGetDeviceQueue(getHandle(), this->compute_queue_node_index, 0, &this->computeQueue);
 
-	this->mDevices = devices;
+	this->physicalDevices = devices;
 }
 
 VKDevice::~VKDevice(void) {
