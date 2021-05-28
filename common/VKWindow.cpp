@@ -405,7 +405,7 @@ VkPhysicalDevice VKWindow::physicalDevice() const {
 	// physicalDevices[0];
 }
 
-std::vector<VkPhysicalDevice> VKWindow::getPhyiscalDevices(void) { return {}: }
+std::vector<VkPhysicalDevice> VKWindow::getPhyiscalDevices(void) { return {}; }
 
 std::vector<VkCommandBuffer> &VKWindow::getCommandBuffers(void) const noexcept {
 	return this->swapChain->commandBuffers;
