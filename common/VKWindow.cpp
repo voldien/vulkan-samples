@@ -190,7 +190,8 @@ void VKWindow::createSwapChain(void) {
 																	 VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
 	VkPresentModeKHR presentMode =
 		VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes, swapChainSupport.presentModes, swapChain->vsync);
-	VkExtent2D extent = VKHelper::chooseSwapExtent(swapChainSupport.capabilities, {width(), height()});
+	VkExtent2D extent =
+		VKHelper::chooseSwapExtent(swapChainSupport.capabilities, {(uint32_t)width(), (uint32_t)height()});
 
 	/*	*/
 	this->swapChain->currentFrame = 0;
@@ -404,7 +405,7 @@ VkPhysicalDevice VKWindow::physicalDevice() const {
 	// physicalDevices[0];
 }
 
-std::vector<VkPhysicalDevice> VKWindow::getPhyiscalDevices(void) {}
+std::vector<VkPhysicalDevice> VKWindow::getPhyiscalDevices(void) { return {}: }
 
 std::vector<VkCommandBuffer> &VKWindow::getCommandBuffers(void) const noexcept {
 	return this->swapChain->commandBuffers;

@@ -21,10 +21,9 @@ void SDLWindow::getPosition(int *x, int *y) const { SDL_GetWindowPosition(this->
 void SDLWindow::getSize(int *width, int *height) const { SDL_GetWindowSize(this->window, width, height); }
 void SDLWindow::setTitle(std::string &title){}
 
-std::string &SDLWindow::getTitle(void) const{
+std::string &SDLWindow::getTitle(void) const { return SDL_GetWindowTitle(window); }
 
-}
-std::string SDLWindow::getTitle(void){}
+std::string SDLWindow::getTitle(void) { return SDL_GetWindowTitle(window); }
 
 int SDLWindow::x(void) const {
 	int x, y;
@@ -46,7 +45,7 @@ void SDLWindow::setFullScreen(bool fullscreen) {
 		SDL_SetWindowFullscreen(this->window, 0);
 }
 
-bool SDLWindow::isFullScreen(void) const {}
+bool SDLWindow::isFullScreen(void) const { return false; }
 
 void SDLWindow::setBordered(bool bordered) { SDL_SetWindowBordered(this->window, (SDL_bool)bordered); }
 
