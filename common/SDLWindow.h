@@ -26,7 +26,6 @@ class SDLWindow {
 
 	virtual void setTitle(std::string &title);
 
-	virtual std::string &getTitle(void) const;
 	virtual std::string getTitle(void);
 
 	virtual int x(void) const;
