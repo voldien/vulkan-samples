@@ -6,7 +6,12 @@
 #include "VKWindow.h"
 #include "VkPhysicalDevice.h"
 #include "VulkanCore.h"
+
+#include "Importer/IOUtil.h"
+
 #include <fmt/core.h>
 #include <stdexcept>
+
+namespace vkscommon {};
 
 #endif
