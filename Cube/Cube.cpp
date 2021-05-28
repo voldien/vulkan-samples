@@ -1,5 +1,5 @@
-#include "IOUtil.h"
 #include "VKHelper.h"
+#include "VksCommon.h"
 #include "common.hpp"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -210,11 +210,9 @@ class CubeWindow : public VKWindow {
 		colorBlending.blendConstants[2] = 0.0f;
 		colorBlending.blendConstants[3] = 0.0f;
 
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1;
-		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-		pipelineLayoutInfo.pushConstantRangeCount = 0;
+		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
+
+		//VK_CHECK(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 		VkDynamicState dynamicStateEnables[1];
 		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
@@ -223,8 +221,6 @@ class CubeWindow : public VKWindow {
 		dynamicStateInfo.pNext = NULL;
 		dynamicStateInfo.pDynamicStates = dynamicStateEnables;
 		dynamicStateInfo.dynamicStateCount = 1;
-
-		VK_CHECK(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

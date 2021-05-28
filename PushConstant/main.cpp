@@ -1,5 +1,5 @@
-#include "IOUtil.h"
 #include "VKHelper.h"
+#include "VksCommon.h"
 #include "common.hpp"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -138,20 +138,6 @@ class CubeWindow : public VKWindow {
 		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-		/*	*/
-		VkDescriptorSetLayoutBinding uboLayoutBinding{};
-		uboLayoutBinding.binding = 0;
-		uboLayoutBinding.descriptorCount = 1;
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBinding.pImmutableSamplers = nullptr;
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-		VkDescriptorSetLayoutCreateInfo layoutInfo{};
-		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = 1;
-		layoutInfo.pBindings = &uboLayoutBinding;
-
-		VK_CHECK(vkCreateDescriptorSetLayout(getDevice(), &layoutInfo, nullptr, &descriptorSetLayout));
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -209,18 +195,28 @@ class CubeWindow : public VKWindow {
 		colorBlending.blendConstants[2] = 0.0f;
 		colorBlending.blendConstants[3] = 0.0f;
 
+		/*	*/
+		VkDescriptorSetLayoutBinding uboLayoutBinding{};
+		uboLayoutBinding.binding = 0;
+		uboLayoutBinding.descriptorCount = 1;
+		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBinding.pImmutableSamplers = nullptr;
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo{};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = 1;
+		layoutInfo.pBindings = &uboLayoutBinding;
+
+		VK_CHECK(vkCreateDescriptorSetLayout(getDevice(), &layoutInfo, nullptr, &descriptorSetLayout));
+
 		VkPushConstantRange pushRange = {
 			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 			.offset = 0, .size = sizeof(glm::mat4x4) };
+			
+		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout}, {pushRange});
 
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1;
-		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-		pipelineLayoutInfo.pushConstantRangeCount = 1;
-		pipelineLayoutInfo.pPushConstantRanges = &pushRange;
-
-		VK_CHECK(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
+	//	VK_CHECK(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -441,11 +437,13 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{"VK_EXT_tooling_info", false}};
 	std::unordered_map<const char *, bool> required_layers = {{"VK_LAYER_LUNARG_monitor", false}};
 	std::unordered_map<const char *, bool> required_instance_extensions = {{}};
+
+
 	try {
-		std::shared_ptr<VulkanCore> core =
-			std::make_shared<VulkanCore>(argc, argv, required_instance_extensions, required_layers);
-		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p, required_device_extensions);
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
+		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
+		printf("%s\n", devices[0]->getDeviceName());
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
 		CubeWindow window(core, d);
 
 		window.run();

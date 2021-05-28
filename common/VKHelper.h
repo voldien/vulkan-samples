@@ -75,6 +75,24 @@ class VKHelper {
 	 */
 	static VkShaderModule createShaderModule(VkDevice device, std::vector<char> &data);
 
+	/**
+	 * @brief Create a Pipeline Layout object
+	 *
+	 * @param device
+	 * @param pipelineLayout
+	 * @param descLayouts
+	 * @param pushConstants
+	 * @param next
+	 */
+	static void createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineLayout,
+												 const std::vector<VkDescriptorSetLayout> &descLayouts = {},
+												 const std::vector<VkPushConstantRange> &pushConstants = {},
+												 void *next = NULL);
+
+	static VkPipeline createGraphicPipeline(void);
+
+	static VkPipeline createComputePipeline(void);
+
 	//
 	// static bool isDeviceSuitable(VkPhysicalDevice device);
 

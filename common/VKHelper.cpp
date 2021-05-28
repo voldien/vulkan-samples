@@ -140,6 +140,20 @@ VkShaderModule VKHelper::createShaderModule(VkDevice device, std::vector<char> &
 	return shaderModule;
 }
 
+void VKHelper::createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineLayout,
+									const std::vector<VkDescriptorSetLayout> &descLayouts,
+									const std::vector<VkPushConstantRange> &pushConstants, void *next) {
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = descLayouts.size();
+	pipelineLayoutInfo.pSetLayouts = descLayouts.data();
+	pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
+	pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
+
+	VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
+}
+
 // bool VKHelper::isDeviceSuitable(VkPhysicalDevice device) {
 // 	VkPhysicalDeviceProperties deviceProperties;
 // 	VkPhysicalDeviceFeatures deviceFeatures;
