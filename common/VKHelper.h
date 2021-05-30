@@ -50,6 +50,8 @@ class VKHelper {
 							 const VkPhysicalDeviceMemoryProperties &memoryProperies, VkBufferUsageFlags usage,
 							 VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
 
+
+
 	static void createImage(VkDevice device, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
 							VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
 							const VkPhysicalDeviceMemoryProperties &memProperties, VkImage &image,
@@ -66,6 +68,42 @@ class VKHelper {
 	static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags,
 									   uint32_t mipLevels);
 
+//	template<typename T>
+	static void createSampler(VkDevice device, VkSampler &sampler, float maxSamplerAnisotropy = 1.0f, void* pNext = nullptr) {
+
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.pNext = pNext;
+		samplerInfo.flags = 0;
+		/*	*/
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		/**/
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		/*	*/
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		/*	*/
+		samplerInfo.mipLodBias = 0;
+		/*	*/
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.maxAnisotropy = maxSamplerAnisotropy;
+		/*	*/
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		/**/
+		samplerInfo.maxLod = 0;
+		samplerInfo.minLod = 0;
+		/**/
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+		if (vkCreateSampler(device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create texture sampler!");
+		}
+	}
+
 	/**
 	 * @brief Create a Shader Module object
 	 *
@@ -73,7 +111,21 @@ class VKHelper {
 	 * @param data
 	 * @return VkShaderModule
 	 */
-	static VkShaderModule createShaderModule(VkDevice device, std::vector<char> &data);
+	static VkShaderModule createShaderModule(VkDevice device, const std::vector<char> &data){
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.pNext = nullptr;
+		createInfo.flags = 0;
+		createInfo.codeSize = data.size();
+		createInfo.pCode = reinterpret_cast<const uint32_t *>(data.data());
+
+		VkShaderModule shaderModule;
+		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create shader module!");
+		}
+
+		return shaderModule;
+	}
 
 	/**
 	 * @brief Create a Pipeline Layout object
@@ -85,9 +137,28 @@ class VKHelper {
 	 * @param next
 	 */
 	static void createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineLayout,
-												 const std::vector<VkDescriptorSetLayout> &descLayouts = {},
-												 const std::vector<VkPushConstantRange> &pushConstants = {},
-												 void *next = NULL);
+									 const std::vector<VkDescriptorSetLayout> &descLayouts = {},
+									 const std::vector<VkPushConstantRange> &pushConstants = {}, void *next = NULL);
+
+	/**
+	 * @brief Create a Descriptor Set Layout object
+	 *
+	 * @param device
+	 * @param descriptorSetLayout
+	 * @param descitprSetLayoutBindings
+	 * @param pNext
+	 */
+	static void createDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout &descriptorSetLayout,
+										  const std::vector<VkDescriptorSetLayoutBinding> &descitprSetLayoutBindings,
+										  void *pNext = nullptr) {
+		VkDescriptorSetLayoutCreateInfo layoutInfo{};
+		layoutInfo.pNext = pNext;
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = descitprSetLayoutBindings.size();
+		layoutInfo.pBindings = descitprSetLayoutBindings.data();
+
+		vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout);
+	}
 
 	static VkPipeline createGraphicPipeline(void);
 
@@ -174,6 +245,7 @@ class VKHelper {
 	 */
 	static void stageBufferCopy(VkDevice device, VkQueue queue, VkCommandPool commandPool, VkBuffer src, VkBuffer dst,
 								VkDeviceSize size);
+
 	static void stageBufferCmdCopy(VkDevice device, VkQueue queue, VkCommandBuffer cmd, VkBuffer src, VkBuffer dst,
 								   VkDeviceSize size);
 };
