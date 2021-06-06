@@ -205,7 +205,7 @@ void VulkanCore::parseOptions(int argc, const char **argv) {
 
 std::vector<std::shared_ptr<PhysicalDevice>> VulkanCore::createPhysicalDevices(void) const {
 	std::vector<std::shared_ptr<PhysicalDevice>> _physicalDevices(getPhysicalDevices().size());
-	for (int i = 0; i < getPhysicalDevices().size(); i++) {
+	for (uint32_t i = 0; i < getPhysicalDevices().size(); i++) {
 		_physicalDevices[i] = std::move(createPhysicalDevice(i));
 	}
 	return _physicalDevices;

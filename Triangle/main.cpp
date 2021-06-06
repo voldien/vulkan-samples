@@ -204,7 +204,7 @@ class TriangleWindow : public VKWindow {
 
 		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		for (int i = 0; i < getCommandBuffers().size(); i++) {
+		for (uint32_t i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
 
 			VkCommandBufferBeginInfo beginInfo = {};

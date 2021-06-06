@@ -394,6 +394,7 @@ class CubeWindow : public VKWindow {
 
 			VkBufferMemoryBarrier ub_barrier = {
 				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				.pNext = nullptr,
 				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
 				.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
 				.buffer = uniformBuffers[i],
@@ -405,7 +406,7 @@ class CubeWindow : public VKWindow {
 
 			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
 			// 1, 					 &ub_barrier, 0, NULL);
-			VkViewport viewport = {.x = 0, .y = 0, .width = width, .height = height, .minDepth = 0, .maxDepth = 1.0f};
+			VkViewport viewport = {.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);

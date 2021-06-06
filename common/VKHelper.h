@@ -210,10 +210,10 @@ class VKHelper {
 	static VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, VkExtent2D actualExtent);
 
 	struct QueueFamilyIndices {
-		uint32_t graphicsFamily = -1;
-		uint32_t presentFamily = -1;
+		int32_t graphicsFamily = -1;
+		int32_t presentFamily = -1;
 
-		bool isComplete() { return graphicsFamily != -1 && presentFamily != -1; }
+		bool isComplete() noexcept { return graphicsFamily != -1 && presentFamily != -1; }
 	};
 
 	/**

@@ -69,8 +69,8 @@ class VKWindow : public SDLWindow {
   public:
 	/*	Vulkan methods.	*/
 	VkDevice getDevice(void) const;
-	int getCurrentFrame(void) const;
-	int swapChainImageCount() const;
+	uint32_t getCurrentFrame(void) const;
+	uint32_t swapChainImageCount() const;
 	VkFramebuffer getDefaultFrameBuffer(void) const;
 	VkFormat depthStencilFormat(void) const;
 	VkImage depthStencilImage(void) const;

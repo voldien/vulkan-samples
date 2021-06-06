@@ -177,7 +177,7 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 	// VK_KHR_device_group_creation
 	/*	Check for the device with the best specs and can display.	*/
 
-	for (int i = 0; i < devices.size(); i++) {
+	for (uint32_t i = 0; i < devices.size(); i++) {
 		const VkPhysicalDevice device = devices[i];
 		VkPhysicalDeviceProperties props = {};
 		vkGetPhysicalDeviceProperties(device, &props);
@@ -199,7 +199,7 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 		// if (planeCount <= 0)
 		// 	continue;
 
-		for (int x = 0; x < displayProperties.size(); x++) {
+		for (uint32_t x = 0; x < displayProperties.size(); x++) {
 		}
 
 		// Determine the type of the physical device
@@ -212,7 +212,7 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 		}
 	}
 
-	for (int i = 0; i < preliminaryDevices.size(); i++) {
+	for (uint32_t i = 0; i < preliminaryDevices.size(); i++) {
 		const VkPhysicalDevice device = devices[i];
 		// Determine the available device local memory.
 		VkPhysicalDeviceMemoryProperties memoryProps = {};
@@ -222,7 +222,7 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 		std::vector<VkMemoryHeap> heaps =
 			std::vector<VkMemoryHeap>(heapsPointer, heapsPointer + memoryProps.memoryHeapCount);
 
-		for (int j = 0; j < heaps.size(); j++) {
+		for (uint32_t j = 0; j < heaps.size(); j++) {
 			VkMemoryHeap &heap = heaps[j];
 			if (heap.flags & VkMemoryHeapFlagBits::VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
 				selectDevices.push_back(device);
@@ -238,7 +238,7 @@ VkSurfaceFormatKHR VKHelper::selectSurfaceFormat(const std::vector<VkSurfaceForm
 												 const std::vector<VkSurfaceFormatKHR> &requestFormats,
 												 VkColorSpaceKHR request_color_space) {
 
-	for (int request_i = 0; request_i < requestFormats.size(); request_i++) {
+	for (uint32_t request_i = 0; request_i < requestFormats.size(); request_i++) {
 		for (uint32_t avail_i = 0; avail_i < availableFormats.size(); avail_i++) {
 			if (availableFormats[avail_i].format == requestFormats[request_i].format &&
 				availableFormats[avail_i].colorSpace == request_color_space)

@@ -176,7 +176,7 @@ void VKWindow::swapBuffer(void) {
 
 	/*  Compute current frame.  */
 	this->swapChain->currentFrame =
-		(this->swapChain->currentFrame + 1) % std::min((int)this->inFlightFences.size(), swapChainImageCount());
+		(this->swapChain->currentFrame + 1) % std::min((uint32_t)this->inFlightFences.size(), swapChainImageCount());
 }
 
 void VKWindow::createSwapChain(void) {
@@ -296,7 +296,7 @@ void VKWindow::createSwapChain(void) {
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
-	subpass.pDepthStencilAttachment = NULL;
+	subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
 	VkSubpassDependency dependency{};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -379,9 +379,9 @@ void VKWindow::cleanSwapChain(void) {
 	vkDestroySwapchainKHR(getDevice(), this->swapChain->swapchain, nullptr);
 }
 
-int VKWindow::swapChainImageCount() const { return this->swapChain->swapChainImages.size(); }
+uint32_t VKWindow::swapChainImageCount() const { return this->swapChain->swapChainImages.size(); }
 
-int VKWindow::getCurrentFrame(void) const { return this->swapChain->currentFrame; }
+uint32_t VKWindow::getCurrentFrame(void) const { return this->swapChain->currentFrame; }
 
 VkDevice VKWindow::getDevice(void) const { return device->getHandle(); }
 
