@@ -26,7 +26,7 @@ IF((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX) AND NOT CMAKE_COMPILER_
 	ENDIF()
 
 	#
-	ADD_DEFINITIONS( -export-dynamic -rdynamic -lstdc++fs -std=c++17 )
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -export-dynamic -rdynamic -std=c++17 -Wpedantic -Wextra  -Wall")
 
 	IF (CMAKE_BUILD_TYPE STREQUAL "Release")
 		MESSAGE(STATUS "Compile for release.")
