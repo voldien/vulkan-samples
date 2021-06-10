@@ -61,8 +61,8 @@ void main()
 //     return;
 
 	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
-	vec2 uv = pixel_coords / ivec2(1280, 720);
+	vec2 uv = pixel_coords / u_pushConstants._params.windowSize;// ivec2(1280, 720);
 
-	vec4 pixel = computeMandel(ivec2(1280, 720), pixel_coords);
+	vec4 pixel = computeMandel(u_pushConstants._params.windowSize, pixel_coords);
 	imageStore(img_output, pixel_coords, pixel);
 }
