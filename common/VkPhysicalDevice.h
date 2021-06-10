@@ -16,10 +16,10 @@ class PhysicalDevice {
 	const VkPhysicalDeviceFeatures &getFeatures(void) const noexcept { return features; }
 
 	VkPhysicalDeviceProperties getProperties(void) noexcept { return properties; }
-	const VkPhysicalDeviceProperties& getProperties(void) const noexcept { return properties; }
+	const VkPhysicalDeviceProperties &getProperties(void) const noexcept { return properties; }
 
 	VkPhysicalDeviceMemoryProperties getMemoryProperties(void) noexcept { return memProperties; }
-	const VkPhysicalDeviceMemoryProperties& getMemoryProperties(void) const noexcept { return memProperties; }
+	const VkPhysicalDeviceMemoryProperties &getMemoryProperties(void) const noexcept { return memProperties; }
 
 	const std::vector<VkQueueFamilyProperties> &getQueueFamilyProperties(void) const noexcept {
 		return queueFamilyProperties;
