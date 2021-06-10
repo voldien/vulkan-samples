@@ -1,6 +1,7 @@
 #ifndef _VULKAN_COMMON_PHYSICAL_DEVICE_H_
 #define _VULKAN_COMMON_PHYSICAL_DEVICE_H_ 1
 #include "VulkanCore.h"
+#include <stdexcept>
 
 /**
  * @brief
