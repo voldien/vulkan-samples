@@ -217,7 +217,7 @@ void VKWindow::createSwapChain(void) {
 	createInfo.imageColorSpace = surfaceFormat.colorSpace;
 	createInfo.imageExtent = extent;
 	createInfo.imageArrayLayers = 1;
-	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 
 	/*  */
 	if (indices.graphicsFamily != indices.presentFamily) {
@@ -296,7 +296,8 @@ void VKWindow::createSwapChain(void) {
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
-	subpass.pDepthStencilAttachment = &depthAttachmentRef;
+	subpass.pDepthStencilAttachment = nullptr;
+	//&depthAttachmentRef;
 
 	VkSubpassDependency dependency{};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -396,6 +397,9 @@ VkRenderPass VKWindow::getDefaultRenderPass(void) const { return this->swapChain
 VkCommandPool VKWindow::getGraphicCommandPool(void) const { return this->cmd_pool; }
 VkImage VKWindow::getDefaultImage(void) const {
 	return this->swapChain->swapChainImages[this->swapChain->currentFrame];
+}
+VkImageView VKWindow::getDefaultImageView(void) const{
+	return this->swapChain->swapChainImageViews[this->swapChain->currentFrame];
 }
 
 VkQueue VKWindow::getDefaultGraphicQueue(void) const { return this->device->getDefaultGraphicQueue(); }
