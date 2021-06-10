@@ -85,7 +85,8 @@ class VKWindow : public SDLWindow {
 	VkQueue getDefaultGraphicQueue(void) const;
 	VkFormat getDefaultImageFormat(void) const { return this->swapChain->swapChainImageFormat; }
 
-	std::vector<VkImage> getSwapChainImages(void) const noexcept { return this->swapChain->swapChainImages; }
+	const std::vector<VkImage>& getSwapChainImages(void) const noexcept { return this->swapChain->swapChainImages; }
+	const std::vector<VkImageView> &getSwapChainImageViews(void) const noexcept { return this->swapChain->swapChainImageViews; }
 
 	const std::shared_ptr<VKDevice> &getLogicalDevice(void) const noexcept { return this->device; }
 
