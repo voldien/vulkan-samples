@@ -65,10 +65,10 @@ class VKHelper {
 	 * @param format
 	 * @return VkImageView
 	 */
-	static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags,
-									   uint32_t mipLevels);
+	static VkImageView createImageView(VkDevice device, VkImage image, VkImageViewType imageType, VkFormat format,
+									   VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 
-//	template<typename T>
+	//	template<typename T>
 	static void createSampler(VkDevice device, VkSampler &sampler, float maxSamplerAnisotropy = 1.0f, void* pNext = nullptr) {
 
 		VkSamplerCreateInfo samplerInfo{};
