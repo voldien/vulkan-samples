@@ -246,13 +246,13 @@ class CubeWindow : public VKWindow {
 
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-		uniformBuffers.resize(swapChainImageCount());
-		uniformBuffersMemory.resize(swapChainImageCount());
+		uniformBuffers.resize(getSwapChainImageCount());
+		uniformBuffersMemory.resize(getSwapChainImageCount());
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
-		for (size_t i = 0; i < swapChainImageCount(); i++) {
+		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
 								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
@@ -265,32 +265,32 @@ class CubeWindow : public VKWindow {
 
 		VkDescriptorPoolSize poolSize{};
 		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount = static_cast<uint32_t>(swapChainImageCount());
+		poolSize.descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolInfo.poolSizeCount = 1;
 		poolInfo.pPoolSizes = &poolSize;
-		poolInfo.maxSets = static_cast<uint32_t>(swapChainImageCount());
+		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
 
 		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
 
-		std::vector<VkDescriptorSetLayout> layouts(swapChainImageCount(), descriptorSetLayout);
+		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 		VkDescriptorSetAllocateInfo allocdescInfo{};
 		allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocdescInfo.descriptorPool = descpool;
-		allocdescInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImageCount());
+		allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
 		allocdescInfo.pSetLayouts = layouts.data();
 
-		descriptorSets.resize(swapChainImageCount());
+		descriptorSets.resize(getSwapChainImageCount());
 		if (vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()) != VK_SUCCESS) {
 			throw std::runtime_error("failed to allocate descriptor sets!");
 		}
 
-		for (size_t i = 0; i < swapChainImageCount(); i++) {
+		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
