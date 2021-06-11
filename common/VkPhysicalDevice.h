@@ -26,6 +26,8 @@ class PhysicalDevice {
 		return queueFamilyProperties;
 	}
 
+	const VkPhysicalDeviceLimits &getDeviceLimits(void) const noexcept { return this->properties.limits; }
+
 	/**
 	 * @brief
 	 *
@@ -111,6 +113,7 @@ class PhysicalDevice {
 	VkPhysicalDeviceFeatures features;
 	VkPhysicalDeviceMemoryProperties memProperties;
 	VkPhysicalDeviceProperties properties;
+	VkPhysicalDeviceLimits limits;
 	std::vector<VkQueueFamilyProperties> queueFamilyProperties;
 	std::vector<VkExtensionProperties> extensions;
 	std::shared_ptr<VulkanCore> vkCore;

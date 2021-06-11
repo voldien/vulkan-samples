@@ -9,6 +9,7 @@
 //#include <fmt/core.h>
 
 VKWindow::~VKWindow(void) {
+
 	vkDeviceWaitIdle(getDevice());
 
 	/*	Relase*/
@@ -366,12 +367,14 @@ void VKWindow::cleanSwapChain(void) {
 	}
 	swapChain->swapChainFramebuffers.clear();
 
+	/*	*/
 	vkFreeCommandBuffers(getDevice(), this->cmd_pool, static_cast<uint32_t>(swapChain->commandBuffers.size()),
 						 swapChain->commandBuffers.data());
 	swapChain->commandBuffers.clear();
 
 	vkDestroyRenderPass(getDevice(), swapChain->renderPass, nullptr);
 
+	/*	*/
 	for (auto imageView : swapChain->swapChainImageViews) {
 		vkDestroyImageView(getDevice(), imageView, nullptr);
 	}
@@ -398,7 +401,7 @@ VkCommandPool VKWindow::getGraphicCommandPool(void) const { return this->cmd_poo
 VkImage VKWindow::getDefaultImage(void) const {
 	return this->swapChain->swapChainImages[this->swapChain->currentFrame];
 }
-VkImageView VKWindow::getDefaultImageView(void) const{
+VkImageView VKWindow::getDefaultImageView(void) const {
 	return this->swapChain->swapChainImageViews[this->swapChain->currentFrame];
 }
 
