@@ -31,6 +31,8 @@ class MandelBrotWindow : public VKWindow {
 		int nrSamples;
 	} params = {};
 
+	unsigned int paramMemSize = sizeof(params);
+
   public:
 	MandelBrotWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
@@ -40,11 +42,15 @@ class MandelBrotWindow : public VKWindow {
 
 	virtual void Release(void) override {
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
-
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
-		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(getDevice(), graphicPipelineLayout, nullptr);
 
+		for (unsigned int i = 0; i < computeImageViews.size(); i++)
+			vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
+
+		for (unsigned int i = 0; i < paramMemory.size(); i++)
+			vkFreeMemory(getDevice(), paramMemory[i], nullptr);
+		for (unsigned int i = 0; i < paramBuffer.size(); i++)
+			vkDestroyBuffer(getDevice(), paramBuffer[i], nullptr);
 		vkDestroyPipeline(getDevice(), computePipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), computePipelineLayout, nullptr);
 	}
@@ -87,10 +93,16 @@ class MandelBrotWindow : public VKWindow {
 		pipelineCreateInfo.layout = *layout;
 
 		VK_CHECK(vkCreateComputePipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
+		vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
+
 		return pipeline;
 	}
 
 	virtual void Initialize(void) override {
+
+		paramMemSize =
+			std::max((unsigned int)getLogicalDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
+					 (unsigned int)paramMemSize);
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
 
@@ -101,7 +113,7 @@ class MandelBrotWindow : public VKWindow {
 										  getDefaultImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		}
 
-		VkDeviceSize bufferSize = sizeof(params) * swapChainImageCount();
+		VkDeviceSize bufferSize = paramMemSize * swapChainImageCount();
 
 		paramBuffer.resize(1);
 		paramMemory.resize(1);
@@ -110,7 +122,7 @@ class MandelBrotWindow : public VKWindow {
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
 		for (size_t i = 0; i < paramBuffer.size(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
+			VKHelper::createBuffer(getDevice(), paramMemSize, memProperties,
 								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -149,12 +161,12 @@ class MandelBrotWindow : public VKWindow {
 		for (int i = 0; i < descriptorSets.size(); i++) {
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageView = computeImageViews[i];
-			//imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			// imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = paramBuffer[0];
-			bufferInfo.offset = sizeof(params) * i;
-			bufferInfo.range = sizeof(params);
+			bufferInfo.offset = paramMemSize * i;
+			bufferInfo.range = paramMemSize;
 			// imageView
 
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
@@ -190,11 +202,10 @@ class MandelBrotWindow : public VKWindow {
 		params.windowWidth = width;
 		params.windowHeight = height;
 
-		for (int i = 0; i < swapChainImageCount(); i++){
-				void *data;
-			VK_CHECK(
-				vkMapMemory(getDevice(), paramMemory[0], sizeof(params) * i, sizeof(params), 0, &data));
-			memcpy(data, &params, sizeof(params));
+		for (int i = 0; i < swapChainImageCount(); i++) {
+			void *data;
+			VK_CHECK(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
+			memcpy(data, &params, paramMemSize);
 			vkUnmapMemory(getDevice(), paramMemory[0]);
 		}
 
@@ -207,22 +218,6 @@ class MandelBrotWindow : public VKWindow {
 
 			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
 
-			VkRenderPassBeginInfo renderPassInfo{};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = getDefaultRenderPass();
-			renderPassInfo.framebuffer = getFrameBuffers()[i];
-			renderPassInfo.renderArea.offset = {0, 0};
-			renderPassInfo.renderArea.extent.width = width;
-			renderPassInfo.renderArea.extent.height = height;
-
-			VkClearValue clearColor = {0.1f, 0.1f, 0.1f, 1.0f};
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
-
-			// vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			// vkCmdEndRenderPass(cmd);
-
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
@@ -234,7 +229,7 @@ class MandelBrotWindow : public VKWindow {
 
 			VkImageMemoryBarrier imageMemoryBarrier = {};
 			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			imageMemoryBarrier.image = getSwapChainImages()[i];
 			imageMemoryBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
@@ -252,8 +247,8 @@ class MandelBrotWindow : public VKWindow {
 	virtual void update(void) {
 		// Setup the range
 		void *data;
-		VK_CHECK(vkMapMemory(getDevice(), paramMemory[0], sizeof(params) * getCurrentFrame(), sizeof(params), 0, &data));
-		memcpy(data, &params, sizeof(params));
+		VK_CHECK(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
+		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 	}
 };
