@@ -106,7 +106,7 @@ class MandelBrotWindow : public VKWindow {
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
 
-		VkDeviceSize bufferSize = paramMemSize * swapChainImageCount();
+		VkDeviceSize bufferSize = paramMemSize * getSwapChainImageCount();
 
 		paramBuffer.resize(1);
 		paramMemory.resize(1);
@@ -125,18 +125,18 @@ class MandelBrotWindow : public VKWindow {
 		/*	Allocate descriptor set.	*/
 		std::vector<VkDescriptorPoolSize> poolSize = {{
 														  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-														  static_cast<uint32_t>(swapChainImageCount()),
+														  static_cast<uint32_t>(getSwapChainImageCount()),
 													  },
 													  {
 														  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-														  static_cast<uint32_t>(swapChainImageCount()),
+														  static_cast<uint32_t>(getSwapChainImageCount()),
 													  }};
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolInfo.poolSizeCount = poolSize.size();
 		poolInfo.pPoolSizes = poolSize.data();
-		poolInfo.maxSets = static_cast<uint32_t>(swapChainImageCount() * 2);
+		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount() * 2);
 
 		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
@@ -151,7 +151,7 @@ class MandelBrotWindow : public VKWindow {
 		params.windowHeight = height;
 
 		/*	*/
-		computeImageViews.resize(swapChainImageCount());
+		computeImageViews.resize(getSwapChainImageCount());
 		for (unsigned int i = 0; i < computeImageViews.size(); i++) {
 			if (computeImageViews[i] != nullptr)
 				vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
@@ -161,23 +161,23 @@ class MandelBrotWindow : public VKWindow {
 		}
 
 		/*	*/
-		vkResetDescriptorPool(getDevice(), descpool, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
+		vkResetDescriptorPool(getDevice(), descpool, 0);
 
-		std::vector<VkDescriptorSetLayout> layouts(swapChainImageCount(), descriptorSetLayout);
+		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 		VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 		descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
-		descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImageCount());
+		descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
 		descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
 		// allocate descriptor set.
-		descriptorSets.resize(swapChainImageCount());
+		descriptorSets.resize(getSwapChainImageCount());
 		VK_CHECK(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
 
 		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageView = computeImageViews[i];
-			// imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = paramBuffer[0];
@@ -208,7 +208,7 @@ class MandelBrotWindow : public VKWindow {
 			vkUpdateDescriptorSets(getDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 		}
 
-		for (unsigned int i = 0; i < swapChainImageCount(); i++) {
+		for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
 			void *data;
 			VK_CHECK(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
 			memcpy(data, &params, paramMemSize);
@@ -233,16 +233,16 @@ class MandelBrotWindow : public VKWindow {
 
 			vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
 
+		
 			VkImageMemoryBarrier imageMemoryBarrier = {};
 			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			imageMemoryBarrier.image = getSwapChainImages()[i];
 			imageMemoryBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 			imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 			imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
-			// Start when the command is executed, finish when compute shader finished writing (?)
 			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
 								 nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
@@ -250,22 +250,30 @@ class MandelBrotWindow : public VKWindow {
 		}
 	}
 
-	virtual void update(void) {
+	virtual void draw(void) override {
 		// Setup the range
 		void *data;
 		VK_CHECK(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
 		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
+
+		int x, y;
+		SDL_GetMouseState(&x, &y);
+		params.mousePosX = x;
+		params.mousePosY = y;
 	}
 };
 
 int main(int argc, const char **argv) {
 
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		printf("%s\n", devices[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
+
+		std::shared_ptr<VKDevice> d =
+			std::make_shared<VKDevice>(devices, required_device_extensions);
 
 		MandelBrotWindow window(core, d);
 
