@@ -2,8 +2,8 @@
 #define _VK_SAMPLES_COMMON_VK_DEVICE_H_ 1
 #include "VkPhysicalDevice.h"
 #include "VulkanCore.h"
+#include <fmt/core.h>
 #include <unordered_map>
-#include<fmt/core.h>
 
 /**
  * @brief
@@ -22,8 +22,9 @@ class VKDevice {
 	VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &physicalDevices,
 			 const std::unordered_map<const char *, bool> &requested_extensions = {},
 			 VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
+			 //TODO add std::fucntion for override the select GPU.
 
-	VKDevice(const std::shared_ptr<PhysicalDevice>& physicalDevice);
+	VKDevice(const std::shared_ptr<PhysicalDevice> &physicalDevice);
 	VKDevice(const VKDevice &) = delete;
 	VKDevice(VKDevice &&) = delete;
 	~VKDevice(void);
@@ -35,7 +36,9 @@ class VKDevice {
 	 * @return false
 	 */
 	bool isGroupDevice(void) const noexcept;
-	const std::vector<std::shared_ptr<PhysicalDevice>> &getPhysicalDevices(void) const noexcept { return physicalDevices; }
+	const std::vector<std::shared_ptr<PhysicalDevice>> &getPhysicalDevices(void) const noexcept {
+		return physicalDevices;
+	}
 
 	VkDevice getHandle(void) const noexcept { return this->logicalDevice; }
 
@@ -44,6 +47,7 @@ class VKDevice {
 	VkQueue getDefaultCompute(void) const noexcept { return this->computeQueue; }
 
 	uint32_t getDefaultGraphicQueueIndex(void) const noexcept { return this->graphics_queue_node_index; }
+	uint32_t getDefaultComputeQueueIndex(void) const noexcept { return this->compute_queue_node_index; }
 
 	/**
 	 * @brief
@@ -52,16 +56,39 @@ class VKDevice {
 	 * @param properties
 	 * @return uint32_t
 	 */
-	uint32_t findMemoryType(uint32_t typeFilter,
-									VkMemoryPropertyFlags properties) const {
+	template <size_t n = 0> uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
 
 		/*	Iterate throw each memory types.	*/
-		for (uint32_t i = 0; i < physicalDevices[0]->getMemoryProperties().memoryTypeCount; i++) {
-			if ((typeFilter & (1 << i)) && (physicalDevices[0]->getMemoryProperties().memoryTypes[i].propertyFlags & properties) == properties) {
+		for (uint32_t i = 0; i < physicalDevices[n]->getMemoryProperties().memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) &&
+				(physicalDevices[n]->getMemoryProperties().memoryTypes[i].propertyFlags & properties) == properties) {
 				return i;
 			}
 		}
 		throw std::runtime_error(fmt::format("failed to find suitable memory type {}!", typeFilter));
+	}
+
+	void submitCommand(VkQueue queue, const std::vector<VkCommandBuffer> &cmd,
+					   const std::vector<VkSemaphore> &waitSemaphores, const std::vector<VkSemaphore> &signalSempores,
+					   VkFence fence,
+					   const std::vector<VkPipelineStageFlags> &waitStages = {
+						   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}) {
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		submitInfo.waitSemaphoreCount = waitSemaphores.size();
+		submitInfo.pWaitSemaphores = waitSemaphores.data();
+		submitInfo.pWaitDstStageMask = waitStages.data();
+
+		/*	*/
+		submitInfo.commandBufferCount = cmd.size();
+		submitInfo.pCommandBuffers = cmd.data();
+
+		/*	*/
+		submitInfo.signalSemaphoreCount = signalSempores.size();
+		submitInfo.pSignalSemaphores = signalSempores.data();
+
+		vkQueueSubmit(queue, 1, &submitInfo, fence);
 	}
 
 	/**
@@ -71,12 +98,13 @@ class VKDevice {
 	 * @return true
 	 * @return false
 	 */
-	bool isFormatedSupported(VkFormat format) const noexcept;
+	bool isFormatSupported(VkFormat format) const noexcept;
 
   private:
 	uint32_t graphics_queue_node_index;
 	uint32_t compute_queue_node_index;
 	uint32_t transfer_queue_node_index;
+	uint32_t present_queue_node_index;
 
 	std::vector<std::shared_ptr<PhysicalDevice>> physicalDevices;
 	VkDevice logicalDevice;

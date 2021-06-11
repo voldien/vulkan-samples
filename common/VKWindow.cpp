@@ -177,7 +177,7 @@ void VKWindow::swapBuffer(void) {
 
 	/*  Compute current frame.  */
 	this->swapChain->currentFrame =
-		(this->swapChain->currentFrame + 1) % std::min((uint32_t)this->inFlightFences.size(), swapChainImageCount());
+		(this->swapChain->currentFrame + 1) % std::min((uint32_t)this->inFlightFences.size(), getSwapChainImageCount());
 }
 
 void VKWindow::createSwapChain(void) {
@@ -383,21 +383,21 @@ void VKWindow::cleanSwapChain(void) {
 	vkDestroySwapchainKHR(getDevice(), this->swapChain->swapchain, nullptr);
 }
 
-uint32_t VKWindow::swapChainImageCount() const { return this->swapChain->swapChainImages.size(); }
+uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }
 
-uint32_t VKWindow::getCurrentFrame(void) const { return this->swapChain->currentFrame; }
+uint32_t VKWindow::getCurrentFrame(void) const noexcept { return this->swapChain->currentFrame; }
 
-VkDevice VKWindow::getDevice(void) const { return device->getHandle(); }
+VkDevice VKWindow::getDevice(void) const noexcept { return device->getHandle(); }
 
-VkFramebuffer VKWindow::getDefaultFrameBuffer(void) const {
+VkFramebuffer VKWindow::getDefaultFrameBuffer(void) const noexcept {
 	return this->swapChain->swapChainFramebuffers[this->swapChain->currentFrame];
 }
 
-VkCommandBuffer VKWindow::getCurrentCommandBuffer(void) const {
+VkCommandBuffer VKWindow::getCurrentCommandBuffer(void) const noexcept {
 	return this->swapChain->commandBuffers[this->swapChain->currentFrame];
 }
-VkRenderPass VKWindow::getDefaultRenderPass(void) const { return this->swapChain->renderPass; }
-VkCommandPool VKWindow::getGraphicCommandPool(void) const { return this->cmd_pool; }
+VkRenderPass VKWindow::getDefaultRenderPass(void) const noexcept { return this->swapChain->renderPass; }
+VkCommandPool VKWindow::getGraphicCommandPool(void) const noexcept { return this->cmd_pool; }
 VkImage VKWindow::getDefaultImage(void) const {
 	return this->swapChain->swapChainImages[this->swapChain->currentFrame];
 }
@@ -407,9 +407,10 @@ VkImageView VKWindow::getDefaultImageView(void) const {
 
 VkQueue VKWindow::getDefaultGraphicQueue(void) const { return this->device->getDefaultGraphicQueue(); }
 
+VkQueue VKWindow::getDefaultComputeQueue(void) const { return this->device->getDefaultCompute(); }
+
 VkPhysicalDevice VKWindow::physicalDevice() const {
 	return device->getPhysicalDevices()[0]->getHandle();
-	// physicalDevices[0];
 }
 
 std::vector<VkPhysicalDevice> VKWindow::getPhyiscalDevices(void) { return {}; }
@@ -445,7 +446,7 @@ void VKWindow::run(void) {
 
 	SDL_Event event = {};
 	bool isAlive = true;
-	bool visible;
+	bool visible = true;
 
 	while (isAlive) {
 		while (SDL_PollEvent(&event)) {
@@ -459,17 +460,18 @@ void VKWindow::run(void) {
 				switch (event.window.event) {
 				case SDL_WINDOWEVENT_CLOSE:
 					return;
-				// case SDL_WINDOWEVENT_SIZE_CHANGED:
+				case SDL_WINDOWEVENT_SIZE_CHANGED:
 				case SDL_WINDOWEVENT_RESIZED:
 					recreateSwapChain();
 					onResize(event.window.data1, event.window.data2);
+					break;
 				case SDL_WINDOWEVENT_HIDDEN:
 				case SDL_WINDOWEVENT_MINIMIZED:
-					visible = 0;
+					visible = false;
 					break;
 				case SDL_WINDOWEVENT_EXPOSED:
 				case SDL_WINDOWEVENT_SHOWN:
-					visible = 1;
+					visible = true;
 					break;
 				}
 				break;

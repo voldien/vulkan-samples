@@ -22,11 +22,25 @@ class PhysicalDevice {
 	VkPhysicalDeviceMemoryProperties getMemoryProperties(void) noexcept { return memProperties; }
 	const VkPhysicalDeviceMemoryProperties &getMemoryProperties(void) const noexcept { return memProperties; }
 
+	const VkPhysicalDeviceLimits &getDeviceLimits(void) const noexcept { return this->properties.limits; }
+
+	/**
+	 * @brief Get the Queue Family Properties object
+	 * Get all the support family properties.
+	 *
+	 * @return const std::vector<VkQueueFamilyProperties>&
+	 */
 	const std::vector<VkQueueFamilyProperties> &getQueueFamilyProperties(void) const noexcept {
 		return queueFamilyProperties;
 	}
 
-	const VkPhysicalDeviceLimits &getDeviceLimits(void) const noexcept { return this->properties.limits; }
+	bool isQueueSupported(VkQueueFlags queueFlag) const {
+		for (const VkQueueFamilyProperties &a : getQueueFamilyProperties()) {
+			if (a.queueFlags & queueFlag)
+				return true;
+		}
+		return false;
+	}
 
 	/**
 	 * @brief
@@ -48,7 +62,7 @@ class PhysicalDevice {
 	 * @return true
 	 * @return false
 	 */
-	bool isFormatedSupported(VkFormat format, VkImageType imageType, VkImageTiling tiling,
+	bool isFormatSupported(VkFormat format, VkImageType imageType, VkImageTiling tiling,
 							 VkImageUsageFlags usage) const {
 		VkImageFormatProperties prop;
 		VkResult result =
@@ -77,7 +91,7 @@ class PhysicalDevice {
 	 * @return true
 	 * @return false
 	 */
-	bool isExtensionSupported(const std::string &extension) const {
+	bool isExtensionSupported(const std::string &extension) const noexcept {
 		return std::find_if(getExtensions().begin(), getExtensions().end(),
 							[extension](const VkExtensionProperties &device_extension) {
 								return std::strcmp(device_extension.extensionName, extension.c_str()) == 0;
@@ -93,8 +107,10 @@ class PhysicalDevice {
 	 */
 	template <typename T> void checkFeature(VkStructureType type, T &requestFeature) {
 
-		VkPhysicalDeviceFeatures2 feature = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR,
-											 .pNext = &requestFeature};
+		VkPhysicalDeviceFeatures2 feature = {};
+		feature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+		feature.pNext = &requestFeature;
+
 		requestFeature.sType = type;
 		vkGetPhysicalDeviceFeatures2(getHandle(), &feature);
 	}

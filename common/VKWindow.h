@@ -68,22 +68,27 @@ class VKWindow : public SDLWindow {
 
   public:
 	/*	Vulkan methods.	*/
-	VkDevice getDevice(void) const;
-	uint32_t getCurrentFrame(void) const;
-	uint32_t swapChainImageCount() const;
-	VkFramebuffer getDefaultFrameBuffer(void) const;
-	VkFormat depthStencilFormat(void) const;
-	VkImage depthStencilImage(void) const;
+	VkDevice getDevice(void) const noexcept;
+	uint32_t getCurrentFrame(void) const noexcept;
+	uint32_t getSwapChainImageCount() const noexcept;
+	VkFramebuffer getDefaultFrameBuffer(void) const noexcept;
+	VkFormat depthStencilFormat(void) const noexcept;
+	VkImage depthStencilImage(void) const noexcept;
 
 	/*	*/
-	VkCommandBuffer getCurrentCommandBuffer(void) const;
-	VkRenderPass getDefaultRenderPass(void) const;
-	VkCommandPool getGraphicCommandPool(void) const;
-	//VkCommandPool getComputeCommandPool(void) const noexcept;
 	VkImage getDefaultImage(void) const;
 	VkImageView getDefaultImageView(void) const;
-	VkQueue getDefaultGraphicQueue(void) const;
 	VkFormat getDefaultImageFormat(void) const { return this->swapChain->swapChainImageFormat; }
+
+	/*	*/
+	VkCommandBuffer getCurrentCommandBuffer(void) const noexcept;
+	VkRenderPass getDefaultRenderPass(void) const noexcept;
+	VkCommandPool getGraphicCommandPool(void) const noexcept;
+	//VkCommandPool getComputeCommandPool(void) const noexcept;
+
+	/*	*/
+	VkQueue getDefaultGraphicQueue(void) const;
+	VkQueue getDefaultComputeQueue(void) const;
 
 	const std::vector<VkImage>& getSwapChainImages(void) const noexcept { return this->swapChain->swapChainImages; }
 	const std::vector<VkImageView> &getSwapChainImageViews(void) const noexcept { return this->swapChain->swapChainImageViews; }
