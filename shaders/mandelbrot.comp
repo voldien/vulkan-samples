@@ -17,36 +17,42 @@ struct mandelbrot_param_t{
 	int nrSamples;
 };
 
-
-
 layout(set = 0, binding = 1) uniform params{
 	mandelbrot_param_t _params;
 }u_pushConstants;
 
-vec4 computeMandel(const ivec2 dim, const ivec2 coord) {
+vec2 squareImaginary(vec2 number){
+	return vec2(
+		pow(number.x,2)-pow(number.y,2),
+		2*number.x*number.y
+	);
+}
 
-	const int samples = 100;
+vec4 computeMandel(vec2 uv) {
+
+	const int samples = 128;
 	const float lthreadhold = 2.0;
 
-	vec2 uv = vec2(coord) / vec2(dim);
-	//uv *= 0.5;
+	//vec2 uv = vec2(coord) / vec2(dim);
+	vec2 mouseOffset = u_pushConstants._params.mousePos / vec2(u_pushConstants._params.windowSize);
+	uv += mouseOffset;
+	uv *= 0.25;
 	const vec2 c = vec2(-.445, 0.0) +  vec2(uv - 0.5)* vec2(2.0+ 1.7*0.2  );
-	vec2 complex = vec2(0,0);
+	vec2 z = vec2(0,0);
 	float n = 0;
 
    for(int i = 0; i < samples; i++){
 
-	   complex = vec2(complex.x * complex.x - complex.y + complex.y, 2 * complex.x * complex.y) + c;
-
+	   z = squareImaginary(z) + c;
 		/*  */
-		if(dot(complex, complex) > lthreadhold * 2.0)
+		if(dot(z, z) > (lthreadhold * 2.0)){
 			break;
-		n++;
+		}
+//			break;
+		n += 1.0;
 	}
 
-
 	float t = float(n) / float(samples);
-	return vec4(t,t,t, 1.0);
 	vec3 d = vec3(0.3, 0.3 ,0.5);
 	vec3 e = vec3(-0.2, -0.3 ,-0.5);
 	vec3 f = vec3(2.1, 2.0, 3.0);
@@ -57,12 +63,13 @@ vec4 computeMandel(const ivec2 dim, const ivec2 coord) {
 void main()
 {
 
-//   if(gl_GlobalInvocationID.x >= WIDTH || gl_GlobalInvocationID.y >= HEIGHT)
-//     return;
+  if(gl_GlobalInvocationID.x >= u_pushConstants._params.windowSize.x || gl_GlobalInvocationID.y >= u_pushConstants._params.windowSize.y)
+    return;
 
 	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
-	vec2 uv = pixel_coords / u_pushConstants._params.windowSize;// ivec2(1280, 720);
 
-	vec4 pixel = computeMandel(u_pushConstants._params.windowSize, pixel_coords);
+	vec2 uv = vec2(pixel_coords) / vec2(u_pushConstants._params.windowSize);// ivec2(1280, 720);
+
+	vec4 pixel = computeMandel(uv);
 	imageStore(img_output, pixel_coords, pixel);
 }
