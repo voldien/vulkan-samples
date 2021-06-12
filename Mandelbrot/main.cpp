@@ -15,7 +15,7 @@ class MandelBrotWindow : public VKWindow {
 	std::vector<VkImageView> computeImageViews;
 
 	std::vector<VkDeviceMemory> paramMemory;
-	std::vector<VkBuffer> paramBuffer;
+	VkBuffer paramBuffer;
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
@@ -36,7 +36,7 @@ class MandelBrotWindow : public VKWindow {
   public:
 	MandelBrotWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		//	this->setTitle(std::string("Triangle"));
+		this->setTitle(std::string("MandelBrot"));
 	}
 	~MandelBrotWindow(void) {}
 
@@ -49,8 +49,8 @@ class MandelBrotWindow : public VKWindow {
 
 		for (unsigned int i = 0; i < paramMemory.size(); i++)
 			vkFreeMemory(getDevice(), paramMemory[i], nullptr);
-		for (unsigned int i = 0; i < paramBuffer.size(); i++)
-			vkDestroyBuffer(getDevice(), paramBuffer[i], nullptr);
+
+		vkDestroyBuffer(getDevice(), paramBuffer, nullptr);
 		vkDestroyPipeline(getDevice(), computePipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), computePipelineLayout, nullptr);
 	}
@@ -108,18 +108,17 @@ class MandelBrotWindow : public VKWindow {
 
 		VkDeviceSize bufferSize = paramMemSize * getSwapChainImageCount();
 
-		paramBuffer.resize(1);
 		paramMemory.resize(1);
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
-		for (size_t i = 0; i < paramBuffer.size(); i++) {
+		for (size_t i = 0; i < paramMemory.size(); i++) {
 			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
 								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   paramBuffer[i], paramMemory[i]);
+								   paramBuffer, paramMemory[i]);
 		}
 
 		/*	Allocate descriptor set.	*/
@@ -180,7 +179,7 @@ class MandelBrotWindow : public VKWindow {
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = paramBuffer[0];
+			bufferInfo.buffer = paramBuffer;
 			bufferInfo.offset = paramMemSize * i;
 			bufferInfo.range = paramMemSize;
 			// imageView
@@ -233,7 +232,6 @@ class MandelBrotWindow : public VKWindow {
 
 			vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
 
-		
 			VkImageMemoryBarrier imageMemoryBarrier = {};
 			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -261,6 +259,10 @@ class MandelBrotWindow : public VKWindow {
 		SDL_GetMouseState(&x, &y);
 		params.mousePosX = x;
 		params.mousePosY = y;
+		params.posX = 0;
+		params.posY = 0;
+		params.zoom = 1.0f;
+		params.nrSamples = 128;
 	}
 };
 
@@ -270,16 +272,15 @@ int main(int argc, const char **argv) {
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-		printf("%s\n", devices[0]->getDeviceName());
 
-		std::shared_ptr<VKDevice> d =
+		std::shared_ptr<VKDevice> ldevice =
 			std::make_shared<VKDevice>(devices, required_device_extensions);
 
-		MandelBrotWindow window(core, d);
+		MandelBrotWindow window(core, ldevice);
 
 		window.run();
 	} catch (std::exception &ex) {
-		// std::cerr << ex.what();
+		std::cerr << ex.what();
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
