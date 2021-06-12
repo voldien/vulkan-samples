@@ -2,7 +2,6 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(local_size_x = 16, local_size_y = 16) in;
-//layout(set = 0, binding = 0) image2D firstImage;
 layout(rgba32f, set = 0, binding = 0) uniform image2D img_output;
 
 /**
@@ -30,13 +29,12 @@ vec2 squareImaginary(vec2 number){
 
 vec4 computeMandel(vec2 uv) {
 
-	const int samples = 128;
+	const int samples = u_pushConstants._params.nrSamples;
 	const float lthreadhold = 2.0;
 
-	//vec2 uv = vec2(coord) / vec2(dim);
 	vec2 mouseOffset = u_pushConstants._params.mousePos / vec2(u_pushConstants._params.windowSize);
 	uv += mouseOffset;
-	uv *= 0.25;
+	uv *= u_pushConstants._params.zoom;
 	const vec2 c = vec2(-.445, 0.0) +  vec2(uv - 0.5)* vec2(2.0+ 1.7*0.2  );
 	vec2 z = vec2(0,0);
 	float n = 0;
