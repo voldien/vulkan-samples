@@ -413,13 +413,13 @@ VkPhysicalDevice VKWindow::physicalDevice() const {
 	return device->getPhysicalDevices()[0]->getHandle();
 }
 
-std::vector<VkPhysicalDevice> VKWindow::getPhyiscalDevices(void) { return {}; }
+const std::vector<VkPhysicalDevice> &VKWindow::availablePhysicalDevices(void) const { return {}; }
 
-std::vector<VkCommandBuffer> &VKWindow::getCommandBuffers(void) const noexcept {
+const std::vector<VkCommandBuffer> &VKWindow::getCommandBuffers(void) const noexcept {
 	return this->swapChain->commandBuffers;
 }
 
-std::vector<VkFramebuffer> &VKWindow::getFrameBuffers(void) const noexcept {
+const std::vector<VkFramebuffer> &VKWindow::getFrameBuffers(void) const noexcept {
 	return this->swapChain->swapChainFramebuffers;
 }
 

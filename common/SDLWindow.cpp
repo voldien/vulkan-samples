@@ -19,7 +19,7 @@ void SDLWindow::setSize(int width, int height) {
 void SDLWindow::getPosition(int *x, int *y) const { SDL_GetWindowPosition(this->window, x, y); }
 
 void SDLWindow::getSize(int *width, int *height) const { SDL_GetWindowSize(this->window, width, height); }
-void SDLWindow::setTitle(std::string &title) { SDL_SetWindowTitle(window, title.c_str()); }
+void SDLWindow::setTitle(const std::string &title) { SDL_SetWindowTitle(window, title.c_str()); }
 
 std::string SDLWindow::getTitle(void) { return SDL_GetWindowTitle(window); }
 

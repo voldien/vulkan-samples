@@ -24,7 +24,7 @@ class SDLWindow {
 
 	virtual void minimize(void);
 
-	virtual void setTitle(std::string &title);
+	virtual void setTitle(const std::string &title);
 
 	virtual std::string getTitle(void);
 
