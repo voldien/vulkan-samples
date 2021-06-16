@@ -34,8 +34,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	}
 
 	// TODO resolve in case compute is not supported on the graphic queue.
-	if((requiredQueues & VK_QUEUE_COMPUTE_BIT) && computeQueueNodeIndex == UINT32_MAX){
-
+	if ((requiredQueues & VK_QUEUE_COMPUTE_BIT) && computeQueueNodeIndex == UINT32_MAX) {
 	}
 	this->graphics_queue_node_index = graphicsQueueNodeIndex;
 	this->compute_queue_node_index = computeQueueNodeIndex;
@@ -53,18 +52,17 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 							 .pQueuePriorities = queue_priorities};
 	}
 	const VkDeviceQueueCreateInfo queueInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-										   .pNext = nullptr,
-										   .flags = 0,
-										   .queueFamilyIndex = this->graphics_queue_node_index,
-										   .queueCount = nrQueues,
-										   .pQueuePriorities = queue_priorities};
+											   .pNext = nullptr,
+											   .flags = 0,
+											   .queueFamilyIndex = this->graphics_queue_node_index,
+											   .queueCount = nrQueues,
+											   .pQueuePriorities = queue_priorities};
 
 	/*  Required extensions.    */
 	std::vector<const char *> deviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME, /*	*/
 	};
-	if(devices.size() > 1){
-
+	if (devices.size() > 1) {
 	}
 
 	/*	Iterate through each extension and add if supported.	*/
@@ -83,7 +81,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	};
 	if (devices.size() > 0) {
 		deviceGroupDeviceCreateInfo.physicalDeviceCount = devices.size();
-		//deviceGroupDeviceCreateInfo.pPhysicalDevices = devices.data();
+		// deviceGroupDeviceCreateInfo.pPhysicalDevices = devices.data();
 	}
 
 	VkDeviceCreateInfo deviceInfo = {};
@@ -94,7 +92,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 
 	// /*	Enable group if supported.	*/
 	if (devices.size() > 1) {
-		deviceInfo.pNext = &deviceGroupDeviceCreateInfo;
+		// deviceInfo.pNext = &deviceGroupDeviceCreateInfo;
 	}
 	deviceInfo.enabledExtensionCount = deviceExtensions.size();
 	deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
@@ -103,7 +101,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	vkCreateDevice(devices[0]->getHandle(), &deviceInfo, VK_NULL_HANDLE, &this->logicalDevice);
 
 	/*  Get all queues.    */
-	if(requiredQueues & VK_QUEUE_GRAPHICS_BIT)
+	if (requiredQueues & VK_QUEUE_GRAPHICS_BIT)
 		vkGetDeviceQueue(getHandle(), this->graphics_queue_node_index, 0, &this->graphicsQueue);
 	if (requiredQueues & VK_QUEUE_GRAPHICS_BIT)
 		vkGetDeviceQueue(getHandle(), this->present_queue_node_index, 0, &this->presentQueue);
