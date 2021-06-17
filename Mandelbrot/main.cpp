@@ -1,3 +1,4 @@
+#include "FPSCounter.h"
 #include "VKHelper.h"
 #include "VksCommon.h"
 #include "common.hpp"
@@ -22,8 +23,6 @@ class MandelBrotWindow : public VKWindow {
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	struct mandelbrot_param_t {
-		int windowWidth = 1;
-		int windowHeight = 1;
 		float posX, posY;
 		float mousePosX, mousePosY;
 		float zoom; /*  */
@@ -31,12 +30,14 @@ class MandelBrotWindow : public VKWindow {
 		int nrSamples;
 	} params = {};
 
+	FPSCounter<float> fpsCounter;
 	unsigned int paramMemSize = sizeof(params);
 
   public:
 	MandelBrotWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(std::string("MandelBrot"));
+		//	fpsCounter = FPSCounter(100);
 	}
 	~MandelBrotWindow(void) {}
 
@@ -145,9 +146,6 @@ class MandelBrotWindow : public VKWindow {
 	virtual void onResize(int width, int height) override {
 
 		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
-
-		params.windowWidth = width;
-		params.windowHeight = height;
 
 		/*	*/
 		computeImageViews.resize(getSwapChainImageCount());
@@ -263,6 +261,9 @@ class MandelBrotWindow : public VKWindow {
 		params.posY = 0;
 		params.zoom = 1.0f;
 		params.nrSamples = 128;
+
+		fpsCounter.incrementFPS(SDL_GetPerformanceCounter());
+		printf("fps: %d\n", fpsCounter.getFPS());
 	}
 };
 
@@ -273,8 +274,7 @@ int main(int argc, const char **argv) {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 
-		std::shared_ptr<VKDevice> ldevice =
-			std::make_shared<VKDevice>(devices, required_device_extensions);
+		std::shared_ptr<VKDevice> ldevice = std::make_shared<VKDevice>(devices, required_device_extensions);
 
 		MandelBrotWindow window(core, ldevice);
 
