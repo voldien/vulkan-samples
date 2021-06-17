@@ -1,4 +1,5 @@
 #include "common.hpp"
+#include <Importer/ImageImport.h>
 #include <VKWindow.h>
 #include <stdexcept>
 
@@ -6,15 +7,23 @@ class SignedDistanceFieldTextureWindow : public VKWindow {
   private:
 	VkPipeline particleSim;
 	VkPipeline particleGraphicPipeline;
+	VkImage texture;
+	VkDeviceMemory textureMemory;
 
   public:
 	SignedDistanceFieldTextureWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
 
 	virtual void Initialize(void) { /*	*/
-	
+		VkCommandBuffer cmd;
+		std::vector<VkCommandBuffer> cmds =
+			this->getLogicalDevice()->beginSingleTimeCommands(this->getGraphicCommandPool());
+		ImageImporter::createImage("/home/voldie/test.png", getDevice(), cmds[0], physicalDevice(), texture,
+								   textureMemory);
+
+		getLogicalDevice()->submitCommand(getDefaultGraphicQueue(), cmds);
 	}
-	
+
 	virtual void onResize(int width, int height) override {
 		for (uint32_t i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
