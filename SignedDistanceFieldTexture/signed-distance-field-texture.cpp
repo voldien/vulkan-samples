@@ -2,13 +2,13 @@
 #include <VKWindow.h>
 #include <stdexcept>
 
-class SignedDistanceFieldVolumeWindow : public VKWindow {
+class SignedDistanceFieldTextureWindow : public VKWindow {
   private:
 	VkPipeline particleSim;
 	VkPipeline particleGraphicPipeline;
 
   public:
-	SignedDistanceFieldVolumeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	SignedDistanceFieldTextureWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
 
 	virtual void Initialize(void) { /*	*/
@@ -65,7 +65,7 @@ int main(int argc, const char **argv) {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
-		SignedDistanceFieldVolumeWindow window(core, d);
+		SignedDistanceFieldTextureWindow window(core, d);
 
 		window.run();
 	} catch (std::exception &ex) {

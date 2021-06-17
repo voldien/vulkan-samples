@@ -1,0 +1,14 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+ivec3 dims;
+
+void main(void) {
+
+	ivec3 world_compute_ID = ivec3(gl_GlobalInvocationID.xyz);
+	// for (
+
+	// )
+}
