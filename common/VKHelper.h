@@ -199,6 +199,23 @@ class VKHelper {
 		vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout);
 	}
 
+	static VkDescriptorPool createDescPool(VkDevice device, const std::vector<VkDescriptorPoolSize> &poolSizes = {},
+									   int maxSets = 1, const VkAllocationCallbacks *pAllocator = nullptr,
+									   void *pNext = nullptr) {
+		VkDescriptorPool descPool;
+
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.pNext = pNext;
+		poolInfo.poolSizeCount = poolSizes.size();
+		poolInfo.pPoolSizes = poolSizes.data();
+		poolInfo.maxSets = maxSets;
+
+		vkCreateDescriptorPool(device, &poolInfo, pAllocator, &descPool);
+
+		return descPool;
+	}
+
 	static VkPipeline createGraphicPipeline(void);
 
 	static VkPipeline createComputePipeline(void);
@@ -341,9 +358,8 @@ class VKHelper {
 		// endSingleTimeCommands(commandBuffer);
 	}
 
-
 	static void copyBufferToImageCmd(VkDevice device, VkCommandBuffer cmd, VkBuffer src, VkImage dst,
-										  const VkExtent3D &size, const VkOffset3D &offset = {0, 0, 0}) {
+									 const VkExtent3D &size, const VkOffset3D &offset = {0, 0, 0}) {
 
 		VkBufferImageCopy region{};
 		region.bufferOffset = 0;
