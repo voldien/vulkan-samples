@@ -91,13 +91,12 @@ class VKDevice {
 		vkQueueSubmit(queue, 1, &submitInfo, fence);
 	}
 
-	template<size_t n>
-	std::array<VkCommandBuffer, n> beginSingleTimeCommands(VkCommandPool commandPool) {
+	std::vector<VkCommandBuffer> beginSingleTimeCommands(VkCommandPool commandPool, unsigned int nrCmdBuffers = 1) {
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocInfo.commandPool = commandPool;
-		allocInfo.commandBufferCount = n;
+		allocInfo.commandBufferCount = nrCmdBuffers;
 
 		VkCommandBuffer commandBuffer;
 		vkAllocateCommandBuffers(getHandle(), &allocInfo, &commandBuffer);
