@@ -9,6 +9,7 @@ void computeSDF(in const ivec3 SDF_pixel_coord) {
 	ivec2 imageSize = imageSize(image_data);
 	float d = 1000000;
 
+	vec4 sdf_pixel = vec4(1, 1, 1, 1);
 	/*  (N^3) Time complexity,*/
 	for (int x = 0; x < imageSize.x; x++) {
 		for (int y = 0; y < imageSize.y; y++) {
@@ -25,7 +26,7 @@ void computeSDF(in const ivec3 SDF_pixel_coord) {
 	}
 
 	/*  Write pixel.    */
-	storeImage(img_output, SDF_pixel_coord.xy, vec4(d));
+	imageStore(img_output, SDF_pixel_coord.xy, sdf_pixel);
 }
 
 void main(void) {
