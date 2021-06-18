@@ -111,6 +111,7 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 void ImageImporter::createImage(const char *filename, VkDevice device, VkCommandBuffer cmd,
 								VkPhysicalDevice physicalDevice, VkImage &textureImage,
 								VkDeviceMemory &textureImageMemory) {
+
 	unsigned int texWidth, texHeight, internal, type, format;
 	unsigned long pixelSize;
 	void *pixels = loadTextureData(filename, &texWidth, &texHeight, &format, &internal, &type, &pixelSize);
@@ -124,6 +125,7 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 		throw std::runtime_error("failed to load texture image!");
 	}
 
+	/*	*/
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 	VKHelper::createBuffer(device, imageSize, memProperties, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
