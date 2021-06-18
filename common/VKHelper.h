@@ -200,7 +200,7 @@ class VKHelper {
 	}
 
 	static VkDescriptorPool createDescPool(VkDevice device, const std::vector<VkDescriptorPoolSize> &poolSizes = {},
-									   int maxSets = 1, const VkAllocationCallbacks *pAllocator = nullptr,
+									   uint32_t maxSets = 1, const VkAllocationCallbacks *pAllocator = nullptr,
 									   void *pNext = nullptr) {
 		VkDescriptorPool descPool;
 

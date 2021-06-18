@@ -123,22 +123,16 @@ class MandelBrotWindow : public VKWindow {
 		}
 
 		/*	Allocate descriptor set.	*/
-		std::vector<VkDescriptorPoolSize> poolSize = {{
-														  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-														  static_cast<uint32_t>(getSwapChainImageCount()),
-													  },
-													  {
-														  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-														  static_cast<uint32_t>(getSwapChainImageCount()),
-													  }};
+		const std::vector<VkDescriptorPoolSize> poolSize = {{
+																VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+																static_cast<uint32_t>(getSwapChainImageCount()),
+															},
+															{
+																VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+																static_cast<uint32_t>(getSwapChainImageCount()),
+															}};
 
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = poolSize.size();
-		poolInfo.pPoolSizes = poolSize.data();
-		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount() * 2);
-
-		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
+		descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
 
 		onResize(width(), height());
 	}
