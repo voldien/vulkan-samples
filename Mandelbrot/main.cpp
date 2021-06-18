@@ -206,6 +206,7 @@ class MandelBrotWindow : public VKWindow {
 			vkUnmapMemory(getDevice(), paramMemory[0]);
 		}
 
+		// TODO resolve for if compute queue is not part of graphic queue.
 		for (unsigned int i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
 
