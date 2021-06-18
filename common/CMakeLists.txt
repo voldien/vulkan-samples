@@ -6,9 +6,7 @@ FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h
 )
 
 ADD_LIBRARY(vkcommon ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(vkcommon ${Vulkan_LIBRARIES} fmt freeimage)
+TARGET_LINK_LIBRARIES(vkcommon ${Vulkan_LIBRARIES} fmt freeimage assimp ${SDL2_LIBRARIES})
 
 # Vulkan dependencies headers.
-TARGET_INCLUDE_DIRECTORIES(vkcommon PRIVATE ${Vulkan_INCLUDE_DIRS})
-
-
+TARGET_INCLUDE_DIRECTORIES(vkcommon PRIVATE ${Vulkan_INCLUDE_DIRS} )
