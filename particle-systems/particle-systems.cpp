@@ -5,16 +5,22 @@
 class ParticleSystemWindow : public VKWindow {
   private:
 	VkPipeline particleSim;
+	VkPipelineLayout particleSimLayout;
 	VkPipeline particleGraphicPipeline;
+	VkPipelineLayout particleGraphicLayout;
+	typedef struct particle_t {
+		float x, y;		  /*	Position.	*/
+		float xdir, ydir; /*	Velocity.	*/
+	} alignas(16) Particle;
 
   public:
 	ParticleSystemWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
 
 	virtual void Initialize(void) { /*	*/
-	
-
+		onResize(width(), height());
 	}
+
 	virtual void onResize(int width, int height) override {
 		for (uint32_t i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
