@@ -90,8 +90,6 @@ class VKHelper {
 							 const VkPhysicalDeviceMemoryProperties &memoryProperies, VkBufferUsageFlags usage,
 							 VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
 
-
-
 	static void createImage(VkDevice device, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
 							VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
 							const VkPhysicalDeviceMemoryProperties &memProperties, VkImage &image,
@@ -109,7 +107,8 @@ class VKHelper {
 									   VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 
 	//	template<typename T>
-	static void createSampler(VkDevice device, VkSampler &sampler, float maxSamplerAnisotropy = 1.0f, void* pNext = nullptr) {
+	static void createSampler(VkDevice device, VkSampler &sampler, float maxSamplerAnisotropy = 1.0f,
+							  void *pNext = nullptr) {
 
 		VkSamplerCreateInfo samplerInfo{};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -151,7 +150,7 @@ class VKHelper {
 	 * @param data
 	 * @return VkShaderModule
 	 */
-	static VkShaderModule createShaderModule(VkDevice device, const std::vector<char> &data){
+	static VkShaderModule createShaderModule(VkDevice device, const std::vector<char> &data) {
 		VkShaderModuleCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.pNext = nullptr;
@@ -198,6 +197,23 @@ class VKHelper {
 		layoutInfo.pBindings = descitprSetLayoutBindings.data();
 
 		vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout);
+	}
+
+	static VkDescriptorPool createDescPool(VkDevice device, const std::vector<VkDescriptorPoolSize> &poolSizes = {},
+									   uint32_t maxSets = 1, const VkAllocationCallbacks *pAllocator = nullptr,
+									   void *pNext = nullptr) {
+		VkDescriptorPool descPool;
+
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.pNext = pNext;
+		poolInfo.poolSizeCount = poolSizes.size();
+		poolInfo.pPoolSizes = poolSizes.data();
+		poolInfo.maxSets = maxSets;
+
+		vkCreateDescriptorPool(device, &poolInfo, pAllocator, &descPool);
+
+		return descPool;
 	}
 
 	static VkPipeline createGraphicPipeline(void);
@@ -284,10 +300,80 @@ class VKHelper {
 	 * @param size
 	 */
 	static void stageBufferCopy(VkDevice device, VkQueue queue, VkCommandPool commandPool, VkBuffer src, VkBuffer dst,
-								VkDeviceSize size);
+								VkDeviceSize size) {
+
+		VkCommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool = commandPool;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer commandBuffer;
+		vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+		VkBufferCopy copyRegion{};
+		copyRegion.size = size;
+		vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+
+		vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+
+		vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(queue);
+
+		vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+	}
 
 	static void stageBufferCmdCopy(VkDevice device, VkQueue queue, VkCommandBuffer cmd, VkBuffer src, VkBuffer dst,
-								   VkDeviceSize size);
+								   VkDeviceSize size) {}
+	static void stageBufferToImageCmdCopyDirect(VkDevice device, VkQueue queue, VkCommandBuffer cmd, VkBuffer src,
+												VkImage dst, const VkExtent3D &size,
+												const VkOffset3D &offset = {0, 0, 0}) {
+
+		// VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+		// VkBufferImageCopy region{};
+		// region.bufferOffset = 0;
+		// region.bufferRowLength = 0;
+		// region.bufferImageHeight = 0;
+		// region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		// region.imageSubresource.mipLevel = 0;
+		// region.imageSubresource.baseArrayLayer = 0;
+		// region.imageSubresource.layerCount = 1;
+		// region.imageOffset = {0, 0, 0};
+		// region.imageExtent = {width, height, 1};
+
+		// vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+		// endSingleTimeCommands(commandBuffer);
+	}
+
+	static void copyBufferToImageCmd(VkDevice device, VkCommandBuffer cmd, VkBuffer src, VkImage dst,
+									 const VkExtent3D &size, const VkOffset3D &offset = {0, 0, 0}) {
+
+		VkBufferImageCopy region{};
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+		region.imageOffset = offset;
+		region.imageExtent = size;
+
+		vkCmdCopyBufferToImage(cmd, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	}
 };
 
 #define CHECK_VK_ERROR(result)

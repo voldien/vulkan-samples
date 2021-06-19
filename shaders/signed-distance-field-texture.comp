@@ -1,0 +1,50 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(rgba32f, set = 0, binding = 0) uniform image2D img_output;
+layout(rgba32f, set = 0, binding = 0) uniform image2D image_data;
+
+void computeSDF(in const ivec3 SDF_pixel_coord) {
+	ivec2 imageSize = imageSize(image_data);
+	float d = 1000000;
+
+	vec4 sdf_pixel = vec4(1, 1, 1, 1);
+	/*  (N^3) Time complexity,*/
+	for (int x = 0; x < imageSize.x; x++) {
+		for (int y = 0; y < imageSize.y; y++) {
+			const ivec3 rawPixelCoord = ivec3(x, y, 0);
+
+			vec4 pixel = imageLoad(image_data, rawPixelCoord.xy);
+
+			bvec4 ge = greaterThan(pixel, vec4(0, 0, 0, 0));
+			if (any(ge)) {
+				// TODO check if signed.
+				d = distance(vec3(rawPixelCoord), vec3(SDF_pixel_coord));
+			}
+		}
+	}
+
+	/*  Write pixel.    */
+	imageStore(img_output, SDF_pixel_coord.xy, sdf_pixel);
+}
+
+void main(void) {
+
+	ivec3 world_compute_ID = ivec3(gl_GlobalInvocationID.xyz);
+
+	/*  Make sure it does not exceeded the work group size. */
+	if (any(greaterThan(world_compute_ID.xy, imageSize(img_output))))
+		return;
+
+	imageSize(img_output);
+	imageSize(image_data);
+	const ivec3 nrPixelElements = ivec3(imageSize(img_output), 0) / ivec3(gl_WorkGroupSize.xyz);
+
+	for (int x = 0; x < nrPixelElements.x; x++) {
+		for (int y = 0; y < nrPixelElements.y; y++) {
+			const ivec3 pixel_coords = world_compute_ID + ivec3(x, y, 0);
+			computeSDF(pixel_coords);
+		}
+	}
+}

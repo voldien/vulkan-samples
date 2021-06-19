@@ -69,6 +69,7 @@ void VKHelper::createImage(VkDevice device, uint32_t width, uint32_t height, uin
 						   VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
 						   const VkPhysicalDeviceMemoryProperties &memProperties, VkImage &image,
 						   VkDeviceMemory &imageMemory) {
+							   
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -103,8 +104,8 @@ void VKHelper::createImage(VkDevice device, uint32_t width, uint32_t height, uin
 	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
-VkImageView VKHelper::createImageView(VkDevice device, VkImage image, VkImageViewType imageType, VkFormat format, VkImageAspectFlags aspectFlags,
-									  uint32_t mipLevels) {
+VkImageView VKHelper::createImageView(VkDevice device, VkImage image, VkImageViewType imageType, VkFormat format,
+									  VkImageAspectFlags aspectFlags, uint32_t mipLevels) {
 
 	/**/
 	VkImageViewCreateInfo viewInfo = {};
@@ -194,12 +195,13 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 		VK_CHECK(vkGetPhysicalDeviceDisplayPropertiesKHR(device, &nrDisplayProperties, displayProperties.data()));
 
 		/* Find all supported planes.	*/
-		uint32_t planeCount;
+		uint32_t planeCount = 0;
 		VK_CHECK(vkGetPhysicalDeviceDisplayPlanePropertiesKHR(device, &planeCount, nullptr));
 		// if (planeCount <= 0)
 		// 	continue;
 
 		for (uint32_t x = 0; x < displayProperties.size(); x++) {
+
 		}
 
 		// Determine the type of the physical device
@@ -335,39 +337,4 @@ VKHelper::SwapChainSupportDetails VKHelper::querySwapChainSupport(VkPhysicalDevi
 	}
 
 	return details;
-}
-
-void VKHelper::stageBufferCopy(VkDevice device, VkQueue queue, VkCommandPool commandPool, VkBuffer src, VkBuffer dst,
-							   VkDeviceSize size) {
-
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = commandPool;
-	allocInfo.commandBufferCount = 1;
-
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-	VkCommandBufferBeginInfo beginInfo{};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-	VkBufferCopy copyRegion{};
-	copyRegion.size = size;
-	vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
-
-	vkEndCommandBuffer(commandBuffer);
-
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-
-	vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(queue);
-
-	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }

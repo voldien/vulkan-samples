@@ -1,4 +1,3 @@
-#include "FPSCounter.h"
 #include "VKHelper.h"
 #include "VksCommon.h"
 #include "common.hpp"
@@ -6,7 +5,7 @@
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 
-class MandelBrotWindow : public VKWindow {
+class ReactionDiffusionWindow : public VKWindow {
   private:
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
@@ -23,6 +22,8 @@ class MandelBrotWindow : public VKWindow {
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	struct mandelbrot_param_t {
+		int windowWidth = 1;
+		int windowHeight = 1;
 		float posX, posY;
 		float mousePosX, mousePosY;
 		float zoom; /*  */
@@ -30,16 +31,14 @@ class MandelBrotWindow : public VKWindow {
 		int nrSamples;
 	} params = {};
 
-	FPSCounter<float> fpsCounter;
 	unsigned int paramMemSize = sizeof(params);
 
   public:
-	MandelBrotWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	ReactionDiffusionWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		this->setTitle(std::string("MandelBrot"));
-		//	fpsCounter = FPSCounter(100);
+		this->setTitle(std::string("ReactionDiffusion"));
 	}
-	~MandelBrotWindow(void) {}
+	~ReactionDiffusionWindow(void) {}
 
 	virtual void Release(void) override {
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -59,7 +58,7 @@ class MandelBrotWindow : public VKWindow {
 	VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 		VkPipeline pipeline;
 
-		auto compShaderCode = IOUtil::readFile("shaders/mandelbrot.comp.spv");
+		auto compShaderCode = IOUtil::readFile("shaders/reactiondiffusion.comp.spv");
 
 		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -123,16 +122,22 @@ class MandelBrotWindow : public VKWindow {
 		}
 
 		/*	Allocate descriptor set.	*/
-		const std::vector<VkDescriptorPoolSize> poolSize = {{
-																VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-																static_cast<uint32_t>(getSwapChainImageCount()),
-															},
-															{
-																VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-																static_cast<uint32_t>(getSwapChainImageCount()),
-															}};
+		std::vector<VkDescriptorPoolSize> poolSize = {{
+														  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+														  static_cast<uint32_t>(getSwapChainImageCount()),
+													  },
+													  {
+														  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+														  static_cast<uint32_t>(getSwapChainImageCount()),
+													  }};
 
-		descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.poolSizeCount = poolSize.size();
+		poolInfo.pPoolSizes = poolSize.data();
+		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount() * 2);
+
+		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
 		onResize(width(), height());
 	}
@@ -140,6 +145,9 @@ class MandelBrotWindow : public VKWindow {
 	virtual void onResize(int width, int height) override {
 
 		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
+
+		params.windowWidth = width;
+		params.windowHeight = height;
 
 		/*	*/
 		computeImageViews.resize(getSwapChainImageCount());
@@ -206,7 +214,6 @@ class MandelBrotWindow : public VKWindow {
 			vkUnmapMemory(getDevice(), paramMemory[0]);
 		}
 
-		// TODO resolve for if compute queue is not part of graphic queue.
 		for (unsigned int i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
 
@@ -256,9 +263,6 @@ class MandelBrotWindow : public VKWindow {
 		params.posY = 0;
 		params.zoom = 1.0f;
 		params.nrSamples = 128;
-
-		fpsCounter.incrementFPS(SDL_GetPerformanceCounter());
-		printf("fps: %d\n", fpsCounter.getFPS());
 	}
 };
 
@@ -271,7 +275,7 @@ int main(int argc, const char **argv) {
 
 		std::shared_ptr<VKDevice> ldevice = std::make_shared<VKDevice>(devices, required_device_extensions);
 
-		MandelBrotWindow window(core, ldevice);
+		ReactionDiffusionWindow window(core, ldevice);
 
 		window.run();
 	} catch (std::exception &ex) {
