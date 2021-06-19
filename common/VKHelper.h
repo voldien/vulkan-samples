@@ -126,7 +126,7 @@ class VKHelper {
 		/*	*/
 		samplerInfo.mipLodBias = 0;
 		/*	*/
-		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.anisotropyEnable = VK_FALSE;
 		samplerInfo.maxAnisotropy = maxSamplerAnisotropy;
 		/*	*/
 		samplerInfo.compareEnable = VK_FALSE;
@@ -218,7 +218,26 @@ class VKHelper {
 
 	static VkPipeline createGraphicPipeline(void);
 
-	static VkPipeline createComputePipeline(void);
+	static void createComputePipeline(VkDevice device, VkPipeline* pipeline, VkPipelineLayout *layout) {
+
+		//VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
+
+		// VkPipelineShaderStageCreateInfo compShaderStageInfo{};
+		// compShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		// compShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+		// //compShaderStageInfo.module = compShaderModule;
+		// compShaderStageInfo.pName = "main";
+
+		// VkComputePipelineCreateInfo pipelineCreateInfo = {};
+		// pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+		// pipelineCreateInfo.stage = compShaderStageInfo;
+		// pipelineCreateInfo.layout = *layout;
+
+		// VK_CHECK(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
+		//vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
+
+		//return pipeline;
+	}
 
 	//
 	// static bool isDeviceSuitable(VkPhysicalDevice device);

@@ -24,7 +24,9 @@ class VKDevice {
 			 VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
 	// TODO add std::fucntion for override the select GPU.
 
-	VKDevice(const std::shared_ptr<PhysicalDevice> &physicalDevice);
+	VKDevice(const std::shared_ptr<PhysicalDevice> &physicalDevice,
+			 const std::unordered_map<const char *, bool> &requested_extensions = {},
+			 VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
 	VKDevice(const VKDevice &) = delete;
 	VKDevice(VKDevice &&) = delete;
 	~VKDevice(void);
@@ -77,10 +79,12 @@ class VKDevice {
 		cmdPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		cmdPoolCreateInfo.pNext = pNext;
 		cmdPoolCreateInfo.queueFamilyIndex = queue;
-		cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		cmdPoolCreateInfo.flags = flag;
 
 		/*  Create command pool.    */
 		vkCreateCommandPool(getHandle(), &cmdPoolCreateInfo, nullptr, &pool);
+
+		return pool;
 	}
 
 	void submitCommands(VkQueue queue, const std::vector<VkCommandBuffer> &cmd,

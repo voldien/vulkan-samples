@@ -10,7 +10,7 @@
 
 VKWindow::~VKWindow(void) {
 
-	vkDeviceWaitIdle(getDevice());
+
 
 	/*	Relase*/
 	this->Release();
@@ -150,8 +150,14 @@ void VKWindow::swapBuffer(void) {
 
 	vkResetFences(getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame]);
 
-	VK_CHECK(vkQueueSubmit(device->getDefaultGraphicQueue(), 1, &submitInfo,
-						   this->inFlightFences[this->swapChain->currentFrame]));
+	this->getLogicalDevice()->submitCommands(getDefaultGraphicQueue(), {this->swapChain->commandBuffers[imageIndex]},
+											 {this->imageAvailableSemaphores[this->swapChain->currentFrame]},
+											 {this->renderFinishedSemaphores[this->swapChain->currentFrame]},
+											 this->inFlightFences[this->swapChain->currentFrame],
+											 {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT});
+
+	// VK_CHECK(vkQueueSubmit(device->getDefaultGraphicQueue(), 1, &submitInfo,
+	// 					   this->inFlightFences[this->swapChain->currentFrame]));
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -274,6 +280,18 @@ void VKWindow::createSwapChain(void) {
 		VK_CHECK(vkCreateImageView(getDevice(), &createInfo, nullptr, &this->swapChain->swapChainImageViews[i]));
 	}
 
+	VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
+	//findDepthFormat();
+
+	const VkPhysicalDeviceMemoryProperties& memProps = getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties();
+
+	VKHelper::createImage(getDevice(), this->swapChain->chainExtend.width, this->swapChain->chainExtend.height, 1,
+						  depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProps, this->swapChain->depthImage,
+						  this->swapChain->depthImageMemory);
+	this->swapChain->depthImageView = VKHelper::createImageView(
+		getDevice(), this->swapChain->depthImage, VK_IMAGE_VIEW_TYPE_2D, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+
 	/*	Renderpass	*/
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = this->swapChain->swapChainImageFormat;
@@ -285,20 +303,30 @@ void VKWindow::createSwapChain(void) {
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+	VkAttachmentDescription depthAttachment{};
+	depthAttachment.format = depthFormat;
+	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 	VkAttachmentReference colorAttachmentRef{};
 	colorAttachmentRef.attachment = 0;
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference depthAttachmentRef{};
-	depthAttachmentRef.attachment = 0;
+	depthAttachmentRef.attachment = 1;
 	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subpass{};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
-	subpass.pDepthStencilAttachment = nullptr;
-	//&depthAttachmentRef;
+	subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
 
 	VkSubpassDependency dependency{};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -310,10 +338,11 @@ void VKWindow::createSwapChain(void) {
 		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+	std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = 1;
-	renderPassInfo.pAttachments = &colorAttachment;
+	renderPassInfo.attachmentCount = attachments.size();
+	renderPassInfo.pAttachments = attachments.data();
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
 	renderPassInfo.dependencyCount = 1;
@@ -326,13 +355,14 @@ void VKWindow::createSwapChain(void) {
 	this->swapChain->swapChainFramebuffers.resize(this->swapChain->swapChainImageViews.size());
 
 	for (size_t i = 0; i < this->swapChain->swapChainImageViews.size(); i++) {
-		VkImageView attachments[] = {this->swapChain->swapChainImageViews[i]};
+		std::array<VkImageView, 2> attachments = {this->swapChain->swapChainImageViews[i],
+												  this->swapChain->depthImageView};
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = this->swapChain->renderPass;
-		framebufferInfo.attachmentCount = 1;
-		framebufferInfo.pAttachments = attachments;
+		framebufferInfo.attachmentCount = attachments.size();
+		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = this->swapChain->chainExtend.width;
 		framebufferInfo.height = this->swapChain->chainExtend.height;
 		framebufferInfo.layers = 1;
@@ -459,7 +489,7 @@ void VKWindow::run(void) {
 			case SDL_WINDOWEVENT:
 				switch (event.window.event) {
 				case SDL_WINDOWEVENT_CLOSE:
-					return;
+					goto finished;
 				case SDL_WINDOWEVENT_SIZE_CHANGED:
 				case SDL_WINDOWEVENT_RESIZED:
 					recreateSwapChain();
@@ -484,5 +514,8 @@ void VKWindow::run(void) {
 		this->swapBuffer();
 	}
 finished:
-	vkQueueWaitIdle(getDefaultGraphicQueue());
+	vkDeviceWaitIdle(getDevice());
+
+	/*	Release all the resources associated with the window application.	*/
+	this->Release();
 }

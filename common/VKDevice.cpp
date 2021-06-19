@@ -111,6 +111,13 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	this->physicalDevices = devices;
 }
 
+VKDevice::VKDevice(const std::shared_ptr<PhysicalDevice> &physicalDevice,
+				 const std::unordered_map<const char *, bool> &requested_extensions,
+				 VkQueueFlags requiredQueues){
+
+
+				 }
+
 VKDevice::~VKDevice(void) {
 	if (getHandle() != VK_NULL_HANDLE)
 		vkDestroyDevice(getHandle(), VK_NULL_HANDLE);

@@ -36,9 +36,9 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	std::vector<const char *> usedInstanceExtensionNames = {
 		/*	*/
 		//		VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME,
-		//		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-		//		VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
-		//		VK_KHR_DISPLAY_EXTENSION_NAME,
+				VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+				VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
+				VK_KHR_DISPLAY_EXTENSION_NAME,
 	};
 
 	for (const std::pair<const char *, bool> &n : requested_extensions) {

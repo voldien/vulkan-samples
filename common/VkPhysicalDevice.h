@@ -115,6 +115,13 @@ class PhysicalDevice {
 		vkGetPhysicalDeviceFeatures2(getHandle(), &feature);
 	}
 
+	/**
+	 * @brief Get the Properties object
+	 *
+	 * @tparam T
+	 * @param type
+	 * @param requestProperties
+	 */
 	template <typename T> void getProperties(VkStructureType type, T &requestProperties) {
 		VkPhysicalDeviceProperties2 properties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
 												  .pNext = &requestProperties};
