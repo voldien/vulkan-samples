@@ -4,15 +4,41 @@
 layout(local_size_x = 16, local_size_y = 16) in;
 
 // Contains the cells information.
-layout(rgba32f, set = 0, binding = 0) uniform image2D img_current_cells;
-layout(rgba32f, set = 0, binding = 1) uniform image2D img_previous_cells;
+layout(set = 0, binding = 0, std430) buffer img_current_cells{
+	vec2 AB[];
+}CurrentAB;
+
+layout(set = 0, binding = 1,std430) readonly buffer img_previous_cells{
+	vec2 AB[];
+}PreviousAB;
 
 layout(rgba32f, set = 0, binding = 2) uniform image2D img_output;
 
 layout(set = 0, binding = 3) uniform UniformBufferObject {
 	mat4 kernelA;
-	uniform mat4 kernelB;
-}
-ubo;
+	mat4 kernelB;
+	float feedRate;
+	float killRate;
+	float diffuseRateA;
+	float diffuseRateB;
+	float delta;
+} ubo;
 
-void main() { ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy); }
+
+float computeDiffuseRateA(float A, float B, mat4 kernel, float killRate, float feedRate, float diffuseRate, float delta){
+	return A  + (diffuseRate * (kernel * vec4(A)).x - A * pow(B,2) + feedRate*(1 - A)) * delta;
+}
+float computeDiffuseRateB(float A, float B, mat4 kernel, float killRate, float feedRate, float diffuseRate, float delta){
+	return B  + (diffuseRate * (kernel * vec4(B)).x + A * pow(B,2) - (killRate - feedRate) * B) * delta;
+}
+
+void main() { 
+	
+	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy); 
+	const uint memory_index = gl_LocalInvocationIndex;
+	vec2 AB = PreviousAB.AB[memory_index];
+	float pA = computeDiffuseRateA(AB.x,AB.y, ubo.kernelA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
+	float pB = computeDiffuseRateB(AB.x,AB.y, ubo.kernelA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
+
+	CurrentAB.AB[memory_index] = vec2(pA, pB);
+}

@@ -20,8 +20,9 @@ class MandelBrotWindow : public VKWindow {
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
-
 	std::vector<VkDescriptorSet> descriptorSets;
+	VkCommandPool computeCmdPool;
+	std::vector<VkCommandBuffer> computeCmds;
 	struct mandelbrot_param_t {
 		float posX, posY;
 		float mousePosX, mousePosY;
@@ -135,6 +136,8 @@ class MandelBrotWindow : public VKWindow {
 		descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
 
 		onResize(width(), height());
+
+		computeCmdPool = getLogicalDevice()->createCommandPool(getLogicalDevice()->getDefaultComputeQueueIndex());
 	}
 
 	virtual void onResize(int width, int height) override {

@@ -13,6 +13,8 @@ class ReactionDiffusionWindow : public VKWindow {
 	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
 
 	std::vector<VkImageView> computeImageViews;
+	std::vector<VkBuffer> cellsBuffers;
+	std::vector<VkDeviceMemory> cellsMemory;
 
 	std::vector<VkDeviceMemory> paramMemory;
 	VkBuffer paramBuffer;
@@ -106,7 +108,18 @@ class ReactionDiffusionWindow : public VKWindow {
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
 
-		VkDeviceSize bufferSize = paramMemSize * getSwapChainImageCount();
+		VkDeviceSize cellBufferSize = width() * height() * sizeof(float) * 2;
+		cellsBuffers.resize(getSwapChainImageCount() * 2);
+		cellsMemory.resize(getSwapChainImageCount() * 2);
+		for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
+			VKHelper::createBuffer(
+				getDevice(), cellBufferSize, getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
+				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, cellsBuffers[i], cellsMemory[i]);
+		}
+
+				VkDeviceSize bufferSize = paramMemSize * getSwapChainImageCount();
+
 
 		paramMemory.resize(1);
 

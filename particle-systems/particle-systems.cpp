@@ -4,10 +4,20 @@
 
 class ParticleSystemWindow : public VKWindow {
   private:
-	VkPipeline particleSim;
-	VkPipelineLayout particleSimLayout;
-	VkPipeline particleGraphicPipeline;
-	VkPipelineLayout particleGraphicLayout;
+	VkPipeline particleSim = VK_NULL_HANDLE;
+	VkPipelineLayout particleSimLayout = VK_NULL_HANDLE;
+	VkPipeline particleGraphicPipeline = VK_NULL_HANDLE;
+	VkPipelineLayout particleGraphicLayout = VK_NULL_HANDLE;
+
+	std::vector<VkBuffer> particleBuffers;
+	std::vector<VkDeviceMemory> particleBufferMemory;
+
+	std::vector<VkDescriptorSet> descriptorSets;
+	std::vector<VkBuffer> uniformBuffers;
+	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	std::vector<void *> mapMemory;
+
+	const int nrParticles = 1000;
 	typedef struct particle_t {
 		float x, y;		  /*	Position.	*/
 		float xdir, ydir; /*	Velocity.	*/
@@ -45,20 +55,34 @@ class ParticleSystemWindow : public VKWindow {
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			// memoryBarrier(cmd, 0, 0, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+			VkViewport viewport = {
+				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
+			vkCmdSetViewport(cmd, 0, 1, &viewport);
+
 			// Bind the compute pipeline.
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, particleSim);
-			// Bind descriptor set.
-			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline.pipelineLayout, 0, 1,
-			// 						&computePipeline.descriptorSet, 0, nullptr);
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, particleGraphicPipeline);
+
+			VkDeviceSize offsets[] = {0};
+			vkCmdBindVertexBuffers(cmd, 0, 1, &particleBuffers[i], offsets);
+
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, particleGraphicLayout, 0, 1, &descriptorSets[i], 0,
+									nullptr);
+
+			vkCmdDraw(cmd, nrParticles, 1, 0, 0);
+
+			vkCmdEndRenderPass(cmd);
+			// memoryBarrier(cmd, 0, 0, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+			// //Bind descriptor
+			// set.vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+			// 											computePipeline.pipelineLayout, 0, 1,
+			// 											&computePipeline.descriptorSet, 0, nullptr);
 			// // Dispatch compute job.
 			// vkCmdDispatch(cmd, (positionBuffer.size / sizeof(vec2)) / NUM_PARTICLES_PER_WORKGROUP, 1, 1);
 
-			// Barrier between compute and vertex shading.
-			// memoryBarrier(cmd, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-			// 			  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
-
-			vkCmdEndRenderPass(cmd);
+			// // Barrier between compute and vertex 
+			// shading.memoryBarrier(
+			// 	cmd, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+			// 	VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
 
 			VK_CHECK(vkEndCommandBuffer(cmd));
 		}

@@ -222,7 +222,7 @@ class InstanceWindow : public VKWindow {
 
 		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		for (int i = 0; i < getCommandBuffers().size(); i++) {
+		for (unsigned int i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
 
 			VkCommandBufferBeginInfo beginInfo = {};
