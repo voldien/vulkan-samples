@@ -31,12 +31,12 @@ template <typename T = double> class FPSCounter {
 		totalFPS++;
 	}
 
-	long int getFPS(void) const noexcept { return averageFPS; }
+	unsigned int getFPS(void) const noexcept { return averageFPS; }
 
   private:
 	int totalFPS;
 	int fpsSample;
-	int averageFPS;
+	unsigned int averageFPS;
 	long int prevTimeSample;
 	long int timeResolution;
 };
