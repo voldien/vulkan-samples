@@ -52,6 +52,10 @@ class SingleTextureWindow : public VKWindow {
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
+		vkDestroyImageView(getDevice(), textureView, nullptr);
+		vkDestroyImage(getDevice(), texture, nullptr);
+		vkFreeMemory(getDevice(), textureMemory, nullptr);
+
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
@@ -279,7 +283,6 @@ class SingleTextureWindow : public VKWindow {
 		vkEndCommandBuffer(cmds[0]);
 		this->getLogicalDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
 
-
 		vkQueueWaitIdle(getDefaultGraphicQueue());
 		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
@@ -290,7 +293,6 @@ class SingleTextureWindow : public VKWindow {
 
 		VkSampler sampler;
 		VKHelper::createSampler(getDevice(), sampler);
-
 
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
@@ -379,8 +381,8 @@ class SingleTextureWindow : public VKWindow {
 			descriptorWrites[1].descriptorCount = 1;
 			descriptorWrites[1].pImageInfo = &imageInfo;
 
-			vkUpdateDescriptorSets(getDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0,
-								   nullptr);
+			vkUpdateDescriptorSets(getDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(),
+								   0, nullptr);
 		}
 
 		VkBufferCreateInfo bufferInfo = {};
@@ -410,8 +412,6 @@ class SingleTextureWindow : public VKWindow {
 		VK_CHECK(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 		vkUnmapMemory(getDevice(), vertexMemory);
-
-
 
 		onResize(width(), height());
 	}
@@ -447,7 +447,7 @@ class SingleTextureWindow : public VKWindow {
 			renderPassInfo.renderArea.extent.height = height;
 
 			std::array<VkClearValue, 2> clearValues{};
-			clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+			clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
 			clearValues[1].depthStencil = {1.0f, 0};
 
 			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -469,7 +469,8 @@ class SingleTextureWindow : public VKWindow {
 
 			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
 			// 1, 					 &ub_barrier, 0, NULL);
-			VkViewport viewport = {.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
+			VkViewport viewport = {
+				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -496,9 +497,9 @@ class SingleTextureWindow : public VKWindow {
 
 		float elapsedTime = ((float)(SDL_GetPerformanceCounter() - ntime) / (float)SDL_GetPerformanceFrequency());
 
-		//fpsCounter.
+		// fpsCounter.
 
-			//printf("%f\n", elapsedTime);
+		// printf("%f\n", elapsedTime);
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
