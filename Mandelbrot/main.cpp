@@ -171,13 +171,12 @@ class MandelBrotWindow : public VKWindow {
 		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageView = computeImageViews[i];
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = paramBuffer;
 			bufferInfo.offset = paramMemSize * i;
 			bufferInfo.range = paramMemSize;
-			// imageView
 
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
