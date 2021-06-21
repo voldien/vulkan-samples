@@ -10,8 +10,6 @@
 
 VKWindow::~VKWindow(void) {
 
-
-
 	/*	Relase*/
 	this->Release();
 
@@ -281,9 +279,10 @@ void VKWindow::createSwapChain(void) {
 	}
 
 	VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
-	//findDepthFormat();
+	// findDepthFormat();
 
-	const VkPhysicalDeviceMemoryProperties& memProps = getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties();
+	const VkPhysicalDeviceMemoryProperties &memProps =
+		getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties();
 
 	VKHelper::createImage(getDevice(), this->swapChain->chainExtend.width, this->swapChain->chainExtend.height, 1,
 						  depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -326,7 +325,6 @@ void VKWindow::createSwapChain(void) {
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
 	subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
 
 	VkSubpassDependency dependency{};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -410,6 +408,11 @@ void VKWindow::cleanSwapChain(void) {
 	}
 	swapChain->swapChainImageViews.clear();
 
+	/*	Release depth/stencil.	*/
+	vkDestroyImageView(getDevice(), swapChain->depthImageView, nullptr);
+	vkDestroyImage(getDevice(), swapChain->depthImage, nullptr);
+	vkFreeMemory(getDevice(), swapChain->depthImageMemory, nullptr);
+
 	vkDestroySwapchainKHR(getDevice(), this->swapChain->swapchain, nullptr);
 }
 
@@ -439,9 +442,7 @@ VkQueue VKWindow::getDefaultGraphicQueue(void) const { return this->device->getD
 
 VkQueue VKWindow::getDefaultComputeQueue(void) const { return this->device->getDefaultCompute(); }
 
-VkPhysicalDevice VKWindow::physicalDevice() const {
-	return device->getPhysicalDevices()[0]->getHandle();
-}
+VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
 
 const std::vector<VkPhysicalDevice> &VKWindow::availablePhysicalDevices(void) const { return {}; }
 
