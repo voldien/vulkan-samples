@@ -200,8 +200,8 @@ class VKHelper {
 	}
 
 	static VkDescriptorPool createDescPool(VkDevice device, const std::vector<VkDescriptorPoolSize> &poolSizes = {},
-									   uint32_t maxSets = 1, const VkAllocationCallbacks *pAllocator = nullptr,
-									   void *pNext = nullptr) {
+										   uint32_t maxSets = 1, const VkAllocationCallbacks *pAllocator = nullptr,
+										   void *pNext = nullptr) {
 		VkDescriptorPool descPool;
 
 		VkDescriptorPoolCreateInfo poolInfo{};
@@ -218,9 +218,9 @@ class VKHelper {
 
 	static VkPipeline createGraphicPipeline(void);
 
-	static void createComputePipeline(VkDevice device, VkPipeline* pipeline, VkPipelineLayout *layout) {
+	static void createComputePipeline(VkDevice device, VkPipeline *pipeline, VkPipelineLayout *layout) {
 
-		//VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
+		// VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
 		// VkPipelineShaderStageCreateInfo compShaderStageInfo{};
 		// compShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -234,9 +234,9 @@ class VKHelper {
 		// pipelineCreateInfo.layout = *layout;
 
 		// VK_CHECK(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
-		//vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
+		// vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
 
-		//return pipeline;
+		// return pipeline;
 	}
 
 	//
@@ -392,6 +392,40 @@ class VKHelper {
 		region.imageExtent = size;
 
 		vkCmdCopyBufferToImage(cmd, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	}
+
+	VkCommandBuffer beginSingleTimeCommands(VkDevice device, VkCommandPool commandPool) {
+		VkCommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool = commandPool;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer commandBuffer;
+		vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+		return commandBuffer;
+	}
+
+	void endSingleTimeCommands(VkDevice device, VkQueue queue, VkCommandBuffer commandBuffer,
+							   VkCommandPool commandPool) {
+		vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+
+		vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(queue);
+
+		vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 	}
 };
 
