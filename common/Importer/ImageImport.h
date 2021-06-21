@@ -318,8 +318,8 @@ class ImageImporter {
 
 	static void createImage(const char *filename, const VKDevice &device, VkImage &image);
 
-	static void createImage(const char *filename, VkDevice device, VkCommandBuffer cmd, VkPhysicalDevice physicalDevice,
-							VkImage &textureImage, VkDeviceMemory &textureImageMemory);
+	static void createImage(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue ,
+							VkPhysicalDevice physicalDevice, VkImage &textureImage, VkDeviceMemory &textureImageMemory);
 };
 
 #endif
