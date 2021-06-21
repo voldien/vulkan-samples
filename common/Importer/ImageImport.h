@@ -312,6 +312,9 @@ class ImageImporter {
 	static void *loadTextureData(const char *cfilename, unsigned int *pwidth, unsigned int *pheight,
 								 unsigned int *pformat, unsigned int *pinternalformat, unsigned int *ptype,
 								 unsigned long *pixelSize);
+	static void saveTextureData(const char* cfilename, const void* pixelData, unsigned int width, unsigned int height, int layers, unsigned int format);
+
+	static void saveTextureData(const char* filename, VkDevice device,VkImage image);
 
 	static void createImage(const char *filename, const VKDevice &device, VkImage &image);
 
