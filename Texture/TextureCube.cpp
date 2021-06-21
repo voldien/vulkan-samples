@@ -189,7 +189,7 @@ class SingleTextureWindow : public VKWindow {
 		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		viewportState.viewportCount = 1;
 		viewportState.pViewports = &viewport;
-		viewportState.scissorCount = 0;
+		viewportState.scissorCount = 1;
 		viewportState.pScissors = &scissor;
 
 		VkPipelineRasterizationStateCreateInfo rasterizer{};
@@ -278,15 +278,17 @@ class SingleTextureWindow : public VKWindow {
 		beginInfo.flags = 0;
 
 		VK_CHECK(vkBeginCommandBuffer(cmds[0], &beginInfo));
-		ImageImporter::createImage("/home/voldie/test.png", getDevice(), cmds[0], physicalDevice(), texture,
-								   textureMemory);
+
+		ImageImporter::createImage("/home/voldie/test.png", getDevice(), getGraphicCommandPool(),
+								   getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
+
 		vkEndCommandBuffer(cmds[0]);
 		this->getLogicalDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
 
 		vkQueueWaitIdle(getDefaultGraphicQueue());
 		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
-		textureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_SRGB,
+		textureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8A8_SRGB,
 												VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 		// VKHelper::createImageView();

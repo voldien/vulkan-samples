@@ -137,6 +137,14 @@ class TriangleWindow : public VKWindow {
 		colorBlending.blendConstants[2] = 0.0f;
 		colorBlending.blendConstants[3] = 0.0f;
 
+		VkPipelineDepthStencilStateCreateInfo depthStencil{};
+		depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depthStencil.depthTestEnable = VK_FALSE;
+		depthStencil.depthWriteEnable = VK_FALSE;
+		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+		depthStencil.depthBoundsTestEnable = VK_FALSE;
+		depthStencil.stencilTestEnable = VK_FALSE;
+
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = 0;
@@ -154,6 +162,7 @@ class TriangleWindow : public VKWindow {
 		pipelineInfo.pRasterizationState = &rasterizer;
 		pipelineInfo.pMultisampleState = &multisampling;
 		pipelineInfo.pColorBlendState = &colorBlending;
+		pipelineInfo.pDepthStencilState = &depthStencil;
 		pipelineInfo.layout = pipelineLayout;
 		pipelineInfo.renderPass = getDefaultRenderPass();
 		pipelineInfo.subpass = 0;
@@ -186,7 +195,7 @@ class TriangleWindow : public VKWindow {
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex = getLogicalDevice()->findMemoryType(
-			memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT).value();
 
 		VK_CHECK(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
