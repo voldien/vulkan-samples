@@ -1,8 +1,10 @@
 #ifndef _VK_SAMPLES_COMMON_VK_DEVICE_H_
 #define _VK_SAMPLES_COMMON_VK_DEVICE_H_ 1
+#include "VKHelper.h"
 #include "VkPhysicalDevice.h"
 #include "VulkanCore.h"
 #include <fmt/core.h>
+#include <optional>
 #include <unordered_map>
 
 /**
@@ -58,18 +60,20 @@ class VKDevice {
 	 * @param properties
 	 * @return uint32_t
 	 */
-	template <size_t n = 0> uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
-
-		/*	Iterate throw each memory types.	*/
-		for (uint32_t i = 0; i < physicalDevices[n]->getMemoryProperties().memoryTypeCount; i++) {
-			if ((typeFilter & (1 << i)) &&
-				(physicalDevices[n]->getMemoryProperties().memoryTypes[i].propertyFlags & properties) == properties) {
-				return i;
-			}
-		}
-		throw std::runtime_error(fmt::format("failed to find suitable memory type {}!", typeFilter));
+	template <size_t n = 0>
+	std::optional<uint32_t> findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
+		return VKHelper::findMemoryType(physicalDevices[0]->getMemoryProperties(), typeFilter, properties);
+		// throw std::runtime_error(fmt::format("failed to find suitable memory type {}!", typeFilter));
 	}
 
+	/**
+	 * @brief Create a Command Pool object
+	 *
+	 * @param queue
+	 * @param flag
+	 * @param pNext
+	 * @return VkCommandPool
+	 */
 	VkCommandPool createCommandPool(uint32_t queue,
 									VkCommandPoolCreateFlags flag = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
 									const void *pNext = nullptr) {
@@ -88,10 +92,10 @@ class VKDevice {
 	}
 
 	void submitCommands(VkQueue queue, const std::vector<VkCommandBuffer> &cmd,
-					   const std::vector<VkSemaphore> &waitSemaphores = {},
-					   const std::vector<VkSemaphore> &signalSempores = {}, VkFence fence = VK_NULL_HANDLE,
-					   const std::vector<VkPipelineStageFlags> &waitStages = {
-						   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}) {
+						const std::vector<VkSemaphore> &waitSemaphores = {},
+						const std::vector<VkSemaphore> &signalSempores = {}, VkFence fence = VK_NULL_HANDLE,
+						const std::vector<VkPipelineStageFlags> &waitStages = {
+							VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}) {
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 

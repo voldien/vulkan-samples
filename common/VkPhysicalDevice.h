@@ -105,7 +105,7 @@ class PhysicalDevice {
 	 * @param type
 	 * @param requestFeature
 	 */
-	template <typename T> void checkFeature(VkStructureType type, T &requestFeature) {
+	template <typename T> void checkFeature(VkStructureType type, T &requestFeature) noexcept {
 
 		VkPhysicalDeviceFeatures2 feature = {};
 		feature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
@@ -122,7 +122,7 @@ class PhysicalDevice {
 	 * @param type
 	 * @param requestProperties
 	 */
-	template <typename T> void getProperties(VkStructureType type, T &requestProperties) {
+	template <typename T> void getProperties(VkStructureType type, T &requestProperties) noexcept {
 		VkPhysicalDeviceProperties2 properties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
 												  .pNext = &requestProperties};
 		requestProperties.sType = type;

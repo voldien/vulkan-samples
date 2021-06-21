@@ -71,7 +71,7 @@ class VulkanCore {
 	 */
 	const std::vector<VkPhysicalDevice> &getPhysicalDevices(void) const noexcept { return this->physicalDevices; }
 
-	uint32_t getNrPhysicalDevices(void) const { return getPhysicalDevices().size(); }
+	uint32_t getNrPhysicalDevices(void) const noexcept { return getPhysicalDevices().size(); }
 
 	/**
 	 * @brief Get the Handle object

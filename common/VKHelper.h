@@ -394,7 +394,7 @@ class VKHelper {
 		vkCmdCopyBufferToImage(cmd, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 	}
 
-	VkCommandBuffer beginSingleTimeCommands(VkDevice device, VkCommandPool commandPool) {
+	static VkCommandBuffer beginSingleTimeCommands(VkDevice device, VkCommandPool commandPool) {
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -413,7 +413,7 @@ class VKHelper {
 		return commandBuffer;
 	}
 
-	void endSingleTimeCommands(VkDevice device, VkQueue queue, VkCommandBuffer commandBuffer,
+	static void endSingleTimeCommands(VkDevice device, VkQueue queue, VkCommandBuffer commandBuffer,
 							   VkCommandPool commandPool) {
 		vkEndCommandBuffer(commandBuffer);
 
