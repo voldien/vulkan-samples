@@ -35,6 +35,15 @@ class VKHelper {
 	static std::optional<uint32_t> findMemoryType(const VkPhysicalDeviceMemoryProperties &memProperties,
 												  uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
+	/**
+	 * @brief
+	 *
+	 * @param commandBuffer
+	 * @param image
+	 * @param format
+	 * @param oldLayout
+	 * @param newLayout
+	 */
 	static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkFormat format,
 									  VkImageLayout oldLayout, VkImageLayout newLayout) {
 
@@ -150,16 +159,18 @@ class VKHelper {
 	 * @param data
 	 * @return VkShaderModule
 	 */
-	static VkShaderModule createShaderModule(VkDevice device, const std::vector<char> &data) {
+	static VkShaderModule createShaderModule(VkDevice device, const std::vector<char> &data,
+											 const VkAllocationCallbacks *pAllocator = nullptr,
+											 const char *pNext = nullptr) {
 		VkShaderModuleCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		createInfo.pNext = nullptr;
+		createInfo.pNext = pNext;
 		createInfo.flags = 0;
 		createInfo.codeSize = data.size();
 		createInfo.pCode = reinterpret_cast<const uint32_t *>(data.data());
 
 		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+		if (vkCreateShaderModule(device, &createInfo, pAllocator, &shaderModule) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create shader module!");
 		}
 
@@ -177,7 +188,7 @@ class VKHelper {
 	 */
 	static void createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineLayout,
 									 const std::vector<VkDescriptorSetLayout> &descLayouts = {},
-									 const std::vector<VkPushConstantRange> &pushConstants = {}, void *next = NULL);
+									 const std::vector<VkPushConstantRange> &pushConstants = {}, void *pNext = nullptr);
 
 	/**
 	 * @brief Create a Descriptor Set Layout object
@@ -196,7 +207,7 @@ class VKHelper {
 		layoutInfo.bindingCount = descitprSetLayoutBindings.size();
 		layoutInfo.pBindings = descitprSetLayoutBindings.data();
 
-		vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout);
+		VkResult result = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout);
 	}
 
 	static VkDescriptorPool createDescPool(VkDevice device, const std::vector<VkDescriptorPoolSize> &poolSizes = {},
@@ -211,32 +222,51 @@ class VKHelper {
 		poolInfo.pPoolSizes = poolSizes.data();
 		poolInfo.maxSets = maxSets;
 
-		vkCreateDescriptorPool(device, &poolInfo, pAllocator, &descPool);
+		VkResult result = vkCreateDescriptorPool(device, &poolInfo, pAllocator, &descPool);
 
 		return descPool;
 	}
 
+	static VkPipelineCache createPipelineCache(VkDevice device, int size, void *pdata,
+											   const VkAllocationCallbacks *pAllocator = nullptr,
+											   void *pNext = nullptr) {
+
+		VkPipelineCache pipelineCache;
+
+		VkPipelineCacheCreateInfo pipelineCacheInfo{};
+		pipelineCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+		pipelineCacheInfo.pNext = pNext;
+		pipelineCacheInfo.pInitialData = pdata;
+		pipelineCacheInfo.initialDataSize = size;
+		pipelineCacheInfo.flags = 0;
+
+		VkResult result = vkCreatePipelineCache(device, &pipelineCacheInfo, pAllocator, &pipelineCache);
+
+		return pipelineCache;
+	}
+
 	static VkPipeline createGraphicPipeline(void);
 
-	static void createComputePipeline(VkDevice device, VkPipeline *pipeline, VkPipelineLayout *layout) {
+	static VkPipeline createComputePipeline(VkDevice device, VkPipelineLayout layout,
+											VkPipelineShaderStageCreateInfo &compShaderStageInfo,
+											VkPipelineCache pipelineCache = VK_NULL_HANDLE,
+											VkPipeline basePipelineHandle = VK_NULL_HANDLE,
+											uint32_t basePipelineIndex = 0,
+											const VkAllocationCallbacks *pAllocator = nullptr, void *pNext = nullptr) {
 
-		// VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
+		VkPipeline pipeline;
+		VkComputePipelineCreateInfo pipelineCreateInfo = {};
+		pipelineCreateInfo.pNext = pNext;
+		pipelineCreateInfo.flags = 0;
+		pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+		pipelineCreateInfo.stage = compShaderStageInfo;
+		pipelineCreateInfo.layout = layout;
+		pipelineCreateInfo.basePipelineHandle = basePipelineHandle;
+		pipelineCreateInfo.basePipelineIndex = basePipelineIndex;
 
-		// VkPipelineShaderStageCreateInfo compShaderStageInfo{};
-		// compShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		// compShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-		// //compShaderStageInfo.module = compShaderModule;
-		// compShaderStageInfo.pName = "main";
+		VkResult result = vkCreateComputePipelines(device, pipelineCache, 1, &pipelineCreateInfo, pAllocator, &pipeline);
 
-		// VkComputePipelineCreateInfo pipelineCreateInfo = {};
-		// pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-		// pipelineCreateInfo.stage = compShaderStageInfo;
-		// pipelineCreateInfo.layout = *layout;
-
-		// VK_CHECK(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
-		// vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
-
-		// return pipeline;
+		return pipeline;
 	}
 
 	//
@@ -377,8 +407,8 @@ class VKHelper {
 		// endSingleTimeCommands(commandBuffer);
 	}
 
-	static void copyBufferToImageCmd(VkDevice device, VkCommandBuffer cmd, VkBuffer src, VkImage dst,
-									 const VkExtent3D &size, const VkOffset3D &offset = {0, 0, 0}) {
+	static void copyBufferToImageCmd(VkCommandBuffer cmd, VkBuffer src, VkImage dst, const VkExtent3D &size,
+									 const VkOffset3D &offset = {0, 0, 0}) {
 
 		VkBufferImageCopy region{};
 		region.bufferOffset = 0;
@@ -414,7 +444,7 @@ class VKHelper {
 	}
 
 	static void endSingleTimeCommands(VkDevice device, VkQueue queue, VkCommandBuffer commandBuffer,
-							   VkCommandPool commandPool) {
+									  VkCommandPool commandPool) {
 		vkEndCommandBuffer(commandBuffer);
 
 		VkSubmitInfo submitInfo{};

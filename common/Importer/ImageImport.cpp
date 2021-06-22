@@ -111,9 +111,9 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 void ImageImporter::saveTextureData(const char *cfilename, const void *pixelData, unsigned int width,
 									unsigned int height, int layers, unsigned int format) {}
 
-void ImageImporter::saveTextureData(const char* cfilename, VkDevice device, VkImage image){
+void ImageImporter::saveTextureData(const char *cfilename, VkDevice device, VkImage image) {
 
-	void* pixelData;
+	void *pixelData;
 	unsigned int width, height, layers;
 
 	VkImageSubresource subResources = {};
@@ -121,13 +121,10 @@ void ImageImporter::saveTextureData(const char* cfilename, VkDevice device, VkIm
 	vkGetImageSubresourceLayout(device, image, &subResources, &subResourceLayout);
 
 	/*	Download texture data.	*/
-	
-
 
 	/*	Save data to texture.	*/
 	saveTextureData(cfilename, pixelData, width, height, layers, 0);
 }
-
 
 void ImageImporter::createImage(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue,
 								VkPhysicalDevice physicalDevice, VkImage &textureImage,
@@ -167,7 +164,7 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 	VKHelper::transitionImageLayout(cmd, textureImage, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED,
 									VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-	VKHelper::copyBufferToImageCmd(device, cmd, stagingBuffer, textureImage,
+	VKHelper::copyBufferToImageCmd(cmd, stagingBuffer, textureImage,
 								   {static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1});
 
 	VKHelper::transitionImageLayout(cmd, textureImage, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,

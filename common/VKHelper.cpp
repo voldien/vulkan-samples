@@ -6,14 +6,7 @@ std::optional<uint32_t> VKHelper::findMemoryType(VkPhysicalDevice physicalDevice
 												 VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-			return {i};
-		}
-	}
-
-	return {};
+	return findMemoryType(memProperties, typeFilter, properties);
 }
 
 std::optional<uint32_t> VKHelper::findMemoryType(const VkPhysicalDeviceMemoryProperties &memProperties,
@@ -69,7 +62,7 @@ void VKHelper::createImage(VkDevice device, uint32_t width, uint32_t height, uin
 						   VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
 						   const VkPhysicalDeviceMemoryProperties &memProperties, VkImage &image,
 						   VkDeviceMemory &imageMemory) {
-							   
+
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
@@ -202,7 +195,6 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 		// 	continue;
 
 		for (uint32_t x = 0; x < displayProperties.size(); x++) {
-
 		}
 
 		// Determine the type of the physical device
