@@ -23,6 +23,7 @@ class CubeWindow : public VKWindow {
 	std::vector<void *> mapMemory;
 	long ntime;
 
+
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
@@ -336,8 +337,8 @@ class CubeWindow : public VKWindow {
 		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 		vkUnmapMemory(getDevice(), vertexMemory);
 
-		//ImageImporter::loadTextureData("", &w, &h, &f, &in, &pt, &size);
-		//VKHelper::createBuffer(getDevice(), getPhyiscalDevices()[0]->)
+		// ImageImporter::loadTextureData("", &w, &h, &f, &in, &pt, &size);
+		// VKHelper::createBuffer(getDevice(), getPhyiscalDevices()[0]->)
 
 		// void *data;
 		// vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
@@ -348,7 +349,7 @@ class CubeWindow : public VKWindow {
 		// 			VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		// 			textureImage, textureImageMemory);
 
-		//VKHelper::createImageView();
+		// VKHelper::createImageView();
 
 		VkSampler sampler;
 		VKHelper::createSampler(getDevice(), sampler);
@@ -406,7 +407,8 @@ class CubeWindow : public VKWindow {
 
 			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
 			// 1, 					 &ub_barrier, 0, NULL);
-			VkViewport viewport = {.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
+			VkViewport viewport = {
+				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
