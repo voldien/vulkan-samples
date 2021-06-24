@@ -4,13 +4,11 @@
 layout(local_size_x = 16, local_size_y = 16) in;
 
 // Contains the cells information.
-layout(set = 0, binding = 0, std430) buffer img_current_cells{
-	vec2 AB[];
-}CurrentAB;
+layout(set = 0, binding = 0, std430) buffer img_current_cells { vec2 AB[]; }
+CurrentAB;
 
-layout(set = 0, binding = 1,std430) readonly buffer img_previous_cells{
-	vec2 AB[];
-}PreviousAB;
+layout(set = 0, binding = 1, std430) readonly buffer img_previous_cells { vec2 AB[]; }
+PreviousAB;
 
 layout(rgba32f, set = 0, binding = 2) uniform image2D img_output;
 
@@ -22,23 +20,33 @@ layout(set = 0, binding = 3) uniform UniformBufferObject {
 	float diffuseRateA;
 	float diffuseRateB;
 	float delta;
-} ubo;
 
-
-float computeDiffuseRateA(float A, float B, mat4 kernel, float killRate, float feedRate, float diffuseRate, float delta){
-	return A  + (diffuseRate * (kernel * vec4(A)).x - A * pow(B,2) + feedRate*(1 - A)) * delta;
+	float posX, posY;
+	float mousePosX, mousePosY;
+	float zoom; /*  */
+	float c;	/*  */
 }
-float computeDiffuseRateB(float A, float B, mat4 kernel, float killRate, float feedRate, float diffuseRate, float delta){
-	return B  + (diffuseRate * (kernel * vec4(B)).x + A * pow(B,2) - (killRate - feedRate) * B) * delta;
+ubo;
+
+float computeDiffuseRateA(float A, float B, mat4 kernel, float killRate, float feedRate, float diffuseRate,
+						  float delta) {
+	return A + (diffuseRate * (kernel * vec4(A)).x - A * pow(B, 2) + feedRate * (1 - A)) * delta;
+}
+float computeDiffuseRateB(float A, float B, mat4 kernel, float killRate, float feedRate, float diffuseRate,
+						  float delta) {
+	return B + (diffuseRate * (kernel * vec4(B)).x + A * pow(B, 2) - (killRate - feedRate) * B) * delta;
 }
 
-void main() { 
-	
-	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy); 
+void main() {
+
+	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
 	const uint memory_index = gl_LocalInvocationIndex;
 	vec2 AB = PreviousAB.AB[memory_index];
-	float pA = computeDiffuseRateA(AB.x,AB.y, ubo.kernelA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
-	float pB = computeDiffuseRateB(AB.x,AB.y, ubo.kernelA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
+	float pA = computeDiffuseRateA(AB.x, AB.y, ubo.kernelA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
+	float pB = computeDiffuseRateB(AB.x, AB.y, ubo.kernelA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
 
 	CurrentAB.AB[memory_index] = vec2(pA, pB);
+
+	vec4 pixel = vec4(CurrentAB.AB[memory_index], 1, 1);
+	imageStore(img_output, pixel_coords, pixel);
 }

@@ -23,14 +23,22 @@ class ReactionDiffusionWindow : public VKWindow {
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
-	struct mandelbrot_param_t {
-		int windowWidth = 1;
-		int windowHeight = 1;
+
+	const int nrChemicalComponents = 2;
+	struct reaction_diffusion_param_t {
+		float kernelA[4][4];
+		float kernelB[4][4];
+		float feedRate = 0.1f;
+		float killRate = .3;
+		float diffuseRateA = .1;
+		float diffuseRateB = .3;
+		float delta = .01;
+
+		/**/
 		float posX, posY;
 		float mousePosX, mousePosY;
 		float zoom; /*  */
 		float c;	/*  */
-		int nrSamples;
 	} params = {};
 
 	unsigned int paramMemSize = sizeof(params);
@@ -38,7 +46,7 @@ class ReactionDiffusionWindow : public VKWindow {
   public:
 	ReactionDiffusionWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		this->setTitle(std::string("ReactionDiffusion"));
+		this->setTitle(std::string("ReactionDiffusion Algorithm - Compute"));
 	}
 	~ReactionDiffusionWindow(void) {}
 
@@ -70,22 +78,33 @@ class ReactionDiffusionWindow : public VKWindow {
 		compShaderStageInfo.module = compShaderModule;
 		compShaderStageInfo.pName = "main";
 
+		std::array<VkDescriptorSetLayoutBinding, 4> uboLayoutBindings;
 		/*	*/
-		VkDescriptorSetLayoutBinding usioLayoutBinding{};
-		usioLayoutBinding.binding = 0;
-		usioLayoutBinding.descriptorCount = 1;
-		usioLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		usioLayoutBinding.pImmutableSamplers = nullptr;
-		usioLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		uboLayoutBindings[0].binding = 0;
+		uboLayoutBindings[0].descriptorCount = 1;
+		uboLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		uboLayoutBindings[0].pImmutableSamplers = nullptr;
+		uboLayoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		VkDescriptorSetLayoutBinding uboLayoutBinding{};
-		uboLayoutBinding.binding = 1;
-		uboLayoutBinding.descriptorCount = 1;
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBinding.pImmutableSamplers = nullptr;
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		uboLayoutBindings[1].binding = 1;
+		uboLayoutBindings[1].descriptorCount = 1;
+		uboLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		uboLayoutBindings[1].pImmutableSamplers = nullptr;
+		uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, {usioLayoutBinding, uboLayoutBinding});
+		uboLayoutBindings[2].binding = 2;
+		uboLayoutBindings[2].descriptorCount = 1;
+		uboLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		uboLayoutBindings[2].pImmutableSamplers = nullptr;
+		uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+		uboLayoutBindings[3].binding = 3;
+		uboLayoutBindings[3].descriptorCount = 1;
+		uboLayoutBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBindings[3].pImmutableSamplers = nullptr;
+		uboLayoutBindings[3].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings);
 
 		VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
 
@@ -105,24 +124,13 @@ class ReactionDiffusionWindow : public VKWindow {
 		paramMemSize =
 			std::max((unsigned int)getLogicalDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
 					 (unsigned int)paramMemSize);
+
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
 
-		VkDeviceSize cellBufferSize = width() * height() * sizeof(float) * 2;
-		cellsBuffers.resize(getSwapChainImageCount() * 2);
-		cellsMemory.resize(getSwapChainImageCount() * 2);
-		for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
-			VKHelper::createBuffer(
-				getDevice(), cellBufferSize, getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
-				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, cellsBuffers[i], cellsMemory[i]);
-		}
-
-				VkDeviceSize bufferSize = paramMemSize * getSwapChainImageCount();
-
-
+		/*	Create params.	*/
+		VkDeviceSize bufferSize = paramMemSize * getSwapChainImageCount();
 		paramMemory.resize(1);
-
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
@@ -135,20 +143,26 @@ class ReactionDiffusionWindow : public VKWindow {
 		}
 
 		/*	Allocate descriptor set.	*/
-		std::vector<VkDescriptorPoolSize> poolSize = {{
-														  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-														  static_cast<uint32_t>(getSwapChainImageCount()),
-													  },
-													  {
-														  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-														  static_cast<uint32_t>(getSwapChainImageCount()),
-													  }};
+		std::vector<VkDescriptorPoolSize> poolSize = {
+			{
+				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				static_cast<uint32_t>(getSwapChainImageCount() * nrChemicalComponents),
+			},
+
+			{
+				VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+				static_cast<uint32_t>(getSwapChainImageCount()),
+			},
+			{
+				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				static_cast<uint32_t>(getSwapChainImageCount()),
+			}};
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolInfo.poolSizeCount = poolSize.size();
 		poolInfo.pPoolSizes = poolSize.data();
-		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount() * 2);
+		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount() * 4);
 
 		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
@@ -159,8 +173,16 @@ class ReactionDiffusionWindow : public VKWindow {
 
 		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		params.windowWidth = width;
-		params.windowHeight = height;
+		const VkDeviceSize cellBufferSize = width * height * sizeof(float) * nrChemicalComponents;
+
+		cellsBuffers.resize(getSwapChainImageCount() * 2);
+		cellsMemory.resize(getSwapChainImageCount() * 2);
+		for (unsigned int i = 0; i < cellsBuffers.size(); i++) {
+			VKHelper::createBuffer(getDevice(), cellBufferSize,
+								   getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
+								   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, cellsBuffers[i], cellsMemory[i]);
+		}
 
 		/*	*/
 		computeImageViews.resize(getSwapChainImageCount());
@@ -187,35 +209,63 @@ class ReactionDiffusionWindow : public VKWindow {
 		VK_CHECK(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
 
 		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
+
+			VkDescriptorBufferInfo currentCellBufferInfo{};
+			currentCellBufferInfo.buffer = cellsBuffers[i * nrChemicalComponents + 0];
+			currentCellBufferInfo.offset = 0;
+			currentCellBufferInfo.range = cellBufferSize;
+
+			VkDescriptorBufferInfo previousCellBufferInfo{};
+			previousCellBufferInfo.buffer = cellsBuffers[i * nrChemicalComponents + 1];
+			previousCellBufferInfo.offset = 0;
+			previousCellBufferInfo.range = cellBufferSize;
+
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageView = computeImageViews[i];
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = paramBuffer;
-			bufferInfo.offset = paramMemSize * i;
-			bufferInfo.range = paramMemSize;
-			// imageView
+			VkDescriptorBufferInfo paramBufferInfo{};
+			paramBufferInfo.buffer = paramBuffer;
+			paramBufferInfo.offset = paramMemSize * i;
+			paramBufferInfo.range = paramMemSize;
 
-			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+			std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
 
 			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites[0].dstSet = descriptorSets[i];
 			descriptorWrites[0].dstBinding = 0;
 			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pImageInfo = &imageInfo;
-			descriptorWrites[0].pBufferInfo = nullptr;
+			descriptorWrites[0].pImageInfo = nullptr;
+			descriptorWrites[0].pBufferInfo = &currentCellBufferInfo;
 
 			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites[1].dstSet = descriptorSets[i];
 			descriptorWrites[1].dstBinding = 1;
 			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			descriptorWrites[1].descriptorCount = 1;
 			descriptorWrites[1].pImageInfo = nullptr;
-			descriptorWrites[1].pBufferInfo = &bufferInfo;
+			descriptorWrites[1].pBufferInfo = &previousCellBufferInfo;
+
+			descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[2].dstSet = descriptorSets[i];
+			descriptorWrites[2].dstBinding = 2;
+			descriptorWrites[2].dstArrayElement = 0;
+			descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			descriptorWrites[2].descriptorCount = 1;
+			descriptorWrites[2].pImageInfo = &imageInfo;
+			descriptorWrites[2].pBufferInfo = nullptr;
+
+			descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[3].dstSet = descriptorSets[i];
+			descriptorWrites[3].dstBinding = 3;
+			descriptorWrites[3].dstArrayElement = 0;
+			descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[3].descriptorCount = 1;
+			descriptorWrites[3].pImageInfo = nullptr;
+			descriptorWrites[3].pBufferInfo = &paramBufferInfo;
 
 			vkUpdateDescriptorSets(getDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 		}
@@ -239,7 +289,7 @@ class ReactionDiffusionWindow : public VKWindow {
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
-									&descriptorSets[i], 0, NULL);
+									&descriptorSets[i], 0, nullptr);
 
 			const int localInvokation = 16;
 
@@ -270,12 +320,12 @@ class ReactionDiffusionWindow : public VKWindow {
 
 		int x, y;
 		SDL_GetMouseState(&x, &y);
-		params.mousePosX = x;
-		params.mousePosY = y;
-		params.posX = 0;
-		params.posY = 0;
-		params.zoom = 1.0f;
-		params.nrSamples = 128;
+		// params.mousePosX = x;
+		// params.mousePosY = y;
+		// params.posX = 0;
+		// params.posY = 0;
+		// params.zoom = 1.0f;
+		// params.nrSamples = 128;
 	}
 };
 
