@@ -6,13 +6,10 @@
 class StartUpWindow : public VKWindow {
   public:
 	StartUpWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {
-		//		SDL_InitSubSystem(SDL_INIT_EVENTS);
-	}
+		: VKWindow(core, device, -1, -1, -1, -1) {}
 
 	virtual void Initialize(void) override {
 		/*	Check if supported.	*/
-
 		onResize(width(), height());
 	}
 
@@ -20,7 +17,7 @@ class StartUpWindow : public VKWindow {
 
 		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		for (int i = 0; i < getCommandBuffers().size(); i++) {
+		for (unsigned int i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
 
 			VkCommandBufferBeginInfo beginInfo = {};
@@ -38,6 +35,7 @@ class StartUpWindow : public VKWindow {
 			renderPassInfo.renderArea.extent.height = height;
 
 			VkClearValue clearColor = {0.0f, 1.0f, 0.0f, 1.0f};
+			// VkClearValue depthValue = {.depthStencil.depth = 0, .depthStencil.stencil = 0 };
 			renderPassInfo.clearValueCount = 1;
 			renderPassInfo.pClearValues = &clearColor;
 
@@ -56,8 +54,7 @@ class StartUpWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_device_extensions = {
-	};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);

@@ -70,31 +70,29 @@ class MandelBrotWindow : public VKWindow {
 		compShaderStageInfo.module = compShaderModule;
 		compShaderStageInfo.pName = "main";
 
+
+		std::array<VkDescriptorSetLayoutBinding, 2> uboLayoutBindings;
 		/*	*/
-		VkDescriptorSetLayoutBinding usioLayoutBinding{};
-		usioLayoutBinding.binding = 0;
-		usioLayoutBinding.descriptorCount = 1;
-		usioLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		usioLayoutBinding.pImmutableSamplers = nullptr;
-		usioLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		uboLayoutBindings[0].binding = 0;
+		uboLayoutBindings[0].descriptorCount = 1;
+		uboLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		uboLayoutBindings[0].pImmutableSamplers = nullptr;
+		uboLayoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		VkDescriptorSetLayoutBinding uboLayoutBinding{};
-		uboLayoutBinding.binding = 1;
-		uboLayoutBinding.descriptorCount = 1;
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBinding.pImmutableSamplers = nullptr;
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		uboLayoutBindings[1].binding = 1;
+		uboLayoutBindings[1].descriptorCount = 1;
+		uboLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBindings[1].pImmutableSamplers = nullptr;
+		uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, {usioLayoutBinding, uboLayoutBinding});
+		/*	*/
+		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout,uboLayoutBindings);
 
+		/*	*/
 		VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
 
-		VkComputePipelineCreateInfo pipelineCreateInfo = {};
-		pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-		pipelineCreateInfo.stage = compShaderStageInfo;
-		pipelineCreateInfo.layout = *layout;
+		pipeline = VKHelper::createComputePipeline(getDevice(), *layout, compShaderStageInfo);
 
-		VK_CHECK(vkCreateComputePipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
 		vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
 
 		return pipeline;
