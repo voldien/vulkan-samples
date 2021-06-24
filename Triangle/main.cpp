@@ -194,8 +194,11 @@ class TriangleWindow : public VKWindow {
 		VkMemoryAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = getLogicalDevice()->findMemoryType(
-			memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT).value();
+		allocInfo.memoryTypeIndex =
+			getLogicalDevice()
+				->findMemoryType(memRequirements.memoryTypeBits,
+								 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+				.value();
 
 		VK_CHECK(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
@@ -230,9 +233,11 @@ class TriangleWindow : public VKWindow {
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;
 
-			VkClearValue clearColor = {0.1f, 0.1f, 0.1f, 1.0f};
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
+			std::array<VkClearValue, 2> clearValues{};
+			clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
+			clearValues[1].depthStencil = {1.0f, 0};
+			renderPassInfo.clearValueCount = clearValues.size();
+			renderPassInfo.pClearValues = clearValues.data();
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 			/*	*/
