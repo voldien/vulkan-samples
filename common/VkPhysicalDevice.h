@@ -123,8 +123,10 @@ class PhysicalDevice {
 	 * @param requestProperties
 	 */
 	template <typename T> void getProperties(VkStructureType type, T &requestProperties) noexcept {
-		VkPhysicalDeviceProperties2 properties = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-												  .pNext = &requestProperties};
+		VkPhysicalDeviceProperties2 properties {};
+		properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		properties.pNext =  &requestProperties;
+		/*	*/
 		requestProperties.sType = type;
 		vkGetPhysicalDeviceProperties2(getHandle(), &properties);
 	}

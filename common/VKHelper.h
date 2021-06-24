@@ -1,5 +1,6 @@
 #ifndef _VKSAMPLES_VK_HELPER_H_
 #define _VKSAMPLES_VK_HELPER_H_ 1
+#include <array>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -192,22 +193,45 @@ class VKHelper {
 
 	/**
 	 * @brief Create a Descriptor Set Layout object
-	 *
-	 * @param device
-	 * @param descriptorSetLayout
-	 * @param descitprSetLayoutBindings
-	 * @param pNext
+	 * 
+	 * @tparam n 
+	 * @param device 
+	 * @param descriptorSetLayout 
+	 * @param descitprSetLayoutBindings 
+	 * @param pAllocator 
+	 * @param pNext 
+	 */
+	template <size_t n>
+	static void createDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout &descriptorSetLayout,
+										  const std::array<VkDescriptorSetLayoutBinding, n> &descitprSetLayoutBindings,
+										  const VkAllocationCallbacks *pAllocator = nullptr, void *pNext = nullptr) {
+
+		std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindingsV(descitprSetLayoutBindings.begin(),
+																			   descitprSetLayoutBindings.end());
+
+																			   
+		createDescriptorSetLayout(device, descriptorSetLayout, descriptorSetLayoutBindingsV, pAllocator, pNext);
+	}
+
+	/**
+	 * @brief Create a Descriptor Set Layout object
+	 * 
+	 * @param device 
+	 * @param descriptorSetLayout 
+	 * @param descitprSetLayoutBindings 
+	 * @param pAllocator 
+	 * @param pNext 
 	 */
 	static void createDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout &descriptorSetLayout,
 										  const std::vector<VkDescriptorSetLayoutBinding> &descitprSetLayoutBindings,
-										  void *pNext = nullptr) {
+										  const VkAllocationCallbacks *pAllocator = nullptr, void *pNext = nullptr) {
 		VkDescriptorSetLayoutCreateInfo layoutInfo{};
 		layoutInfo.pNext = pNext;
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layoutInfo.bindingCount = descitprSetLayoutBindings.size();
 		layoutInfo.pBindings = descitprSetLayoutBindings.data();
 
-		VkResult result = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout);
+		VkResult result = vkCreateDescriptorSetLayout(device, &layoutInfo, pAllocator, &descriptorSetLayout);
 	}
 
 	static VkDescriptorPool createDescPool(VkDevice device, const std::vector<VkDescriptorPoolSize> &poolSizes = {},
@@ -248,7 +272,7 @@ class VKHelper {
 	static VkPipeline createGraphicPipeline(void);
 
 	static VkPipeline createComputePipeline(VkDevice device, VkPipelineLayout layout,
-											VkPipelineShaderStageCreateInfo &compShaderStageInfo,
+											const VkPipelineShaderStageCreateInfo &compShaderStageInfo,
 											VkPipelineCache pipelineCache = VK_NULL_HANDLE,
 											VkPipeline basePipelineHandle = VK_NULL_HANDLE,
 											uint32_t basePipelineIndex = 0,
@@ -264,7 +288,8 @@ class VKHelper {
 		pipelineCreateInfo.basePipelineHandle = basePipelineHandle;
 		pipelineCreateInfo.basePipelineIndex = basePipelineIndex;
 
-		VkResult result = vkCreateComputePipelines(device, pipelineCache, 1, &pipelineCreateInfo, pAllocator, &pipeline);
+		VkResult result =
+			vkCreateComputePipelines(device, pipelineCache, 1, &pipelineCreateInfo, pAllocator, &pipeline);
 
 		return pipeline;
 	}

@@ -12,6 +12,6 @@
 #include <fmt/core.h>
 #include <stdexcept>
 
-namespace vkscommon {};
+namespace vkscommon {}
 
 #endif
