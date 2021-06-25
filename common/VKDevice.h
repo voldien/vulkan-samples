@@ -39,7 +39,7 @@ class VKDevice {
 	 * @return true
 	 * @return false
 	 */
-	bool isGroupDevice(void) const noexcept;
+	bool isGroupDevice(void) const noexcept { return getPhysicalDevices().size() > 0; }
 	const std::vector<std::shared_ptr<PhysicalDevice>> &getPhysicalDevices(void) const noexcept {
 		return physicalDevices;
 	}
@@ -154,13 +154,17 @@ class VKDevice {
 	 * @return true
 	 * @return false
 	 */
-	bool isFormatSupported(VkFormat format) const noexcept;
+	bool isFormatSupported(VkFormat format, VkImageType imageType, VkImageTiling tiling,
+						   VkImageUsageFlags usage) const noexcept {
+		return this->physicalDevices[0]->isFormatSupported(format, imageType, tiling, usage);
+	}
 
   private:
 	uint32_t graphics_queue_node_index;
 	uint32_t compute_queue_node_index;
 	uint32_t transfer_queue_node_index;
 	uint32_t present_queue_node_index;
+	uint32_t sparse_queue_node_index;
 
 	std::vector<std::shared_ptr<PhysicalDevice>> physicalDevices;
 	VkDevice logicalDevice;
@@ -169,6 +173,7 @@ class VKDevice {
 	VkQueue presentQueue;
 	VkQueue computeQueue;
 	VkQueue transferQueue;
+	VkQueue sparseQueue;
 };
 
 #endif

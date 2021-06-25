@@ -24,13 +24,24 @@ class PhysicalDevice {
 
 	const VkPhysicalDeviceLimits &getDeviceLimits(void) const noexcept { return this->properties.limits; }
 
-	/**
-	 * @brief Get the Queue Family Properties object
-	 * Get all the support family properties.
-	 *
-	 * @return const std::vector<VkQueueFamilyProperties>&
-	 */
-	const std::vector<VkQueueFamilyProperties> &getQueueFamilyProperties(void) const noexcept {
+	const VkPhysicalDeviceDriverProperties &getDeviceDriverProperties(void){
+		VkPhysicalDeviceDriverProperties devceProp;
+		getProperties(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES, devceProp);
+	}
+
+	const VkPhysicalDeviceSubgroupProperties getDeviceSubGroupProperties(void){
+		VkPhysicalDeviceSubgroupProperties devceProp;
+		getProperties(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, devceProp);
+	}
+
+		/**
+		 * @brief Get the Queue Family Properties object
+		 * Get all the support family properties.
+		 *
+		 * @return const std::vector<VkQueueFamilyProperties>&
+		 */
+		const std::vector<VkQueueFamilyProperties> &
+		getQueueFamilyProperties(void) const noexcept {
 		return queueFamilyProperties;
 	}
 

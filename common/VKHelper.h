@@ -45,7 +45,7 @@ class VKHelper {
 	 * @param oldLayout
 	 * @param newLayout
 	 */
-	static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkFormat format,
+	static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
 									  VkImageLayout oldLayout, VkImageLayout newLayout) {
 
 		VkImageMemoryBarrier barrier{};
@@ -193,13 +193,13 @@ class VKHelper {
 
 	/**
 	 * @brief Create a Descriptor Set Layout object
-	 * 
-	 * @tparam n 
-	 * @param device 
-	 * @param descriptorSetLayout 
-	 * @param descitprSetLayoutBindings 
-	 * @param pAllocator 
-	 * @param pNext 
+	 *
+	 * @tparam n
+	 * @param device
+	 * @param descriptorSetLayout
+	 * @param descitprSetLayoutBindings
+	 * @param pAllocator
+	 * @param pNext
 	 */
 	template <size_t n>
 	static void createDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout &descriptorSetLayout,
@@ -209,18 +209,18 @@ class VKHelper {
 		std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindingsV(descitprSetLayoutBindings.begin(),
 																			   descitprSetLayoutBindings.end());
 
-																			   
+
 		createDescriptorSetLayout(device, descriptorSetLayout, descriptorSetLayoutBindingsV, pAllocator, pNext);
 	}
 
 	/**
 	 * @brief Create a Descriptor Set Layout object
-	 * 
-	 * @param device 
-	 * @param descriptorSetLayout 
-	 * @param descitprSetLayoutBindings 
-	 * @param pAllocator 
-	 * @param pNext 
+	 *
+	 * @param device
+	 * @param descriptorSetLayout
+	 * @param descitprSetLayoutBindings
+	 * @param pAllocator
+	 * @param pNext
 	 */
 	static void createDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout &descriptorSetLayout,
 										  const std::vector<VkDescriptorSetLayoutBinding> &descitprSetLayoutBindings,
