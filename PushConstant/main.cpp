@@ -440,7 +440,7 @@ int main(int argc, const char **argv) {
 
 
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(argc, argv);
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>();
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		printf("%s\n", devices[0]->getDeviceName());
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);

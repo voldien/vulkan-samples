@@ -14,7 +14,7 @@
 #include <getopt.h>
 #include <stdexcept>
 
-VulkanCore::VulkanCore(int argc, const char **argv, const std::unordered_map<const char *, bool> &requested_extensions,
+VulkanCore::VulkanCore(const std::unordered_map<const char *, bool> &requested_extensions,
 					   const std::unordered_map<const char *, bool> &requested_layers) {
 	Initialize(requested_extensions, requested_layers);
 }

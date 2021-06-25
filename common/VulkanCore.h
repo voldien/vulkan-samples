@@ -18,7 +18,7 @@ class VulkanCore {
 
   public:
 	// TODO remove argc and argv
-	VulkanCore(int argc, const char **argv, const std::unordered_map<const char *, bool> &requested_extensions = {},
+	VulkanCore(const std::unordered_map<const char *, bool> &requested_extensions = {},
 			   const std::unordered_map<const char *, bool> &requested_layers = {
 				   {"VK_LAYER_KHRONOS_validation", true}});
 	VulkanCore(const VulkanCore &other) = delete;

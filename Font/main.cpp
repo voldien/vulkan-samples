@@ -3,7 +3,7 @@
 
 int main(int argc, const char **argv) {
 
-	VulkanCore core(argc, argv);
+	VulkanCore core();
 //	StartUpWindow window(core);
 
 	//window.run();
