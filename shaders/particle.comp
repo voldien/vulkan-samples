@@ -10,11 +10,16 @@ layout(set = 0, binding = 1, std430) readonly buffer Velocity
     vec2 vel[];
 } velocities;
 
+layout(set = 0, binding = 2) uniform params{
+    vec3 min, max;
+}uno;
+
 
 void main()
 {
     vec2 current_pos = positions.pos[gl_GlobalInvocationID.x];
     vec2 velocity = velocities.vel[gl_GlobalInvocationID.x];
+
     current_pos += velocity;
     if (current_pos.x > 0.95 ||
         current_pos.x < -0.95 ||
