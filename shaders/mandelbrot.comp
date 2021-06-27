@@ -28,7 +28,7 @@ vec4 computeMandel(vec2 uv) {
 	vec2 mouseOffset = u_pushConstants._params.mousePos / imageSize(img_output);
 	uv += mouseOffset;
 	uv *= u_pushConstants._params.zoom;
-	const vec2 c = vec2(-.445, 0.0) + vec2(uv - 0.5) * vec2(2.0 + 1.7 * 0.2);
+	const vec2 c = vec2(-.445, 0.0) + vec2(uv - 0.5);// * vec2(2.0 + 1.7 * 0.2);
 	vec2 z = vec2(0, 0);
 	float n = 0;
 

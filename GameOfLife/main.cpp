@@ -5,7 +5,7 @@
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 
-class ReactionDiffusionWindow : public VKWindow {
+class GameOfLifeWindow : public VKWindow {
   private:
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
@@ -44,11 +44,11 @@ class ReactionDiffusionWindow : public VKWindow {
 	unsigned int paramMemSize = sizeof(params);
 
   public:
-	ReactionDiffusionWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	GameOfLifeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(std::string("ReactionDiffusion Algorithm - Compute"));
 	}
-	~ReactionDiffusionWindow(void) {}
+	~GameOfLifeWindow(void) {}
 
 	virtual void Release(void) override {
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -345,7 +345,7 @@ int main(int argc, const char **argv) {
 
 		std::shared_ptr<VKDevice> ldevice = std::make_shared<VKDevice>(devices, required_device_extensions);
 
-		ReactionDiffusionWindow window(core, ldevice);
+		GameOfLifeWindow window(core, ldevice);
 
 		window.run();
 	} catch (std::exception &ex) {
