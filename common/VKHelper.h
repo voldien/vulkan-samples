@@ -10,6 +10,9 @@
 
 #define ArraySize(a) (sizeof(a) / sizeof(*a))
 
+/**
+ * 
+ */
 class VKHelper {
   public:
 	/*  Helper functions.   */
@@ -45,8 +48,8 @@ class VKHelper {
 	 * @param oldLayout
 	 * @param newLayout
 	 */
-	static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image,
-									  VkImageLayout oldLayout, VkImageLayout newLayout) {
+	static void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout,
+									  VkImageLayout newLayout) {
 
 		VkImageMemoryBarrier barrier{};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -83,6 +86,24 @@ class VKHelper {
 		}
 
 		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	}
+
+	static void createMemory(VkDevice device, VkDeviceSize size, VkMemoryPropertyFlags properties,
+							 const VkPhysicalDeviceMemoryProperties &memoryProperies, VkDeviceMemory &deviceMemory) {
+		/**/
+		// VkMemoryAllocateInfo allocInfo = {};
+		// allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		// allocInfo.allocationSize = size;
+		// const auto typeIndex = findMemoryType(memoryProperies, memRequirements.memoryTypeBits, properties);
+		// if (typeIndex)
+		// 	allocInfo.memoryTypeIndex = typeIndex.value();
+		// else
+		// 	throw std::runtime_error("");
+
+		// /**/
+		// VkResult result = vkAllocateMemory(device, &allocInfo, NULL, &deviceMemory);
+//			throw std::runtime_error("failed to allocate buffer memory!");
+//		}
 	}
 
 	/**
@@ -208,7 +229,6 @@ class VKHelper {
 
 		std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindingsV(descitprSetLayoutBindings.begin(),
 																			   descitprSetLayoutBindings.end());
-
 
 		createDescriptorSetLayout(device, descriptorSetLayout, descriptorSetLayoutBindingsV, pAllocator, pNext);
 	}

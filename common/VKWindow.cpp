@@ -6,7 +6,6 @@
 #include <cassert>
 #include <stdexcept>
 #include <vulkan/vulkan.h>
-//#include <fmt/core.h>
 
 VKWindow::~VKWindow(void) {
 

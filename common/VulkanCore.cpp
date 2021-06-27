@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <getopt.h>
 #define FMT_HEADER_ONLY
+#include "VKUtil.h"
 #include <fmt/core.h>
 #include <getopt.h>
 #include <stdexcept>
@@ -36,9 +37,9 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	std::vector<const char *> usedInstanceExtensionNames = {
 		/*	*/
 		//		VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME,
-				VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-				VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
-				VK_KHR_DISPLAY_EXTENSION_NAME,
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+		VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
+		VK_KHR_DISPLAY_EXTENSION_NAME,
 	};
 
 	for (const std::pair<const char *, bool> &n : requested_extensions) {
@@ -65,7 +66,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 
 	/*  Check for supported extensions.*/
 	uint32_t extensionCount = 0;
-	VK_CHECK(vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensionCount, VK_NULL_HANDLE));
+	VKS_VALIDATE(vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensionCount, VK_NULL_HANDLE));
 	this->instanceExtensions.resize(extensionCount);
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensionCount, instanceExtensions.data()));
 

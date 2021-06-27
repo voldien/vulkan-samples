@@ -44,14 +44,20 @@ class VKDevice {
 		return physicalDevices;
 	}
 
+	const std::shared_ptr<PhysicalDevice>& getPhysicalDevice(unsigned int index) const {
+		return physicalDevices[index];
+	}
+
 	VkDevice getHandle(void) const noexcept { return this->logicalDevice; }
 
 	VkQueue getDefaultGraphicQueue(void) const noexcept { return this->graphicsQueue; }
 	VkQueue getDefaultPresent(void) const noexcept { return this->presentQueue; }
 	VkQueue getDefaultCompute(void) const noexcept { return this->computeQueue; }
+	VkQueue getDefaultTransfer(void) const noexcept { return this->transferQueue; }
 
 	uint32_t getDefaultGraphicQueueIndex(void) const noexcept { return this->graphics_queue_node_index; }
 	uint32_t getDefaultComputeQueueIndex(void) const noexcept { return this->compute_queue_node_index; }
+	uint32_t getDefaultTransferQueueIndex(void) const noexcept { return this->transfer_queue_node_index; }
 
 	/**
 	 * @brief
@@ -63,7 +69,6 @@ class VKDevice {
 	template <size_t n = 0>
 	std::optional<uint32_t> findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
 		return VKHelper::findMemoryType(physicalDevices[0]->getMemoryProperties(), typeFilter, properties);
-		// throw std::runtime_error(fmt::format("failed to find suitable memory type {}!", typeFilter));
 	}
 
 	/**
@@ -86,7 +91,7 @@ class VKDevice {
 		cmdPoolCreateInfo.flags = flag;
 
 		/*  Create command pool.    */
-		vkCreateCommandPool(getHandle(), &cmdPoolCreateInfo, nullptr, &pool);
+		VkResult result = vkCreateCommandPool(getHandle(), &cmdPoolCreateInfo, nullptr, &pool);
 
 		return pool;
 	}
@@ -111,7 +116,7 @@ class VKDevice {
 		submitInfo.signalSemaphoreCount = signalSempores.size();
 		submitInfo.pSignalSemaphores = signalSempores.data();
 
-		vkQueueSubmit(queue, 1, &submitInfo, fence);
+		VkResult result = vkQueueSubmit(queue, 1, &submitInfo, fence);
 	}
 
 	std::vector<VkCommandBuffer> allocateCommandBuffers(VkCommandPool commandPool, VkCommandBufferLevel level,
@@ -130,22 +135,38 @@ class VKDevice {
 		return cmdBuffers;
 	}
 
-	// std::vector<VkCommandBuffer>
-	// beginSingleTimeCommands(VkCommandPool commandPool, VkCommandBufferLevel level, unsigned int nrCmdBuffers = 1,
-	// 						VkCommandBufferUsageFlags usage = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-	// 						VkCommandBufferInheritanceInfo *pInheritInfo = nullptr, const void *pNext = nullptr) {
-	// 	allocateCommandBuffers(commandPool, level, nrCmdBuffers);
+	std::vector<VkCommandBuffer>
+	beginSingleTimeCommands(VkCommandPool commandPool, VkCommandBufferLevel level, unsigned int nrCmdBuffers = 1,
+							VkCommandBufferUsageFlags usage = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+							VkCommandBufferInheritanceInfo *pInheritInfo = nullptr, const void *pNext = nullptr) {
+		std::vector<VkCommandBuffer> cmd =  allocateCommandBuffers(commandPool, level, nrCmdBuffers);
 
-	// 	VkCommandBufferBeginInfo beginInfo{};
-	// 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	// 	beginInfo.pNext = pNext;
-	// 	beginInfo.flags = usage;
-	// 	beginInfo.pInheritanceInfo = pInheritInfo;
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.pNext = pNext;
+		beginInfo.flags = usage;
+		beginInfo.pInheritanceInfo = pInheritInfo;
 
-	// 	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		vkBeginCommandBuffer(cmd[0], &beginInfo);
 
-	// 	return {commandBuffer};
-	//}
+		return cmd;
+	}
+
+	void endSingleTimeCommands(VkQueue queue, VkCommandBuffer commandBuffer, VkCommandPool commandPool) {
+
+		VkResult result = vkEndCommandBuffer(commandBuffer);
+
+		// VkSubmitInfo submitInfo{};
+		// submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		// submitInfo.commandBufferCount = 1;
+		// submitInfo.pCommandBuffers = &commandBuffer;
+		const std::vector<VkCommandBuffer> cmds = {commandBuffer};
+		submitCommands(queue, cmds);
+		// result =vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+		result = vkQueueWaitIdle(queue);
+
+		vkFreeCommandBuffers(getHandle(), commandPool, cmds.size(), cmds.data());
+	}
 
 	/**
 	 * @brief
