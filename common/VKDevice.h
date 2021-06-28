@@ -1,6 +1,7 @@
 #ifndef _VK_SAMPLES_COMMON_VK_DEVICE_H_
 #define _VK_SAMPLES_COMMON_VK_DEVICE_H_ 1
 #include "VKHelper.h"
+#include "VKUtil.h"
 #include "VkPhysicalDevice.h"
 #include "VulkanCore.h"
 #include <fmt/core.h>
@@ -44,7 +45,7 @@ class VKDevice {
 		return physicalDevices;
 	}
 
-	const std::shared_ptr<PhysicalDevice>& getPhysicalDevice(unsigned int index) const {
+	const std::shared_ptr<PhysicalDevice> &getPhysicalDevice(unsigned int index) const {
 		return physicalDevices[index];
 	}
 
@@ -91,7 +92,7 @@ class VKDevice {
 		cmdPoolCreateInfo.flags = flag;
 
 		/*  Create command pool.    */
-		VkResult result = vkCreateCommandPool(getHandle(), &cmdPoolCreateInfo, nullptr, &pool);
+		VKS_VALIDATE(vkCreateCommandPool(getHandle(), &cmdPoolCreateInfo, nullptr, &pool));
 
 		return pool;
 	}
@@ -116,7 +117,7 @@ class VKDevice {
 		submitInfo.signalSemaphoreCount = signalSempores.size();
 		submitInfo.pSignalSemaphores = signalSempores.data();
 
-		VkResult result = vkQueueSubmit(queue, 1, &submitInfo, fence);
+		VKS_VALIDATE(vkQueueSubmit(queue, 1, &submitInfo, fence));
 	}
 
 	std::vector<VkCommandBuffer> allocateCommandBuffers(VkCommandPool commandPool, VkCommandBufferLevel level,
@@ -130,7 +131,7 @@ class VKDevice {
 		allocInfo.commandPool = commandPool;
 		allocInfo.commandBufferCount = nrCmdBuffers;
 
-		VkResult result = vkAllocateCommandBuffers(getHandle(), &allocInfo, cmdBuffers.data());
+		VKS_VALIDATE(vkAllocateCommandBuffers(getHandle(), &allocInfo, cmdBuffers.data()));
 
 		return cmdBuffers;
 	}
@@ -139,7 +140,7 @@ class VKDevice {
 	beginSingleTimeCommands(VkCommandPool commandPool, VkCommandBufferLevel level, unsigned int nrCmdBuffers = 1,
 							VkCommandBufferUsageFlags usage = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
 							VkCommandBufferInheritanceInfo *pInheritInfo = nullptr, const void *pNext = nullptr) {
-		std::vector<VkCommandBuffer> cmd =  allocateCommandBuffers(commandPool, level, nrCmdBuffers);
+		std::vector<VkCommandBuffer> cmd = allocateCommandBuffers(commandPool, level, nrCmdBuffers);
 
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
