@@ -56,9 +56,9 @@ int main(int argc, const char **argv) {
 		cmdBufBeginInfo.flags = 0;
 
 		std::cout << "CPU to GPU Memory Transfer Speed" << std::endl;
-		for (int i = 0; i < memorySizes.size(); i++) {
+		for (size_t i = 0; i < memorySizes.size(); i++) {
 
-			for (int n = 0; n < timeSample.size(); n++) {
+			for (size_t n = 0; n < timeSample.size(); n++) {
 
 				VkBufferCopy bufferCopy;
 				bufferCopy.dstOffset = 0;
