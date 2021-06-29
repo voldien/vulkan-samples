@@ -10,7 +10,7 @@ class TriangleWindow : public VKWindow {
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-	VkDeviceMemory vertexMemory;
+	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 
   public:
 	TriangleWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
