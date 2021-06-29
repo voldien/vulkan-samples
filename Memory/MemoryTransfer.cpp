@@ -35,7 +35,6 @@ int main(int argc, const char **argv) {
 		VkQueue transfer = device->getDefaultTransfer();
 
 		const VkPhysicalDeviceMemoryProperties &memProp = device->getPhysicalDevices()[0]->getMemoryProperties();
-		VkDeviceSize bufferSize = 1024;
 
 		VkCommandPool commandPool = device->createCommandPool(device->getDefaultTransferQueueIndex());
 		std::vector<VkCommandBuffer> cmds = device->allocateCommandBuffers(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY,
