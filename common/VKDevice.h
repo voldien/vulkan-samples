@@ -148,7 +148,7 @@ class VKDevice {
 		beginInfo.flags = usage;
 		beginInfo.pInheritanceInfo = pInheritInfo;
 
-		vkBeginCommandBuffer(cmd[0], &beginInfo);
+		VKS_VALIDATE(vkBeginCommandBuffer(cmd[0], &beginInfo));
 
 		return cmd;
 	}
@@ -164,7 +164,7 @@ class VKDevice {
 		const std::vector<VkCommandBuffer> cmds = {commandBuffer};
 		submitCommands(queue, cmds);
 		// result =vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-		result = vkQueueWaitIdle(queue);
+		VKS_VALIDATE(vkQueueWaitIdle(queue));
 
 		vkFreeCommandBuffers(getHandle(), commandPool, cmds.size(), cmds.data());
 	}

@@ -24,24 +24,23 @@ class PhysicalDevice {
 
 	const VkPhysicalDeviceLimits &getDeviceLimits(void) const noexcept { return this->properties.limits; }
 
-	const VkPhysicalDeviceDriverProperties &getDeviceDriverProperties(void){
+	const VkPhysicalDeviceDriverProperties &getDeviceDriverProperties(void) {
 		VkPhysicalDeviceDriverProperties devceProp;
 		getProperties(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES, devceProp);
 	}
 
-	const VkPhysicalDeviceSubgroupProperties getDeviceSubGroupProperties(void){
+	const VkPhysicalDeviceSubgroupProperties getDeviceSubGroupProperties(void) {
 		VkPhysicalDeviceSubgroupProperties devceProp;
 		getProperties(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, devceProp);
 	}
 
-		/**
-		 * @brief Get the Queue Family Properties object
-		 * Get all the support family properties.
-		 *
-		 * @return const std::vector<VkQueueFamilyProperties>&
-		 */
-		const std::vector<VkQueueFamilyProperties> &
-		getQueueFamilyProperties(void) const noexcept {
+	/**
+	 * @brief Get the Queue Family Properties object
+	 * Get all the support family properties.
+	 *
+	 * @return const std::vector<VkQueueFamilyProperties>&
+	 */
+	const std::vector<VkQueueFamilyProperties> &getQueueFamilyProperties(void) const noexcept {
 		return queueFamilyProperties;
 	}
 
@@ -74,7 +73,7 @@ class PhysicalDevice {
 	 * @return false
 	 */
 	bool isFormatSupported(VkFormat format, VkImageType imageType, VkImageTiling tiling,
-							 VkImageUsageFlags usage) const {
+						   VkImageUsageFlags usage) const {
 		VkImageFormatProperties prop;
 		VkResult result =
 			vkGetPhysicalDeviceImageFormatProperties(this->getHandle(), format, imageType, tiling, usage, 0, &prop);
@@ -134,9 +133,9 @@ class PhysicalDevice {
 	 * @param requestProperties
 	 */
 	template <typename T> void getProperties(VkStructureType type, T &requestProperties) noexcept {
-		VkPhysicalDeviceProperties2 properties {};
+		VkPhysicalDeviceProperties2 properties{};
 		properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-		properties.pNext =  &requestProperties;
+		properties.pNext = &requestProperties;
 		/*	*/
 		requestProperties.sType = type;
 		vkGetPhysicalDeviceProperties2(getHandle(), &properties);

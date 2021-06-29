@@ -96,7 +96,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
 	/*  Create device.  */
-	vkCreateDevice(devices[0]->getHandle(), &deviceInfo, VK_NULL_HANDLE, &this->logicalDevice);
+	VKS_VALIDATE(vkCreateDevice(devices[0]->getHandle(), &deviceInfo, VK_NULL_HANDLE, &this->logicalDevice));
 
 	/*  Get all queues.    */
 	if (requiredQueues & VK_QUEUE_GRAPHICS_BIT)

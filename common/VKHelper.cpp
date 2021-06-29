@@ -107,9 +107,7 @@ VkImageView VKHelper::createImageView(VkDevice device, VkImage image, VkImageVie
 	viewInfo.subresourceRange.layerCount = 1;
 
 	VkImageView imageView;
-	if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create texture image view!");
-	}
+	VKS_VALIDATE(vkCreateImageView(device, &viewInfo, nullptr, &imageView));
 
 	return imageView;
 }
@@ -174,16 +172,16 @@ void VKHelper::selectDefaultDevices(std::vector<VkPhysicalDevice> &devices,
 			continue;
 
 		uint32_t nrDisplayProperties = 0;
-		VK_CHECK(vkGetPhysicalDeviceDisplayPropertiesKHR(device, &nrDisplayProperties, nullptr));
+		VKS_VALIDATE(vkGetPhysicalDeviceDisplayPropertiesKHR(device, &nrDisplayProperties, nullptr));
 		// if (nrDisplayProperties <= 0)
 		// 	continue;
 
 		std::vector<VkDisplayPropertiesKHR> displayProperties(nrDisplayProperties);
-		VK_CHECK(vkGetPhysicalDeviceDisplayPropertiesKHR(device, &nrDisplayProperties, displayProperties.data()));
+		VKS_VALIDATE(vkGetPhysicalDeviceDisplayPropertiesKHR(device, &nrDisplayProperties, displayProperties.data()));
 
 		/* Find all supported planes.	*/
 		uint32_t planeCount = 0;
-		VK_CHECK(vkGetPhysicalDeviceDisplayPlanePropertiesKHR(device, &planeCount, nullptr));
+		VKS_VALIDATE(vkGetPhysicalDeviceDisplayPlanePropertiesKHR(device, &planeCount, nullptr));
 		// if (planeCount <= 0)
 		// 	continue;
 
@@ -285,7 +283,7 @@ VKHelper::QueueFamilyIndices VKHelper::findQueueFamilies(VkPhysicalDevice device
 		}
 
 		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+		VKS_VALIDATE(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport));
 
 		if (presentSupport) {
 			indices.presentFamily = i;
@@ -304,22 +302,23 @@ VKHelper::QueueFamilyIndices VKHelper::findQueueFamilies(VkPhysicalDevice device
 VKHelper::SwapChainSupportDetails VKHelper::querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
 	SwapChainSupportDetails details;
 
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+	VKS_VALIDATE(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities));
 
 	uint32_t formatCount;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+	VKS_VALIDATE(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr));
 
 	if (formatCount != 0) {
 		details.formats.resize(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+		VKS_VALIDATE(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data()));
 	}
 
 	uint32_t presentModeCount;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+	VKS_VALIDATE(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr));
 
 	if (presentModeCount != 0) {
 		details.presentModes.resize(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+		VKS_VALIDATE(
+			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data()));
 	}
 
 	return details;
