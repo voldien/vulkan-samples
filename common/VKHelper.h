@@ -1,5 +1,6 @@
 #ifndef _VKSAMPLES_VK_HELPER_H_
 #define _VKSAMPLES_VK_HELPER_H_ 1
+#include "VKUtil.h"
 #include <array>
 #include <limits>
 #include <optional>
@@ -11,7 +12,7 @@
 #define ArraySize(a) (sizeof(a) / sizeof(*a))
 
 /**
- * 
+ *
  */
 class VKHelper {
   public:
@@ -102,8 +103,8 @@ class VKHelper {
 
 		// /**/
 		// VkResult result = vkAllocateMemory(device, &allocInfo, NULL, &deviceMemory);
-//			throw std::runtime_error("failed to allocate buffer memory!");
-//		}
+		//			throw std::runtime_error("failed to allocate buffer memory!");
+		//		}
 	}
 
 	/**
@@ -169,9 +170,7 @@ class VKHelper {
 		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-		if (vkCreateSampler(device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create texture sampler!");
-		}
+		VKS_VALIDATE(vkCreateSampler(device, &samplerInfo, nullptr, &sampler));
 	}
 
 	/**
@@ -192,9 +191,7 @@ class VKHelper {
 		createInfo.pCode = reinterpret_cast<const uint32_t *>(data.data());
 
 		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(device, &createInfo, pAllocator, &shaderModule) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create shader module!");
-		}
+		VKS_VALIDATE(vkCreateShaderModule(device, &createInfo, pAllocator, &shaderModule));
 
 		return shaderModule;
 	}
@@ -251,7 +248,7 @@ class VKHelper {
 		layoutInfo.bindingCount = descitprSetLayoutBindings.size();
 		layoutInfo.pBindings = descitprSetLayoutBindings.data();
 
-		VkResult result = vkCreateDescriptorSetLayout(device, &layoutInfo, pAllocator, &descriptorSetLayout);
+		VKS_VALIDATE(vkCreateDescriptorSetLayout(device, &layoutInfo, pAllocator, &descriptorSetLayout));
 	}
 
 	static VkDescriptorPool createDescPool(VkDevice device, const std::vector<VkDescriptorPoolSize> &poolSizes = {},
@@ -266,7 +263,7 @@ class VKHelper {
 		poolInfo.pPoolSizes = poolSizes.data();
 		poolInfo.maxSets = maxSets;
 
-		VkResult result = vkCreateDescriptorPool(device, &poolInfo, pAllocator, &descPool);
+		VKS_VALIDATE(vkCreateDescriptorPool(device, &poolInfo, pAllocator, &descPool));
 
 		return descPool;
 	}
@@ -284,7 +281,7 @@ class VKHelper {
 		pipelineCacheInfo.initialDataSize = size;
 		pipelineCacheInfo.flags = 0;
 
-		VkResult result = vkCreatePipelineCache(device, &pipelineCacheInfo, pAllocator, &pipelineCache);
+		VKS_VALIDATE(vkCreatePipelineCache(device, &pipelineCacheInfo, pAllocator, &pipelineCache));
 
 		return pipelineCache;
 	}
@@ -308,8 +305,7 @@ class VKHelper {
 		pipelineCreateInfo.basePipelineHandle = basePipelineHandle;
 		pipelineCreateInfo.basePipelineIndex = basePipelineIndex;
 
-		VkResult result =
-			vkCreateComputePipelines(device, pipelineCache, 1, &pipelineCreateInfo, pAllocator, &pipeline);
+		VKS_VALIDATE(vkCreateComputePipelines(device, pipelineCache, 1, &pipelineCreateInfo, pAllocator, &pipeline));
 
 		return pipeline;
 	}
@@ -403,27 +399,27 @@ class VKHelper {
 		allocInfo.commandBufferCount = 1;
 
 		VkCommandBuffer commandBuffer;
-		vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+		VKS_VALIDATE(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer));
 
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		VKS_VALIDATE(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
 		VkBufferCopy copyRegion{};
 		copyRegion.size = size;
 		vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
 
-		vkEndCommandBuffer(commandBuffer);
+		VKS_VALIDATE(vkEndCommandBuffer(commandBuffer));
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffer;
 
-		vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(queue);
+		VKS_VALIDATE(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+		VKS_VALIDATE(vkQueueWaitIdle(queue));
 
 		vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 	}

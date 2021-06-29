@@ -1,4 +1,5 @@
 #include "VKHelper.h"
+#include "VKUtil.h"
 #include <common.hpp>
 #include <vulkan/vulkan.h>
 
@@ -32,9 +33,7 @@ void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, const VkPhysical
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	/**/
-	if (vkCreateBuffer(device, &bufferInfo, NULL, &buffer) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create buffer!");
-	}
+	VKS_VALIDATE(vkCreateBuffer(device, &bufferInfo, NULL, &buffer));
 
 	VkMemoryRequirements memRequirements;
 	vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
@@ -50,12 +49,10 @@ void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, const VkPhysical
 		throw std::runtime_error("");
 
 	/**/
-	if (vkAllocateMemory(device, &allocInfo, NULL, &bufferMemory) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate buffer memory!");
-	}
+	VKS_VALIDATE(vkAllocateMemory(device, &allocInfo, NULL, &bufferMemory));
 
 	/**/
-	vkBindBufferMemory(device, buffer, bufferMemory, 0);
+	VKS_VALIDATE(vkBindBufferMemory(device, buffer, bufferMemory, 0));
 }
 
 void VKHelper::createImage(VkDevice device, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
@@ -79,9 +76,7 @@ void VKHelper::createImage(VkDevice device, uint32_t width, uint32_t height, uin
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create image!");
-	}
+	VKS_VALIDATE(vkCreateImage(device, &imageInfo, nullptr, &image));
 
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(device, image, &memRequirements);
@@ -91,11 +86,9 @@ void VKHelper::createImage(VkDevice device, uint32_t width, uint32_t height, uin
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = findMemoryType(memProperties, memRequirements.memoryTypeBits, properties).value();
 
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate image memory!");
-	}
+	VKS_VALIDATE(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory));
 
-	vkBindImageMemory(device, image, imageMemory, 0);
+	VKS_VALIDATE(vkBindImageMemory(device, image, imageMemory, 0));
 }
 
 VkImageView VKHelper::createImageView(VkDevice device, VkImage image, VkImageViewType imageType, VkFormat format,

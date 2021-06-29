@@ -8,6 +8,14 @@ static const char *getVKResultSymbol(int symbol) {
 	switch (symbol) {
 	case VK_SUCCESS:
 		return "VK_SUCCESS";
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+		return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+	case VK_ERROR_INVALID_EXTERNAL_HANDLE:
+		return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
+	case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS_KHR:
+		return "VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS_KHR";
+	case VK_ERROR_OUT_OF_HOST_MEMORY:
+		return "VK_ERROR_OUT_OF_HOST_MEMORY";
 	default:
 		return "";
 	}
