@@ -9,7 +9,7 @@ static const char *getVKResultSymbol(int symbol) {
 	case VK_SUCCESS:
 		return "VK_SUCCESS";
 	default:
-		break;
+		return "";
 	}
 }
 
