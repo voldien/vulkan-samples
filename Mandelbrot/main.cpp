@@ -1,7 +1,7 @@
 #include "FPSCounter.h"
 #include "VKHelper.h"
 #include "VksCommon.h"
-#include "common.hpp"
+
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
@@ -140,7 +140,7 @@ class MandelBrotWindow : public VKWindow {
 
 	virtual void onResize(int width, int height) override {
 
-		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
 		/*	*/
 		computeImageViews.resize(getSwapChainImageCount());
@@ -164,7 +164,7 @@ class MandelBrotWindow : public VKWindow {
 
 		// allocate descriptor set.
 		descriptorSets.resize(getSwapChainImageCount());
-		VK_CHECK(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
+		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
 
 		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
 			VkDescriptorImageInfo imageInfo{};
@@ -201,7 +201,7 @@ class MandelBrotWindow : public VKWindow {
 
 		for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
 			void *data;
-			VK_CHECK(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
+			VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
 			memcpy(data, &params, paramMemSize);
 			vkUnmapMemory(getDevice(), paramMemory[0]);
 		}
@@ -214,7 +214,7 @@ class MandelBrotWindow : public VKWindow {
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0;
 
-			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
@@ -237,14 +237,14 @@ class MandelBrotWindow : public VKWindow {
 			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
 								 nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
-			VK_CHECK(vkEndCommandBuffer(cmd));
+			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
 
 	virtual void draw(void) override {
 		// Setup the range
 		void *data;
-		VK_CHECK(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
+		VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
 		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 

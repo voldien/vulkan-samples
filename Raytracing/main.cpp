@@ -1,4 +1,4 @@
-#include "common.hpp"
+
 #include <VKWindow.h>
 #include <stdexcept>
 /**
@@ -29,7 +29,7 @@ class RayTracing : public VKWindow {
 
 	virtual void onResize(int width, int height) override {
 
-		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
 		for (uint32_t i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
@@ -38,7 +38,7 @@ class RayTracing : public VKWindow {
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0;
 
-			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			/*	Transfer the new data 	*/
 			// vkCmdTran
@@ -70,7 +70,7 @@ class RayTracing : public VKWindow {
 
 			// vkCmdEndRenderPass(cmd);
 
-			VK_CHECK(vkEndCommandBuffer(cmd));
+			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
 };

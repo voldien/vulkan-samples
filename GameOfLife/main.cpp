@@ -1,6 +1,6 @@
 #include "VKHelper.h"
 #include "VksCommon.h"
-#include "common.hpp"
+
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
@@ -113,7 +113,7 @@ class GameOfLifeWindow : public VKWindow {
 		pipelineCreateInfo.stage = compShaderStageInfo;
 		pipelineCreateInfo.layout = *layout;
 
-		VK_CHECK(vkCreateComputePipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
+		VKS_VALIDATE(vkCreateComputePipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
 		vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
 
 		return pipeline;
@@ -178,7 +178,7 @@ class GameOfLifeWindow : public VKWindow {
 
 	virtual void onResize(int width, int height) override {
 
-		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
 		const VkDeviceSize cellBufferSize = width * height * sizeof(float) * nrChemicalComponents;
 
@@ -213,7 +213,7 @@ class GameOfLifeWindow : public VKWindow {
 
 		// allocate descriptor set.
 		descriptorSets.resize(getSwapChainImageCount());
-		VK_CHECK(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
+		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
 
 		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
 
@@ -279,7 +279,7 @@ class GameOfLifeWindow : public VKWindow {
 
 		for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
 			void *data;
-			VK_CHECK(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
+			VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
 			memcpy(data, &params, paramMemSize);
 			vkUnmapMemory(getDevice(), paramMemory[0]);
 		}
@@ -291,7 +291,7 @@ class GameOfLifeWindow : public VKWindow {
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0;
 
-			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
@@ -314,14 +314,14 @@ class GameOfLifeWindow : public VKWindow {
 			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
 								 nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
-			VK_CHECK(vkEndCommandBuffer(cmd));
+			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
 
 	virtual void draw(void) override {
 		// Setup the range
 		void *data;
-		VK_CHECK(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
+		VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
 		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 

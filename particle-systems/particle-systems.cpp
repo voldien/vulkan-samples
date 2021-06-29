@@ -1,4 +1,3 @@
-#include "common.hpp"
 #include <VKWindow.h>
 #include <stdexcept>
 
@@ -39,7 +38,7 @@ class ParticleSystemWindow : public VKWindow {
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0;
 
-			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -84,7 +83,7 @@ class ParticleSystemWindow : public VKWindow {
 			// 	cmd, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
 			// 	VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
 
-			VK_CHECK(vkEndCommandBuffer(cmd));
+			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
 };

@@ -1,6 +1,6 @@
 #include "VKHelper.h"
 #include "VKUtil.h"
-#include <common.hpp>
+
 #include <vulkan/vulkan.h>
 
 std::optional<uint32_t> VKHelper::findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
@@ -123,7 +123,7 @@ void VKHelper::createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineL
 	pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 	pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
 
-	VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
+	VKS_VALIDATE(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
 }
 
 // bool VKHelper::isDeviceSuitable(VkPhysicalDevice device) {

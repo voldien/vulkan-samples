@@ -1,7 +1,6 @@
 #include "VKWindow.h"
 #include "VKDevice.h"
 #include "VKHelper.h"
-#include "common.hpp"
 #include <SDL2/SDL_vulkan.h>
 #include <cassert>
 #include <stdexcept>
@@ -74,7 +73,7 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	/*  Create command pool.    */
-	VK_CHECK(vkCreateCommandPool(getDevice(), &cmdPoolCreateInfo, NULL, &this->cmd_pool));
+	VKS_VALIDATE(vkCreateCommandPool(getDevice(), &cmdPoolCreateInfo, NULL, &this->cmd_pool));
 
 	/*	Create swap chain.	*/
 	createSwapChain();
@@ -153,7 +152,7 @@ void VKWindow::swapBuffer(void) {
 											 this->inFlightFences[this->swapChain->currentFrame],
 											 {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT});
 
-	// VK_CHECK(vkQueueSubmit(device->getDefaultGraphicQueue(), 1, &submitInfo,
+	// VKS_VALIDATE(vkQueueSubmit(device->getDefaultGraphicQueue(), 1, &submitInfo,
 	// 					   this->inFlightFences[this->swapChain->currentFrame]));
 
 	VkPresentInfoKHR presentInfo = {};
@@ -241,14 +240,14 @@ void VKWindow::createSwapChain(void) {
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
 	/*  Create swapchain.   */
-	VK_CHECK(vkCreateSwapchainKHR(getDevice(), &createInfo, NULL, &this->swapChain->swapchain));
+	VKS_VALIDATE(vkCreateSwapchainKHR(getDevice(), &createInfo, NULL, &this->swapChain->swapchain));
 
 	/*  Get the image associated with the swap chain.   */
 	uint32_t nrChainImageCount = 1;
-	VK_CHECK(vkGetSwapchainImagesKHR(getDevice(), this->swapChain->swapchain, &nrChainImageCount, NULL));
+	VKS_VALIDATE(vkGetSwapchainImagesKHR(getDevice(), this->swapChain->swapchain, &nrChainImageCount, NULL));
 
 	this->swapChain->swapChainImages.resize(nrChainImageCount);
-	VK_CHECK(vkGetSwapchainImagesKHR(getDevice(), this->swapChain->swapchain, &nrChainImageCount,
+	VKS_VALIDATE(vkGetSwapchainImagesKHR(getDevice(), this->swapChain->swapchain, &nrChainImageCount,
 									 this->swapChain->swapChainImages.data()));
 
 	this->swapChain->swapChainImageFormat = surfaceFormat.format;
@@ -274,7 +273,7 @@ void VKWindow::createSwapChain(void) {
 		createInfo.subresourceRange.baseArrayLayer = 0;
 		createInfo.subresourceRange.layerCount = 1;
 
-		VK_CHECK(vkCreateImageView(getDevice(), &createInfo, nullptr, &this->swapChain->swapChainImageViews[i]));
+		VKS_VALIDATE(vkCreateImageView(getDevice(), &createInfo, nullptr, &this->swapChain->swapChainImageViews[i]));
 	}
 
 	VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
@@ -345,7 +344,7 @@ void VKWindow::createSwapChain(void) {
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	VK_CHECK(vkCreateRenderPass(getDevice(), &renderPassInfo, nullptr, &this->swapChain->renderPass));
+	VKS_VALIDATE(vkCreateRenderPass(getDevice(), &renderPassInfo, nullptr, &this->swapChain->renderPass));
 
 	/*	Framebuffer.	*/
 	// TODO add support.
@@ -364,7 +363,7 @@ void VKWindow::createSwapChain(void) {
 		framebufferInfo.height = this->swapChain->chainExtend.height;
 		framebufferInfo.layers = 1;
 
-		VK_CHECK(
+		VKS_VALIDATE(
 			vkCreateFramebuffer(getDevice(), &framebufferInfo, nullptr, &this->swapChain->swapChainFramebuffers[i]));
 	}
 
@@ -376,7 +375,7 @@ void VKWindow::createSwapChain(void) {
 	cmdBufAllocInfo.commandBufferCount = this->swapChain->swapChainImages.size();
 	cmdBufAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-	VK_CHECK(vkAllocateCommandBuffers(getDevice(), &cmdBufAllocInfo, this->swapChain->commandBuffers.data()));
+	VKS_VALIDATE(vkAllocateCommandBuffers(getDevice(), &cmdBufAllocInfo, this->swapChain->commandBuffers.data()));
 }
 
 void VKWindow::recreateSwapChain(void) {

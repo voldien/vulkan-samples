@@ -1,6 +1,6 @@
 #include "IOUtil.h"
 #include "VKHelper.h"
-#include "common.hpp"
+
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
@@ -154,7 +154,7 @@ class CubeWindow : public VKWindow {
 		layoutInfo.bindingCount = 1;
 		layoutInfo.pBindings = &uboLayoutBinding;
 
-		VK_CHECK(vkCreateDescriptorSetLayout(getDevice(), &layoutInfo, nullptr, &descriptorSetLayout));
+		VKS_VALIDATE(vkCreateDescriptorSetLayout(getDevice(), &layoutInfo, nullptr, &descriptorSetLayout));
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -218,7 +218,7 @@ class CubeWindow : public VKWindow {
 		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-		VK_CHECK(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
+		VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -235,7 +235,7 @@ class CubeWindow : public VKWindow {
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-		VK_CHECK(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+		VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
 
 		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -260,7 +260,7 @@ class CubeWindow : public VKWindow {
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   uniformBuffers[i], uniformBuffersMemory[i]);
 			void *_data;
-			VK_CHECK(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
+			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -315,7 +315,7 @@ class CubeWindow : public VKWindow {
 		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		VK_CHECK(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
+		VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
 
 		VkMemoryRequirements memRequirements;
 		vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
@@ -327,12 +327,12 @@ class CubeWindow : public VKWindow {
 			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
 									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		VK_CHECK(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
+		VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
-		VK_CHECK(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
+		VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
 		void *data;
-		VK_CHECK(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
+		VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 		vkUnmapMemory(getDevice(), vertexMemory);
 
@@ -343,7 +343,7 @@ class CubeWindow : public VKWindow {
 
 		prevTimeCounter = SDL_GetPerformanceCounter();
 
-		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
@@ -356,7 +356,7 @@ class CubeWindow : public VKWindow {
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0;
 
-			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			/*	Transfer the new data 	*/
 			// vkCmdTran
@@ -405,7 +405,7 @@ class CubeWindow : public VKWindow {
 
 			vkCmdEndRenderPass(cmd);
 
-			VK_CHECK(vkEndCommandBuffer(cmd));
+			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
 

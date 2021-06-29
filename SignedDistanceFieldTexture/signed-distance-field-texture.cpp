@@ -1,4 +1,4 @@
-#include "common.hpp"
+
 #include <Importer/ImageImport.h>
 #include <VKWindow.h>
 #include <stdexcept>
@@ -32,7 +32,7 @@ class SignedDistanceFieldTextureWindow : public VKWindow {
 		// beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		// beginInfo.flags = 0;
 
-		// VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+		// VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 		// vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
@@ -66,7 +66,7 @@ class SignedDistanceFieldTextureWindow : public VKWindow {
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0;
 
-			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -97,7 +97,7 @@ class SignedDistanceFieldTextureWindow : public VKWindow {
 
 			vkCmdEndRenderPass(cmd);
 
-			VK_CHECK(vkEndCommandBuffer(cmd));
+			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
 };

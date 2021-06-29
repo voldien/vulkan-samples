@@ -1,4 +1,4 @@
-#include "common.hpp"
+
 #include <VKWindow.h>
 #include <stdexcept>
 
@@ -23,7 +23,7 @@ class SignedDistanceFieldVolumeWindow : public VKWindow {
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0;
 
-			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -54,7 +54,7 @@ class SignedDistanceFieldVolumeWindow : public VKWindow {
 
 			vkCmdEndRenderPass(cmd);
 
-			VK_CHECK(vkEndCommandBuffer(cmd));
+			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
 };

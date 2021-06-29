@@ -2,7 +2,7 @@
 #include "VKHelper.h"
 #include "VKUtil.h"
 #include "VksCommon.h"
-#include "common.hpp"
+
 
 int main(int argc, const char **argv) {
 

@@ -1,4 +1,4 @@
-#include "common.hpp"
+
 #include <VKWindow.h>
 
 int main(int argc, const char **argv) {

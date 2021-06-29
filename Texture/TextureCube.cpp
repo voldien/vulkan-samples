@@ -2,7 +2,6 @@
 #include "Importer/ImageImport.h"
 #include "VKHelper.h"
 #include "VksCommon.h"
-#include "common.hpp"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
@@ -233,7 +232,7 @@ class SingleTextureWindow : public VKWindow {
 
 		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
 
-		// VK_CHECK(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
+		// VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 		VkDynamicState dynamicStateEnables[1];
 		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
@@ -260,7 +259,7 @@ class SingleTextureWindow : public VKWindow {
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineInfo.pDynamicState = &dynamicStateInfo;
 
-		VK_CHECK(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+		VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
 
 		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -277,7 +276,7 @@ class SingleTextureWindow : public VKWindow {
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = 0;
 
-		VK_CHECK(vkBeginCommandBuffer(cmds[0], &beginInfo));
+		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
 		ImageImporter::createImage("/home/voldie/test.png", getDevice(), getGraphicCommandPool(),
 								   getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
@@ -311,7 +310,7 @@ class SingleTextureWindow : public VKWindow {
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   uniformBuffers[i], uniformBuffersMemory[i]);
 			void *_data;
-			VK_CHECK(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
+			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -393,7 +392,7 @@ class SingleTextureWindow : public VKWindow {
 		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		VK_CHECK(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
+		VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
 
 		VkMemoryRequirements memRequirements;
 		vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
@@ -406,12 +405,12 @@ class SingleTextureWindow : public VKWindow {
 									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
 				.value();
 
-		VK_CHECK(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
+		VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
-		VK_CHECK(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
+		VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
 		void *data;
-		VK_CHECK(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
+		VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 		vkUnmapMemory(getDevice(), vertexMemory);
 
@@ -422,7 +421,7 @@ class SingleTextureWindow : public VKWindow {
 
 		ntime = SDL_GetPerformanceCounter();
 
-		VK_CHECK(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
@@ -435,7 +434,7 @@ class SingleTextureWindow : public VKWindow {
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0;
 
-			VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			/*	Transfer the new data 	*/
 			// vkCmdTran
@@ -491,7 +490,7 @@ class SingleTextureWindow : public VKWindow {
 
 			vkCmdEndRenderPass(cmd);
 
-			VK_CHECK(vkEndCommandBuffer(cmd));
+			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
 

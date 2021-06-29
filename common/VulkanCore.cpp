@@ -1,7 +1,6 @@
 #include "VulkanCore.h"
 #include "VKHelper.h"
 #include "VkPhysicalDevice.h"
-#include "common.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include <cassert>
@@ -68,7 +67,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	uint32_t extensionCount = 0;
 	VKS_VALIDATE(vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensionCount, VK_NULL_HANDLE));
 	this->instanceExtensions.resize(extensionCount);
-	VK_CHECK(vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensionCount, instanceExtensions.data()));
+	VKS_VALIDATE(vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensionCount, instanceExtensions.data()));
 
 	/*  Check for supported validation layers.  */
 	uint32_t layerCount;
@@ -99,7 +98,7 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 
 	/*  Get Latest Vulkan version. */
 	uint32_t version;
-	VK_CHECK(vkEnumerateInstanceVersion(&version));
+	VKS_VALIDATE(vkEnumerateInstanceVersion(&version));
 
 	/*	Primary Vulkan instance Object. */
 	VkApplicationInfo ai = {};
