@@ -72,9 +72,9 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 
 	/*  Check for supported validation layers.  */
 	uint32_t layerCount;
-	VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, VK_NULL_HANDLE));
+	VKS_VALIDATE(vkEnumerateInstanceLayerProperties(&layerCount, VK_NULL_HANDLE));
 	instanceLayers.resize(layerCount);
-	VK_CHECK(vkEnumerateInstanceLayerProperties(&layerCount, instanceLayers.data()));
+	VKS_VALIDATE(vkEnumerateInstanceLayerProperties(&layerCount, instanceLayers.data()));
 	if (this->useValidationLayers) {
 		/*  Check if exists.    */
 		for (uint32_t i = 0; i < instanceLayers.size(); i++) {
@@ -150,22 +150,22 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	ici.ppEnabledExtensionNames = usedInstanceExtensionNames.data();
 
 	/*	Create Vulkan instance.	*/
-	VK_CHECK(vkCreateInstance(&ici, VK_NULL_HANDLE, &inst));
+	VKS_VALIDATE(vkCreateInstance(&ici, VK_NULL_HANDLE, &inst));
 
 	/*	Get number of physical devices. */
 	uint32_t nrPhysicalDevices;
-	VK_CHECK(vkEnumeratePhysicalDevices(this->inst, &nrPhysicalDevices, VK_NULL_HANDLE));
+	VKS_VALIDATE(vkEnumeratePhysicalDevices(this->inst, &nrPhysicalDevices, VK_NULL_HANDLE));
 
 	/*  Get all physical devices.    */
 	physicalDevices.resize(nrPhysicalDevices);
-	VK_CHECK(vkEnumeratePhysicalDevices(this->inst, &nrPhysicalDevices, &this->physicalDevices[0]));
+	VKS_VALIDATE(vkEnumeratePhysicalDevices(this->inst, &nrPhysicalDevices, &this->physicalDevices[0]));
 
 	/*	*/
 	uint32_t nrPhysicalDeviceGroupCount;
-	VK_CHECK(vkEnumeratePhysicalDeviceGroups(this->inst, &nrPhysicalDeviceGroupCount, VK_NULL_HANDLE));
+	VKS_VALIDATE(vkEnumeratePhysicalDeviceGroups(this->inst, &nrPhysicalDeviceGroupCount, VK_NULL_HANDLE));
 
 	std::vector<VkPhysicalDeviceGroupProperties> phyiscalGroupDevices(nrPhysicalDeviceGroupCount);
-	VK_CHECK(vkEnumeratePhysicalDeviceGroups(this->inst, &nrPhysicalDeviceGroupCount, phyiscalGroupDevices.data()));
+	VKS_VALIDATE(vkEnumeratePhysicalDeviceGroups(this->inst, &nrPhysicalDeviceGroupCount, phyiscalGroupDevices.data()));
 
 	/*  TODO add selection function. */
 	std::vector<VkPhysicalDevice> selectedDevices;

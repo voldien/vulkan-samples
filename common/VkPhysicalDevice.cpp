@@ -31,7 +31,7 @@ bool PhysicalDevice::isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyInd
 	VkBool32 present_supported{VK_FALSE};
 
 	if (surface != VK_NULL_HANDLE) {
-		vkGetPhysicalDeviceSurfaceSupportKHR(this->getHandle(), queueFamilyIndex, surface, &present_supported);
+		VKS_VALIDATE(vkGetPhysicalDeviceSurfaceSupportKHR(this->getHandle(), queueFamilyIndex, surface, &present_supported));
 	}
 
 	return present_supported;

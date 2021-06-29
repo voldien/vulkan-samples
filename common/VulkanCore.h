@@ -1,5 +1,6 @@
 #ifndef _COMMON_VULKAN_SAMPLES_CORE_H_
 #define _COMMON_VULKAN_SAMPLES_CORE_H_ 1
+#include "VKUtil.h"
 #include <algorithm>
 #include <cstring>
 #include <memory>
@@ -85,13 +86,13 @@ class VulkanCore {
 	 *
 	 * @return std::vector<VkPhysicalDeviceGroupProperties>
 	 */
-	std::vector<VkPhysicalDeviceGroupProperties> getDeviceGroupProperties(void) const noexcept {
+	std::vector<VkPhysicalDeviceGroupProperties> getDeviceGroupProperties(void) const {
 
 		uint32_t nrGroups;
-		vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, nullptr);
+		VKS_VALIDATE(vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, nullptr));
 		std::vector<VkPhysicalDeviceGroupProperties> prop(nrGroups);
 		if (nrGroups > 0)
-			vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, prop.data());
+			VKS_VALIDATE(vkEnumeratePhysicalDeviceGroups(this->getHandle(), &nrGroups, prop.data()));
 		return prop;
 	}
 

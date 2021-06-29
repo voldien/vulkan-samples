@@ -82,7 +82,7 @@ class PhysicalDevice {
 		else if (result == VK_ERROR_FORMAT_NOT_SUPPORTED)
 			return false;
 		else
-			throw std::runtime_error("");
+			VKS_VALIDATE(result);
 	}
 
 	VkPhysicalDevice getHandle(void) const noexcept { return this->mdevice; }
