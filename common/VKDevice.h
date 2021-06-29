@@ -155,15 +155,10 @@ class VKDevice {
 
 	void endSingleTimeCommands(VkQueue queue, VkCommandBuffer commandBuffer, VkCommandPool commandPool) {
 
-		VkResult result = vkEndCommandBuffer(commandBuffer);
+		VKS_VALIDATE(vkEndCommandBuffer(commandBuffer));
 
-		// VkSubmitInfo submitInfo{};
-		// submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		// submitInfo.commandBufferCount = 1;
-		// submitInfo.pCommandBuffers = &commandBuffer;
 		const std::vector<VkCommandBuffer> cmds = {commandBuffer};
 		submitCommands(queue, cmds);
-		// result =vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
 		VKS_VALIDATE(vkQueueWaitIdle(queue));
 
 		vkFreeCommandBuffers(getHandle(), commandPool, cmds.size(), cmds.data());

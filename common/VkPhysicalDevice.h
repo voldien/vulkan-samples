@@ -24,14 +24,16 @@ class PhysicalDevice {
 
 	const VkPhysicalDeviceLimits &getDeviceLimits(void) const noexcept { return this->properties.limits; }
 
-	const VkPhysicalDeviceDriverProperties &getDeviceDriverProperties(void) {
+	inline const VkPhysicalDeviceDriverProperties getDeviceDriverProperties(void) {
 		VkPhysicalDeviceDriverProperties devceProp;
 		getProperties(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES, devceProp);
+		return devceProp;
 	}
 
-	const VkPhysicalDeviceSubgroupProperties getDeviceSubGroupProperties(void) {
+	inline const VkPhysicalDeviceSubgroupProperties getDeviceSubGroupProperties(void) {
 		VkPhysicalDeviceSubgroupProperties devceProp;
 		getProperties(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, devceProp);
+		return devceProp;
 	}
 
 	/**

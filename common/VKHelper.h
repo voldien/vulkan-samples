@@ -500,6 +500,4 @@ class VKHelper {
 	}
 };
 
-#define CHECK_VK_ERROR(result)
-
 #endif
