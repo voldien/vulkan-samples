@@ -28,25 +28,58 @@ layout(set = 0, binding = 3) uniform UniformBufferObject {
 }
 ubo;
 
-float computeDiffuseRateA(float A, float B, mat4 kernel, float killRate, float feedRate, float diffuseRate,
+float computeDiffuseRateA(float A, float B, float diverage, float killRate, float feedRate, float diffuseRate,
 						  float delta) {
-	return A + (diffuseRate * (kernel * vec4(A)).x - A * pow(B, 2) + feedRate * (1 - A)) * delta;
+	return A + (diffuseRate * diverage - A * pow(B, 2) + feedRate * (1 - A)) * delta;
 }
-float computeDiffuseRateB(float A, float B, mat4 kernel, float killRate, float feedRate, float diffuseRate,
+
+float computeDiffuseRateB(float A, float B, float diverage, float killRate, float feedRate, float diffuseRate,
 						  float delta) {
-	return B + (diffuseRate * (kernel * vec4(B)).x + A * pow(B, 2) - (killRate - feedRate) * B) * delta;
+	return B + (diffuseRate * diverage + A * pow(B, 2) - (killRate - feedRate) * B) * delta;
+}
+
+int memoryAddress(ivec2 invokedPixelCoord, ivec2 imageSize, ivec2 offset){
+	ivec2 pixelCoord = (invokedPixelCoord + offset) % imageSize;
+	return pixelCoord.y * imageSize.y + pixelCoord.x;
+}
+
+float lapacianA(ivec2 pixelCord, ivec2 imageSize, mat4 kernelA){
+	float result = 0;
+	for(int y = 0; y < 3; y++){
+		for(int x = 0; x < 3; x++){
+			result += kernelA[3 - x][3 - y] * PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x,-1 + y))].x;
+		}
+	}
+	return result;
+}
+
+float lapacianB(ivec2 pixelCord, ivec2 imageSize, mat4 kernelA){
+	float result = 0;
+	for(int y = 0; y < 3; y++){
+		for(int x = 0; x < 3; x++){
+			result += kernelA[3 - x][3 - y] * PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x,-1 + y))].y;
+		}
+	}
+	return result;
 }
 
 void main() {
 
 	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
 	const uint memory_index = gl_LocalInvocationIndex;
+	ivec2 imageSize = imageSize(img_output);
+	
 	vec2 AB = PreviousAB.AB[memory_index];
-	float pA = computeDiffuseRateA(AB.x, AB.y, ubo.kernelA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
-	float pB = computeDiffuseRateB(AB.x, AB.y, ubo.kernelA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
+
+	float diverageA = lapacianA(pixel_coords, imageSize, ubo.kernelA);
+	float diverageB = lapacianB(pixel_coords, imageSize, ubo.kernelB);
+
+	float pA = computeDiffuseRateA(AB.x, AB.y, diverageA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
+	float pB = computeDiffuseRateB(AB.x, AB.y, diverageB, ubo.killRate, ubo.feedRate, ubo.diffuseRateB, ubo.delta);
 
 	CurrentAB.AB[memory_index] = vec2(pA, pB);
 
-	vec4 pixel = vec4(CurrentAB.AB[memory_index], 1, 1);
+	/*	Display the color.	*/
+	vec4 pixel = vec4(CurrentAB.AB[memory_index], diverageA, 1);
 	imageStore(img_output, pixel_coords, pixel);
 }
