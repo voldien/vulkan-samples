@@ -28,10 +28,10 @@ class ReactionDiffusionWindow : public VKWindow {
 	struct reaction_diffusion_param_t {
 		float kernelA[4][4];
 		float kernelB[4][4];
-		float feedRate = 0.1f;
-		float killRate = .3;
-		float diffuseRateA = .1;
-		float diffuseRateB = .3;
+		float feedRate = 0.055f;
+		float killRate = .062;
+		float diffuseRateA = 1.0;
+		float diffuseRateB = .5;
 		float delta = .01;
 
 		/**/
@@ -171,6 +171,35 @@ class ReactionDiffusionWindow : public VKWindow {
 		params.kernelA[0][1] = 0.1;
 		params.kernelA[0][2] = 0.1;
 		params.kernelA[0][3] = 0.1;
+		params.kernelA[1][0] = 0.1;
+		params.kernelA[1][1] = -1;
+		params.kernelA[1][2] = 0.1;
+		params.kernelA[1][3] = 0.1;
+		params.kernelA[2][0] = 0.1;
+		params.kernelA[2][1] = 0.1;
+		params.kernelA[2][2] = 0.1;
+		params.kernelA[2][3] = 0.1;
+		params.kernelA[3][0] = 0.0;
+		params.kernelA[3][1] = 0.0;
+		params.kernelA[3][2] = 0.0;
+		params.kernelA[3][3] = 0.0;
+
+		params.kernelB[0][0] = 0.1;
+		params.kernelB[0][1] = 0.1;
+		params.kernelB[0][2] = 0.1;
+		params.kernelB[0][3] = 0.1;
+		params.kernelB[1][0] = 0.1;
+		params.kernelB[1][1] = -1;
+		params.kernelB[1][2] = 0.1;
+		params.kernelB[1][3] = 0.1;
+		params.kernelB[2][0] = 0.1;
+		params.kernelB[2][1] = 0.1;
+		params.kernelB[2][2] = 0.1;
+		params.kernelB[2][3] = 0.1;
+		params.kernelB[3][0] = 0.0;
+		params.kernelB[3][1] = 0.0;
+		params.kernelB[3][2] = 0.0;
+		params.kernelB[3][3] = 0.0;
 
 		onResize(width(), height());
 	}
@@ -196,7 +225,7 @@ class ReactionDiffusionWindow : public VKWindow {
 				for (int w = 0; w < width; w++) {
 					for (int c = 0; c < nrChemicalComponents; c++) {
 						cellData[h * height * nrChemicalComponents + w * nrChemicalComponents + c] =
-							Math::perlinNoise<float>((float)w, (float)h, 1);
+							Math::perlinNoise<float>((float)w * 0.001f, (float)h* 0.001f, 1) * 2.0f;
 					}
 				}
 			}
@@ -235,7 +264,7 @@ class ReactionDiffusionWindow : public VKWindow {
 			currentCellBufferInfo.range = cellBufferSize;
 
 			VkDescriptorBufferInfo previousCellBufferInfo{};
-			previousCellBufferInfo.buffer = cellsBuffers[i * nrChemicalComponents + 1];
+			previousCellBufferInfo.buffer = cellsBuffers[(i * nrChemicalComponents + 1) % cellsBuffers.size()];
 			previousCellBufferInfo.offset = 0;
 			previousCellBufferInfo.range = cellBufferSize;
 
