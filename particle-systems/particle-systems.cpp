@@ -8,8 +8,13 @@ class ParticleSystemWindow : public VKWindow {
 	VkPipeline particleGraphicPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout particleGraphicLayout = VK_NULL_HANDLE;
 
+	/*	*/
 	std::vector<VkBuffer> particleBuffers;
 	std::vector<VkDeviceMemory> particleBufferMemory;
+
+	/*	*/
+	VkBuffer vectorFieldBuffer;
+	VkDeviceMemory vectorFieldMemory;
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	std::vector<VkBuffer> uniformBuffers;
@@ -24,9 +29,14 @@ class ParticleSystemWindow : public VKWindow {
 
   public:
 	ParticleSystemWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {}
+		: VKWindow(core, device, -1, -1, -1, -1) {
+		setTitle("Particle System");
+	}
 
 	virtual void Initialize(void) { /*	*/
+
+
+
 		onResize(width(), height());
 	}
 
@@ -64,8 +74,8 @@ class ParticleSystemWindow : public VKWindow {
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(cmd, 0, 1, &particleBuffers[i], offsets);
 
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, particleGraphicLayout, 0, 1, &descriptorSets[i], 0,
-									nullptr);
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, particleGraphicLayout, 0, 1,
+									&descriptorSets[i], 0, nullptr);
 
 			vkCmdDraw(cmd, nrParticles, 1, 0, 0);
 
@@ -78,7 +88,7 @@ class ParticleSystemWindow : public VKWindow {
 			// // Dispatch compute job.
 			// vkCmdDispatch(cmd, (positionBuffer.size / sizeof(vec2)) / NUM_PARTICLES_PER_WORKGROUP, 1, 1);
 
-			// // Barrier between compute and vertex 
+			// // Barrier between compute and vertex
 			// shading.memoryBarrier(
 			// 	cmd, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
 			// 	VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
