@@ -40,7 +40,7 @@ static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue tran
 
 	averageTime /= timeSample.size();
 	float totalTransferRate = (1.0 / averageTime) * memorySize;
-	std::string resultMsg = fmt::format("{} KB - average: {} secs - ( Total {} MB/s) (samples: {})", memorySize / 1024,
+	std::string resultMsg = fmt::format("{} KB - average: {} secs - ( Average Transfer Rate {} MB/s) (samples: {})", memorySize / 1024,
 										averageTime, totalTransferRate / (1024 * 1024), timeSample.size());
 	std::cout << resultMsg << std::endl;
 }
@@ -48,7 +48,6 @@ static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue tran
 int main(int argc, const char **argv) {
 
 	const int nrTransferSamples = 100;
-	const int roundRobin = 3;
 
 	/*	1KB, 1MB, 128MB, 512MB.	*/
 	const std::array<VkDeviceSize, 4> memorySizes = {1024, 1024 * 1024, 1024 * 1024 * 128, 1024 * 1024 * 512};
@@ -59,13 +58,15 @@ int main(int argc, const char **argv) {
 	std::vector<VkBuffer> cpu2gpuBuffer(memorySizes.size());
 	std::vector<VkBuffer> gpu2gpuBufferSrc(memorySizes.size());
 	std::vector<VkBuffer> gpu2gpuBufferDst(memorySizes.size());
-	std::vector<VkBuffer> gpu2cpuBuffer(memorySizes.size());
+	std::vector<VkBuffer> gpu2cpuBufferSrc(memorySizes.size());
+	std::vector<VkBuffer> gpu2cpuBufferDst(memorySizes.size());
 
 	std::vector<VkDeviceMemory> staging(memorySizes.size());
 	std::vector<VkDeviceMemory> cpu2gpu(memorySizes.size());
 	std::vector<VkDeviceMemory> gpu2gpu_src(memorySizes.size());
 	std::vector<VkDeviceMemory> gpu2gpu_dst(memorySizes.size());
-	std::vector<VkDeviceMemory> gpu2cpu(memorySizes.size());
+	std::vector<VkDeviceMemory> gpu2cpu_src(memorySizes.size());
+	std::vector<VkDeviceMemory> gpu2cpu_dst(memorySizes.size());
 
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
@@ -130,13 +131,17 @@ int main(int argc, const char **argv) {
 
 		/*	Allocate all buffers.	*/
 		for (int i = 0; i < memorySizes.size(); i++) {
+			VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, gpu2cpuBufferSrc[i], gpu2cpu_src[i]);
 			VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, gpu2cpuBuffer[i], gpu2cpu[i]);
+								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, gpu2cpuBufferDst[i], gpu2cpu_dst[i]);
 		}
 
 		/*	GPU->CPU	*/
 		std::cout << "\nGPU to CPU Buffer Memory Transfer Speed" << std::endl;
 		for (int i = 0; i < memorySizes.size(); i++) {
+			bufferMemoryTransfer(device, transfer, cmds[0], timeSample, gpu2cpuBufferSrc[i], gpu2cpuBufferDst[i],
+								 memorySizes[i]);
 		}
 
 		vkFreeCommandBuffers(device->getHandle(), commandPool, cmds.size(), cmds.data());
@@ -144,9 +149,12 @@ int main(int argc, const char **argv) {
 
 		/*	Release buffers.	*/
 		for (int i = 0; i < memorySizes.size(); i++) {
-			vkDestroyBuffer(device->getHandle(), gpu2cpuBuffer[i], nullptr);
-			vkFreeMemory(device->getHandle(), gpu2cpu[i], nullptr);
+			vkDestroyBuffer(device->getHandle(), gpu2cpuBufferSrc[i], nullptr);
+			vkFreeMemory(device->getHandle(), gpu2cpu_src[i], nullptr);
+			vkDestroyBuffer(device->getHandle(), gpu2cpuBufferDst[i], nullptr);
+			vkFreeMemory(device->getHandle(), gpu2cpu_dst[i], nullptr);
 		}
+
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;
