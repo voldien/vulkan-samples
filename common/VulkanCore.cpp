@@ -32,7 +32,6 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 		throw std::runtime_error(fmt::format("Failed init SDL video: {}", SDL_GetError()));
 	}
 
-	VkResult result;
 	std::vector<const char *> usedInstanceExtensionNames = {
 		/*	*/
 		//		VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME,

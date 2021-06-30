@@ -85,7 +85,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	// /*	Enable group if supported.	*/
 	std::vector<VkPhysicalDevice> groupDevices(devices.size());
 	if (devices.size() > 1) {
-		for (int i = 0; i < devices.size(); i++)
+		for (size_t i = 0; i < devices.size(); i++)
 			groupDevices[i] = devices[i]->getHandle();
 		deviceGroupDeviceCreateInfo.physicalDeviceCount = groupDevices.size();
 		deviceGroupDeviceCreateInfo.pPhysicalDevices = groupDevices.data();

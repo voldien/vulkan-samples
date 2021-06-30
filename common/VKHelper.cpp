@@ -113,7 +113,8 @@ VkImageView VKHelper::createImageView(VkDevice device, VkImage image, VkImageVie
 
 void VKHelper::createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineLayout,
 									const std::vector<VkDescriptorSetLayout> &descLayouts,
-									const std::vector<VkPushConstantRange> &pushConstants, void *next) {
+									const std::vector<VkPushConstantRange> &pushConstants,
+									const VkAllocationCallbacks *pAllocator, void *pNext) {
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -122,7 +123,7 @@ void VKHelper::createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineL
 	pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 	pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
 
-	VKS_VALIDATE(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
+	VKS_VALIDATE(vkCreatePipelineLayout(device, &pipelineLayoutInfo, pAllocator, &pipelineLayout));
 }
 
 // bool VKHelper::isDeviceSuitable(VkPhysicalDevice device) {

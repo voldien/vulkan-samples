@@ -207,7 +207,7 @@ class VKHelper {
 	 */
 	static void createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineLayout,
 									 const std::vector<VkDescriptorSetLayout> &descLayouts = {},
-									 const std::vector<VkPushConstantRange> &pushConstants = {}, void *pNext = nullptr);
+									 const std::vector<VkPushConstantRange> &pushConstants = {}, const VkAllocationCallbacks *pAllocator = nullptr, void *pNext = nullptr);
 
 	/**
 	 * @brief Create a Descriptor Set Layout object
