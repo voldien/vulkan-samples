@@ -23,7 +23,6 @@ std::optional<uint32_t> VKHelper::findMemoryType(const VkPhysicalDeviceMemoryPro
 void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, const VkPhysicalDeviceMemoryProperties &memoryProperies,
 							VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer,
 							VkDeviceMemory &bufferMemory) {
-	VkResult result;
 
 	/**/
 	VkBufferCreateInfo bufferInfo = {};
