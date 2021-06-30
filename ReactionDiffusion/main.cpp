@@ -1,6 +1,6 @@
+#include "Importer/Math.h"
 #include "VKHelper.h"
 #include "VksCommon.h"
-
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
@@ -166,7 +166,6 @@ class ReactionDiffusionWindow : public VKWindow {
 
 		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
-
 		/*	Update params.	*/
 		params.kernelA[0][0] = 0.1;
 		params.kernelA[0][1] = 0.1;
@@ -188,7 +187,20 @@ class ReactionDiffusionWindow : public VKWindow {
 			VKHelper::createBuffer(getDevice(), cellBufferSize,
 								   getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
 								   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, cellsBuffers[i], cellsMemory[i]);
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+									   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+								   cellsBuffers[i], cellsMemory[i]);
+			float *cellData;
+			VKS_VALIDATE(vkMapMemory(getDevice(), cellsMemory[i], 0, cellBufferSize, 0, (void **)&cellData));
+			for (int h = 0; h < height; h++) {
+				for (int w = 0; w < width; w++) {
+					for (int c = 0; c < nrChemicalComponents; c++) {
+						cellData[h * height * nrChemicalComponents + w * nrChemicalComponents + c] =
+							Math::perlinNoise<float>((float)w, (float)h, 1);
+					}
+				}
+			}
+			vkUnmapMemory(getDevice(), cellsMemory[i]);
 		}
 
 		/*	*/
@@ -321,7 +333,8 @@ class ReactionDiffusionWindow : public VKWindow {
 	virtual void draw(void) override {
 		// Setup the range
 		void *data;
-		VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
+		VKS_VALIDATE(
+			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
 		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 
