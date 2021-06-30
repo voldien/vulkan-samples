@@ -2,7 +2,48 @@
 #include "VKHelper.h"
 #include "VKUtil.h"
 #include "VksCommon.h"
+#include <fmt/format.h>
 
+static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue transfer, VkCommandBuffer cmd,
+								 std::vector<int64_t> &timeSample, VkBuffer srcBuffer, VkBuffer dstBuffer,
+								 VkDeviceSize memorySize) {
+
+	VkCommandBufferBeginInfo cmdBufBeginInfo{};
+
+	cmdBufBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdBufBeginInfo.flags = 0;
+
+	for (size_t n = 0; n < timeSample.size(); n++) {
+
+		VkBufferCopy bufferCopy;
+		bufferCopy.dstOffset = 0;
+		bufferCopy.srcOffset = 0;
+		bufferCopy.size = memorySize;
+
+		vkBeginCommandBuffer(cmd, &cmdBufBeginInfo);
+		vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1, &bufferCopy);
+		vkEndCommandBuffer(cmd);
+		/*	*/
+		uint64_t timeStamp = SDL_GetPerformanceCounter();
+		device->submitCommands(transfer, {cmd}, {}, {}, VK_NULL_HANDLE, {});
+		/*	Start time.	*/
+		VKS_VALIDATE(vkQueueWaitIdle(transfer));
+		/*	End Timer.	*/
+		uint64_t elapsedTime = SDL_GetPerformanceCounter() - timeStamp;
+		timeSample[n] = elapsedTime;
+		vkResetCommandBuffer(cmd, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+	}
+	float averageTime = 0;
+	for (size_t n = 0; n < timeSample.size(); n++) {
+		averageTime += (float)timeSample[n] / (float)SDL_GetPerformanceFrequency();
+	}
+
+	averageTime /= timeSample.size();
+	float totalTransferRate = (1.0 / averageTime) * memorySize;
+	std::string resultMsg = fmt::format("{} KB - average: {} secs - ( Total {} MB/s) (samples: {})", memorySize / 1024,
+										averageTime, totalTransferRate / (1024 * 1024), timeSample.size());
+	std::cout << resultMsg << std::endl;
+}
 
 int main(int argc, const char **argv) {
 
@@ -26,7 +67,7 @@ int main(int argc, const char **argv) {
 	std::vector<VkDeviceMemory> gpu2gpu_dst(memorySizes.size());
 	std::vector<VkDeviceMemory> gpu2cpu(memorySizes.size());
 
-	std::unordered_map<const char *, bool> required_device_extensions = {{"VK_KHR_performance_query", false}};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>();
 		std::vector<std::shared_ptr<PhysicalDevice>> phyDevices = core->createPhysicalDevices();
@@ -37,9 +78,10 @@ int main(int argc, const char **argv) {
 		const VkPhysicalDeviceMemoryProperties &memProp = device->getPhysicalDevices()[0]->getMemoryProperties();
 
 		VkCommandPool commandPool = device->createCommandPool(device->getDefaultTransferQueueIndex());
-		std::vector<VkCommandBuffer> cmds = device->allocateCommandBuffers(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-																		   memorySizes.size() * roundRobin);
+		std::vector<VkCommandBuffer> cmds =
+			device->allocateCommandBuffers(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 
+		/*	CPU->GPU	*/
 		/*	Allocate all buffers.	*/
 		for (int i = 0; i < memorySizes.size(); i++) {
 			VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -49,42 +91,10 @@ int main(int argc, const char **argv) {
 								   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
 								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, cpu2gpuBuffer[i], cpu2gpu[i]);
 		}
-
-		/*	CPU->GPU	*/
-		VkCommandBufferBeginInfo cmdBufBeginInfo{};
-		cmdBufBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		cmdBufBeginInfo.flags = 0;
-
-		std::cout << "CPU to GPU Memory Transfer Speed" << std::endl;
+		std::cout << "\nCPU to GPU Buffer Memory Transfer Speed" << std::endl;
 		for (size_t i = 0; i < memorySizes.size(); i++) {
-
-			for (size_t n = 0; n < timeSample.size(); n++) {
-
-				VkBufferCopy bufferCopy;
-				bufferCopy.dstOffset = 0;
-				bufferCopy.srcOffset = 0;
-				bufferCopy.size = memorySizes[i];
-
-				vkBeginCommandBuffer(cmds[0], &cmdBufBeginInfo);
-				vkCmdCopyBuffer(cmds[0], stagingBuffer[i], cpu2gpuBuffer[i], 1, &bufferCopy);
-				vkEndCommandBuffer(cmds[0]);
-				/*	*/
-				uint64_t timeStamp = SDL_GetPerformanceCounter();
-				device->submitCommands(transfer, {cmds[0]}, {}, {}, VK_NULL_HANDLE, {});
-				/*	Start time.	*/
-				VKS_VALIDATE(vkQueueWaitIdle(transfer));
-				/*	End Timer.	*/
-				uint64_t elapsedTime = SDL_GetPerformanceCounter() - timeStamp;
-				timeSample[n] = elapsedTime;
-				vkResetCommandBuffer(cmds[0], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-			}
-			float averageTime = 0;
-			for (int n = 0; n < timeSample.size(); n++) {
-				averageTime += (float)timeSample[n] / (float)SDL_GetPerformanceFrequency();
-			}
-			averageTime /= timeSample.size();
-
-			std::cout << memorySizes[i] / 1024 << " KB " << averageTime << std::endl;
+			bufferMemoryTransfer(device, transfer, cmds[0], timeSample, stagingBuffer[i], cpu2gpuBuffer[i],
+								 memorySizes[i]);
 		}
 
 		for (int i = 0; i < memorySizes.size(); i++) {
@@ -105,36 +115,10 @@ int main(int argc, const char **argv) {
 		}
 
 		/*	GPU->GPU	*/
-		std::cout << "GPU to GPU Memory Transfer Speed" << std::endl;
+		std::cout << "\nGPU to GPU Buffer Memory Transfer Speed" << std::endl;
 		for (int i = 0; i < memorySizes.size(); i++) {
-
-			for (int n = 0; n < timeSample.size(); n++) {
-
-				VkBufferCopy bufferCopy;
-				bufferCopy.dstOffset = 0;
-				bufferCopy.srcOffset = 0;
-				bufferCopy.size = memorySizes[i];
-
-				vkBeginCommandBuffer(cmds[0], &cmdBufBeginInfo);
-				vkCmdCopyBuffer(cmds[0], gpu2gpuBufferSrc[i], gpu2gpuBufferDst[i], 1, &bufferCopy);
-				vkEndCommandBuffer(cmds[0]);
-				/*	*/
-				uint64_t timeStamp = SDL_GetPerformanceCounter();
-				device->submitCommands(transfer, {cmds[0]}, {}, {}, VK_NULL_HANDLE, {});
-				/*	Start time.	*/
-				VKS_VALIDATE(vkQueueWaitIdle(transfer));
-				/*	End Timer.	*/
-				uint64_t elapsedTime = SDL_GetPerformanceCounter() - timeStamp;
-				timeSample[n] = elapsedTime;
-				vkResetCommandBuffer(cmds[0], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-			}
-			float averageTime = 0;
-			for (int n = 0; n < timeSample.size(); n++) {
-				averageTime += (float)timeSample[n] / (float)SDL_GetPerformanceFrequency();
-			}
-			averageTime /= timeSample.size();
-
-			std::cout << memorySizes[i] / 1024 << " KB " << averageTime << std::endl;
+			bufferMemoryTransfer(device, transfer, cmds[0], timeSample, gpu2gpuBufferSrc[i], gpu2gpuBufferDst[i],
+								 memorySizes[i]);
 		}
 
 		for (int i = 0; i < memorySizes.size(); i++) {
@@ -151,37 +135,9 @@ int main(int argc, const char **argv) {
 		}
 
 		/*	GPU->CPU	*/
-		std::cout << "GPU to CPU Memory Transfer Speed" << std::endl;
-		// for (int i = 0; i < memorySizes.size(); i++) {
-
-		// 	for (int n = 0; n < timeSample.size(); n++) {
-
-		// 		VkBufferCopy bufferCopy;
-		// 		bufferCopy.dstOffset = 0;
-		// 		bufferCopy.srcOffset = 0;
-		// 		bufferCopy.size = memorySizes[i];
-
-		// 		vkBeginCommandBuffer(cmds[0], &cmdBufBeginInfo);
-		// 		vkCmdCopyBuffer(cmds[0], gpu2cpuBuffer[i], stagingBuffer[i], 1, &bufferCopy);
-		// 		vkEndCommandBuffer(cmds[0]);
-		// 		/*	*/
-		// 		uint64_t timeStamp = SDL_GetPerformanceCounter();
-		// 		device->submitCommands(transfer, {cmds[0]}, {}, {}, VK_NULL_HANDLE, {});
-		// 		/*	Start time.	*/
-		// 		VKS_VALIDATE(vkQueueWaitIdle(transfer));
-		// 		/*	End Timer.	*/
-		// 		uint64_t elapsedTime = SDL_GetPerformanceCounter() - timeStamp;
-		// 		timeSample[n] = elapsedTime;
-		// 		vkResetCommandBuffer(cmds[0], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-		// 	}
-		// 	float averageTime = 0;
-		// 	for (int n = 0; n < timeSample.size(); n++) {
-		// 		averageTime += (float)timeSample[n] / (float)SDL_GetPerformanceFrequency();
-		// 	}
-		// 	averageTime /= timeSample.size();
-
-		// 	std::cout << memorySizes[i] / 1024 << " KB " << averageTime << std::endl;
-		// }
+		std::cout << "\nGPU to CPU Buffer Memory Transfer Speed" << std::endl;
+		for (int i = 0; i < memorySizes.size(); i++) {
+		}
 
 		vkFreeCommandBuffers(device->getHandle(), commandPool, cmds.size(), cmds.data());
 		vkDestroyCommandPool(device->getHandle(), commandPool, nullptr);
