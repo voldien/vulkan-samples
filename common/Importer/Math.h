@@ -1,7 +1,7 @@
 #ifndef _VKS_COMMON_MATH_H_
 #define _VKS_COMMON_MATH_H_ 1
 #include <cmath>
-
+#include<cstdint>
 /**
  *
  */
@@ -111,12 +111,13 @@ class Math {
 		T totalAmplitude = 0.0f;
 		T amplitude = 2.0f;
 		T persistance = 0.50f;
+		const uint32_t wrap = 255;
 
 		// Determine grid cell coordinates
-		int x0 = (int)x;
-		int x1 = x0 + 1;
-		int y0 = (int)y;
-		int y1 = y0 + 1;
+		const int32_t x0 = (int32_t)std::floor(x) % wrap;
+		const int32_t x1 = x0 + 1;
+		const int32_t y0 = (int32_t)std::floor(y) % wrap;
+		const int32_t y1 = y0 + 1;
 
 		T sx = x - (T)x0;
 		T sy = y - (T)y0;
@@ -124,6 +125,11 @@ class Math {
 		for (int z = 0; z < octave; z++) {
 			// Interpolate between grid point gradients
 			T n0, n1, ix0, ix1, value;
+
+			// x0 *= 1.0f;
+			// x1 *= 1.0f;
+			// y0 *= 1.0f;
+			// y1 *= 1.0f;
 
 			n0 = dotGridGradient<T>(x0, y0, x, y);
 			n1 = dotGridGradient<T>(x1, y0, x, y);
@@ -147,7 +153,7 @@ class Math {
 			// const float ypos = ((float)y / (float)samplePeriod) * sampleFrquency;
 			result += value;
 		}
-		return result;
+		return result * 0.5 + 0.5;
 	}
 
 	//	static float PerlinNoise(float x, float y, float z, int octave);
