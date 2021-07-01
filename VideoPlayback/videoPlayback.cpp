@@ -32,6 +32,7 @@ extern "C" {
 class AVVideoPlaybackWindow : public VKWindow {
   private:
 	static const int nrVideoFrames = 2;
+	int nthVideoFrame = 0;
 
 	std::array<VkImage, nrVideoFrames> videoFrames;
 	std::array<VkImageView, nrVideoFrames> videoImageViews;
@@ -242,6 +243,8 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 	virtual void onResize(int width, int height) override {
 
+		nthVideoFrame = 0;
+
 		for (size_t i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
 
@@ -259,14 +262,14 @@ class AVVideoPlaybackWindow : public VKWindow {
 			imageCopyRegion.extent.height = height;
 			imageCopyRegion.extent.depth = 1;
 
-			vkCmdCopyImage(cmd, videoStagingFrames[0], VK_IMAGE_LAYOUT_GENERAL, videoFrames[0], VK_IMAGE_LAYOUT_GENERAL,
+			vkCmdCopyImage(cmd, videoStagingFrames[nthVideoFrame], VK_IMAGE_LAYOUT_GENERAL, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_GENERAL,
 						   1, &imageCopyRegion);
 
 			VkImageMemoryBarrier imageMemoryBarrier = {};
 			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			imageMemoryBarrier.image = videoFrames[0];
+			imageMemoryBarrier.image = videoFrames[nthVideoFrame];
 			imageMemoryBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 			imageMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
 			imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
@@ -285,11 +288,13 @@ class AVVideoPlaybackWindow : public VKWindow {
 			blitRegion.dstSubresource.layerCount = 1;
 			blitRegion.dstSubresource.mipLevel = 0;
 
-			vkCmdBlitImage(cmd, videoFrames[0], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, getSwapChainImages()[i],
+			vkCmdBlitImage(cmd, videoFrames[n	thVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, getSwapChainImages()[i],
 						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion, VK_FILTER_NEAREST);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
+			nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
 		}
+		nthVideoFrame = 0;
 	}
 
 	virtual void draw(void) override {
@@ -340,11 +345,12 @@ class AVVideoPlaybackWindow : public VKWindow {
 									  this->frameoutput->data, this->frameoutput->linesize);
 							/*	Upload the image to staging.	*/
 							void *_data;
-							VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[0], 0,
+							VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame], 0,
 													 video_width * video_height * 3, 0, &_data));
 							memcpy(_data, this->frameoutput->data, video_width * video_height * 3);
-							vkUnmapMemory(getDevice(), videoStagingFrameMemory[0]);
+							vkUnmapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame]);
 							vkDeviceWaitIdle(getDevice());
+							nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
 						}
 					}
 				}
