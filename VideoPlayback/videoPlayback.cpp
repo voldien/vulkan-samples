@@ -75,7 +75,14 @@ class AVVideoPlaybackWindow : public VKWindow {
 		avcodec_free_context(&pVideoCtx);
 	}
 
-	virtual void Release(void) override {}
+	virtual void Release(void) override {
+
+		for (int i = 0; i < nrVideoFrames; i++) {
+			vkDestroyImageView(getDevice(), videoImageViews[i], nullptr);
+			vkDestroyImage(getDevice(), videoFrames[i], nullptr);
+			vkFreeMemory(getDevice(), videoFrameMemory[i], nullptr);
+		}
+	}
 
 	void loadVideo(const char *path) {
 		int result;
@@ -210,27 +217,30 @@ class AVVideoPlaybackWindow : public VKWindow {
 		this->frame_timer = av_gettime() / 1000000.0;
 	}
 
-	virtual void Initialize(void) override { onResize(width(), height()); }
-
-	virtual void onResize(int width, int height) override {
-
+	virtual void Initialize(void) override {
 		/*	*/
 		for (unsigned int i = 0; i < videoImageViews.size(); i++) {
 
-			VKHelper::createImage(getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UNORM, VK_IMAGE_TILING_LINEAR,
-								  VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			VKHelper::createImage(getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UINT,
+								  VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+								  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 								  getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
 								  videoStagingFrames[i], videoStagingFrameMemory[i]);
 
-			VKHelper::createImage(getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UNORM, VK_IMAGE_TILING_LINEAR,
-								  VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								  getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(), videoFrames[i],
-								  videoFrameMemory[i]);
-			if (videoImageViews[i] != nullptr)
-				vkDestroyImageView(getDevice(), videoImageViews[i], nullptr);
+			VKHelper::createImage(
+				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UINT, VK_IMAGE_TILING_LINEAR,
+				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+					VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+				videoFrames[i], videoFrameMemory[i]);
 			videoImageViews[i] = VKHelper::createImageView(getDevice(), videoFrames[i], VK_IMAGE_VIEW_TYPE_2D,
-														   VK_FORMAT_R8G8B8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+														   VK_FORMAT_R8G8B8_UINT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		}
+
+		onResize(width(), height());
+	}
+
+	virtual void onResize(int width, int height) override {
 
 		for (size_t i = 0; i < getCommandBuffers().size(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers()[i];
@@ -249,8 +259,8 @@ class AVVideoPlaybackWindow : public VKWindow {
 			imageCopyRegion.extent.height = height;
 			imageCopyRegion.extent.depth = 1;
 
-			vkCmdCopyImage(cmd, videoStagingFrames[0], VK_IMAGE_LAYOUT_GENERAL, videoFrames[0],
-						   VK_IMAGE_LAYOUT_GENERAL, 1, &imageCopyRegion);
+			vkCmdCopyImage(cmd, videoStagingFrames[0], VK_IMAGE_LAYOUT_GENERAL, videoFrames[0], VK_IMAGE_LAYOUT_GENERAL,
+						   1, &imageCopyRegion);
 
 			VkImageMemoryBarrier imageMemoryBarrier = {};
 			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -329,12 +339,12 @@ class AVVideoPlaybackWindow : public VKWindow {
 							sws_scale(this->sws_ctx, this->frame->data, this->frame->linesize, 0, this->frame->height,
 									  this->frameoutput->data, this->frameoutput->linesize);
 							/*	Upload the image to staging.	*/
-							void*_data;
-							VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[0], 0, video_width * video_height * 3, 0, &_data));
+							void *_data;
+							VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[0], 0,
+													 video_width * video_height * 3, 0, &_data));
 							memcpy(_data, this->frameoutput->data, video_width * video_height * 3);
-							vkUnmapMemory(getDevice(),videoStagingFrameMemory[0]);
+							vkUnmapMemory(getDevice(), videoStagingFrameMemory[0]);
 							vkDeviceWaitIdle(getDevice());
-
 						}
 					}
 				}
