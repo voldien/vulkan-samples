@@ -24,15 +24,25 @@ class ReactionDiffusionWindow : public VKWindow {
 
 	std::vector<VkDescriptorSet> descriptorSets;
 
-	const int nrChemicalComponents = 2;
+	const uint32_t nrChemicalComponents = 2;
 	struct reaction_diffusion_param_t {
-		float kernelA[4][4];
-		float kernelB[4][4];
+		float kernelA[4][4] = {
+			{0.1,0.5,0.1,0},
+			{0.5,-1,0.5,0},
+			{0.1,0.5,0.1,0},
+			{0,0,0,0}
+		};
+		float kernelB[4][4] = {
+			{0.1,0.5,0.1,0},
+			{0.5,-1,0.5,0},
+			{0.1,0.5,0.1,0},
+			{0,0,0,0}
+		};
 		float feedRate = 0.055f;
 		float killRate = .062;
 		float diffuseRateA = 1.0;
 		float diffuseRateB = .5;
-		float delta = .01;
+		float delta = 10.1f;
 
 		/**/
 		float posX, posY;
@@ -166,41 +176,6 @@ class ReactionDiffusionWindow : public VKWindow {
 
 		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
-		/*	Update params.	*/
-		params.kernelA[0][0] = 0.1;
-		params.kernelA[0][1] = 0.1;
-		params.kernelA[0][2] = 0.1;
-		params.kernelA[0][3] = 0.1;
-		params.kernelA[1][0] = 0.1;
-		params.kernelA[1][1] = -1;
-		params.kernelA[1][2] = 0.1;
-		params.kernelA[1][3] = 0.1;
-		params.kernelA[2][0] = 0.1;
-		params.kernelA[2][1] = 0.1;
-		params.kernelA[2][2] = 0.1;
-		params.kernelA[2][3] = 0.1;
-		params.kernelA[3][0] = 0.0;
-		params.kernelA[3][1] = 0.0;
-		params.kernelA[3][2] = 0.0;
-		params.kernelA[3][3] = 0.0;
-
-		params.kernelB[0][0] = 0.1;
-		params.kernelB[0][1] = 0.1;
-		params.kernelB[0][2] = 0.1;
-		params.kernelB[0][3] = 0.1;
-		params.kernelB[1][0] = 0.1;
-		params.kernelB[1][1] = -1;
-		params.kernelB[1][2] = 0.1;
-		params.kernelB[1][3] = 0.1;
-		params.kernelB[2][0] = 0.1;
-		params.kernelB[2][1] = 0.1;
-		params.kernelB[2][2] = 0.1;
-		params.kernelB[2][3] = 0.1;
-		params.kernelB[3][0] = 0.0;
-		params.kernelB[3][1] = 0.0;
-		params.kernelB[3][2] = 0.0;
-		params.kernelB[3][3] = 0.0;
-
 		onResize(width(), height());
 	}
 
@@ -225,7 +200,7 @@ class ReactionDiffusionWindow : public VKWindow {
 				for (int w = 0; w < width; w++) {
 					for (int c = 0; c < nrChemicalComponents; c++) {
 						cellData[h * height * nrChemicalComponents + w * nrChemicalComponents + c] =
-							Math::perlinNoise<float>((float)w * 0.001f, (float)h* 0.001f, 1) * 2.0f;
+							Math::perlinNoise<float>((float)w * 0.05f + c, (float)h* 0.05f + c, 1) * 1.0f;
 					}
 				}
 			}
@@ -259,12 +234,12 @@ class ReactionDiffusionWindow : public VKWindow {
 		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
 
 			VkDescriptorBufferInfo currentCellBufferInfo{};
-			currentCellBufferInfo.buffer = cellsBuffers[i * nrChemicalComponents + 0];
+			currentCellBufferInfo.buffer = cellsBuffers[i * 2 + 0];
 			currentCellBufferInfo.offset = 0;
 			currentCellBufferInfo.range = cellBufferSize;
 
 			VkDescriptorBufferInfo previousCellBufferInfo{};
-			previousCellBufferInfo.buffer = cellsBuffers[(i * nrChemicalComponents + 1) % cellsBuffers.size()];
+			previousCellBufferInfo.buffer = cellsBuffers[(i * 2 + 1) % cellsBuffers.size()];
 			previousCellBufferInfo.offset = 0;
 			previousCellBufferInfo.range = cellBufferSize;
 

@@ -43,21 +43,21 @@ int memoryAddress(ivec2 invokedPixelCoord, ivec2 imageSize, ivec2 offset){
 	return pixelCoord.y * imageSize.y + pixelCoord.x;
 }
 
-float lapacianA(ivec2 pixelCord, ivec2 imageSize, mat4 kernelA){
+float lapacianA(ivec2 pixelCord, ivec2 imageSize, mat4 convolutionKernel){
 	float result = 0;
 	for(int y = 0; y < 3; y++){
 		for(int x = 0; x < 3; x++){
-			result += kernelA[3 - x][3 - y] * PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x,-1 + y))].x;
+			result += convolutionKernel[x][2 - y] * PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x,-1 + y))].x;
 		}
 	}
 	return result;
 }
 
-float lapacianB(ivec2 pixelCord, ivec2 imageSize, mat4 kernelA){
+float lapacianB(ivec2 pixelCord, ivec2 imageSize, mat4 convolutionKernel){
 	float result = 0;
 	for(int y = 0; y < 3; y++){
 		for(int x = 0; x < 3; x++){
-			result += kernelA[3 - x][3 - y] * PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x,-1 + y))].y;
+			result += convolutionKernel[x][2 - y] * PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x,-1 + y))].y;
 		}
 	}
 	return result;
@@ -65,14 +65,15 @@ float lapacianB(ivec2 pixelCord, ivec2 imageSize, mat4 kernelA){
 
 void main() {
 
-	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
+	const ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
 	const uint memory_index = gl_LocalInvocationIndex;
-	ivec2 imageSize = imageSize(img_output);
-	
+	const ivec2 cellCellImageSize = imageSize(img_output);
+	vec2 uv = vec2(pixel_coords) / vec2(cellCellImageSize);
+
 	vec2 AB = PreviousAB.AB[memory_index];
 
-	float diverageA = lapacianA(pixel_coords, imageSize, ubo.kernelA);
-	float diverageB = lapacianB(pixel_coords, imageSize, ubo.kernelB);
+	float diverageA = lapacianA(pixel_coords, cellCellImageSize, ubo.kernelA);
+	float diverageB = lapacianB(pixel_coords, cellCellImageSize, ubo.kernelB);
 
 	float pA = computeDiffuseRateA(AB.x, AB.y, diverageA, ubo.killRate, ubo.feedRate, ubo.diffuseRateA, ubo.delta);
 	float pB = computeDiffuseRateB(AB.x, AB.y, diverageB, ubo.killRate, ubo.feedRate, ubo.diffuseRateB, ubo.delta);
@@ -80,6 +81,7 @@ void main() {
 	CurrentAB.AB[memory_index] = vec2(pA, pB);
 
 	/*	Display the color.	*/
-	vec4 pixel = vec4(CurrentAB.AB[memory_index], diverageA, 1);
+	vec4 pixel = vec4(diverageA, 0, diverageB, 1);
+	//TODO forward the diverage to a buffer to be drawn
 	imageStore(img_output, pixel_coords, pixel);
 }
