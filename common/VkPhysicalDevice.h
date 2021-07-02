@@ -74,11 +74,13 @@ class PhysicalDevice {
 	 * @return true
 	 * @return false
 	 */
-	bool isFormatSupported(VkFormat format, VkImageType imageType, VkImageTiling tiling,
-						   VkImageUsageFlags usage) const {
+	bool isFormatSupported(VkFormat format, VkImageType imageType, VkImageTiling tiling, VkImageUsageFlags usage,
+						   VkImageFormatProperties *PimageFormatProperties = nullptr) const {
 		VkImageFormatProperties prop;
-		VkResult result =
-			vkGetPhysicalDeviceImageFormatProperties(this->getHandle(), format, imageType, tiling, usage, 0, &prop);
+		if (PimageFormatProperties == nullptr)
+			PimageFormatProperties = &prop;
+		VkResult result = vkGetPhysicalDeviceImageFormatProperties(this->getHandle(), format, imageType, tiling, usage,
+																   0, PimageFormatProperties);
 		if (result == VK_SUCCESS)
 			return true;
 		else if (result == VK_ERROR_FORMAT_NOT_SUPPORTED)

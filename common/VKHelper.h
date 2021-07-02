@@ -125,7 +125,8 @@ class VKHelper {
 	static void createImage(VkDevice device, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
 							VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
 							const VkPhysicalDeviceMemoryProperties &memProperties, VkImage &image,
-							VkDeviceMemory &imageMemory);
+							VkDeviceMemory &imageMemory,const VkAllocationCallbacks *pAllocator = nullptr,
+											 const char *pNext = nullptr);
 
 	/**
 	 * @brief Create a Image View object

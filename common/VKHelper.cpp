@@ -57,25 +57,32 @@ void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, const VkPhysical
 void VKHelper::createImage(VkDevice device, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
 						   VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
 						   const VkPhysicalDeviceMemoryProperties &memProperties, VkImage &image,
-						   VkDeviceMemory &imageMemory) {
+						   VkDeviceMemory &imageMemory, const VkAllocationCallbacks *pAllocator, const char *pNext) {
 
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.pNext = pNext;
 	imageInfo.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.format = format;
+	/*	*/
 	imageInfo.extent.width = width;
 	imageInfo.extent.height = height;
 	imageInfo.extent.depth = 1;
+	/*	*/
 	imageInfo.mipLevels = mipLevels;
 	imageInfo.arrayLayers = 1;
-	imageInfo.format = format;
-	imageInfo.tiling = tiling;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.usage = usage;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.tiling = tiling;
+	imageInfo.usage = usage;
 
-	VKS_VALIDATE(vkCreateImage(device, &imageInfo, nullptr, &image));
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.queueFamilyIndexCount = 0;
+	imageInfo.pQueueFamilyIndices = nullptr;
+
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	VKS_VALIDATE(vkCreateImage(device, &imageInfo, pAllocator, &image));
 
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(device, image, &memRequirements);
@@ -85,7 +92,7 @@ void VKHelper::createImage(VkDevice device, uint32_t width, uint32_t height, uin
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = findMemoryType(memProperties, memRequirements.memoryTypeBits, properties).value();
 
-	VKS_VALIDATE(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory));
+	VKS_VALIDATE(vkAllocateMemory(device, &allocInfo, pAllocator, &imageMemory));
 
 	VKS_VALIDATE(vkBindImageMemory(device, image, imageMemory, 0));
 }

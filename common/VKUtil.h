@@ -25,7 +25,7 @@ static const char *getVKResultSymbol(int symbol) {
 	do {                                                                                                               \
 		VkResult err = x;                                                                                              \
 		if (err != VK_SUCCESS) {                                                                                       \
-			throw std::runtime_error(fmt::format("{} {} {}", __FILE__, __LINE__, getVKResultSymbol(x)));               \
+			throw std::runtime_error(fmt::format("{} {} {} - {}", __FILE__, __LINE__, x, getVKResultSymbol(x)));               \
 		}                                                                                                              \
 	} while (0)
 

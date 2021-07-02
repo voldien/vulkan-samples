@@ -89,7 +89,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 			groupDevices[i] = devices[i]->getHandle();
 		deviceGroupDeviceCreateInfo.physicalDeviceCount = groupDevices.size();
 		deviceGroupDeviceCreateInfo.pPhysicalDevices = groupDevices.data();
-		deviceInfo.pNext = &deviceGroupDeviceCreateInfo;
+		// deviceInfo.pNext = &deviceGroupDeviceCreateInfo;
 	}
 
 	deviceInfo.enabledExtensionCount = deviceExtensions.size();
