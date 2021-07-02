@@ -64,10 +64,12 @@ class AVVideoPlaybackWindow : public VKWindow {
 	double frame_last_pts;
 	double frame_last_delay;
 
+	std::string path;
+
   public:
 	AVVideoPlaybackWindow(const char *path, std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		loadVideo(path);
+		this->path = path;
 	}
 	~AVVideoPlaybackWindow(void) {
 		avformat_close_input(&pformatCtx);
@@ -219,25 +221,30 @@ class AVVideoPlaybackWindow : public VKWindow {
 	}
 
 	virtual void Initialize(void) override {
+		loadVideo(path.c_str());
 		/*	*/
 		for (unsigned int i = 0; i < videoImageViews.size(); i++) {
 
-			VKHelper::createImage(getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UINT,
-								  VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+			VKHelper::createImage(getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UNORM,
+								  VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 								  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 								  getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
 								  videoStagingFrames[i], videoStagingFrameMemory[i]);
 
+			// VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_UNDEFINED,
+			// 								VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
 			VKHelper::createImage(
-				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UINT, VK_IMAGE_TILING_LINEAR,
-				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
-					VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
 				videoFrames[i], videoFrameMemory[i]);
 			videoImageViews[i] = VKHelper::createImageView(getDevice(), videoFrames[i], VK_IMAGE_VIEW_TYPE_2D,
-														   VK_FORMAT_R8G8B8_UINT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-		}
+														   VK_FORMAT_R8G8B8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
+			// VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			// 								VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
 		onResize(width(), height());
 	}
 
@@ -262,8 +269,8 @@ class AVVideoPlaybackWindow : public VKWindow {
 			imageCopyRegion.extent.height = height;
 			imageCopyRegion.extent.depth = 1;
 
-			vkCmdCopyImage(cmd, videoStagingFrames[nthVideoFrame], VK_IMAGE_LAYOUT_GENERAL, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_GENERAL,
-						   1, &imageCopyRegion);
+			vkCmdCopyImage(cmd, videoStagingFrames[nthVideoFrame], VK_IMAGE_LAYOUT_GENERAL, videoFrames[nthVideoFrame],
+						   VK_IMAGE_LAYOUT_GENERAL, 1, &imageCopyRegion);
 
 			VkImageMemoryBarrier imageMemoryBarrier = {};
 			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -288,8 +295,9 @@ class AVVideoPlaybackWindow : public VKWindow {
 			blitRegion.dstSubresource.layerCount = 1;
 			blitRegion.dstSubresource.mipLevel = 0;
 
-			vkCmdBlitImage(cmd, videoFrames[n	thVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, getSwapChainImages()[i],
-						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion, VK_FILTER_NEAREST);
+			vkCmdBlitImage(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+						   getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion,
+						   VK_FILTER_NEAREST);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 			nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
