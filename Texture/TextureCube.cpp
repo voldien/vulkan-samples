@@ -49,7 +49,6 @@ class SingleTextureWindow : public VKWindow {
 
 	virtual void Release(void) override {
 
-		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroySampler(getDevice(), sampler, nullptr);
