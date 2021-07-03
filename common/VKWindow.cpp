@@ -210,37 +210,37 @@ void VKWindow::createSwapChain(void) {
 	uint32_t queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
 
 	/*  */
-	VkSwapchainCreateInfoKHR createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	createInfo.surface = this->surface;
+	VkSwapchainCreateInfoKHR createSwapChainInfo = {};
+	createSwapChainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	createSwapChainInfo.surface = this->surface;
 
 	/*  */
-	createInfo.minImageCount = imageCount;
-	createInfo.imageFormat = surfaceFormat.format;
-	createInfo.imageColorSpace = surfaceFormat.colorSpace;
-	createInfo.imageExtent = extent;
-	createInfo.imageArrayLayers = 1;
-	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+	createSwapChainInfo.minImageCount = imageCount;
+	createSwapChainInfo.imageFormat = surfaceFormat.format;
+	createSwapChainInfo.imageColorSpace = surfaceFormat.colorSpace;
+	createSwapChainInfo.imageExtent = extent;
+	createSwapChainInfo.imageArrayLayers = 1;
+	createSwapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	/*  */
 	if (indices.graphicsFamily != indices.presentFamily) {
-		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-		createInfo.queueFamilyIndexCount = 2;
-		createInfo.pQueueFamilyIndices = queueFamilyIndices;
+		createSwapChainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		createSwapChainInfo.queueFamilyIndexCount = 2;
+		createSwapChainInfo.pQueueFamilyIndices = queueFamilyIndices;
 	} else {
-		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		createSwapChainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	}
 
 	/*  */
-	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	createInfo.presentMode = presentMode;
-	createInfo.clipped = VK_TRUE;
+	createSwapChainInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+	createSwapChainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	createSwapChainInfo.presentMode = presentMode;
+	createSwapChainInfo.clipped = VK_TRUE;
 
-	createInfo.oldSwapchain = VK_NULL_HANDLE;
+	createSwapChainInfo.oldSwapchain = VK_NULL_HANDLE;
 
 	/*  Create swapchain.   */
-	VKS_VALIDATE(vkCreateSwapchainKHR(getDevice(), &createInfo, NULL, &this->swapChain->swapchain));
+	VKS_VALIDATE(vkCreateSwapchainKHR(getDevice(), &createSwapChainInfo, NULL, &this->swapChain->swapchain));
 
 	/*  Get the image associated with the swap chain.   */
 	uint32_t nrChainImageCount = 1;
@@ -248,7 +248,7 @@ void VKWindow::createSwapChain(void) {
 
 	this->swapChain->swapChainImages.resize(nrChainImageCount);
 	VKS_VALIDATE(vkGetSwapchainImagesKHR(getDevice(), this->swapChain->swapchain, &nrChainImageCount,
-									 this->swapChain->swapChainImages.data()));
+										 this->swapChain->swapChainImages.data()));
 
 	this->swapChain->swapChainImageFormat = surfaceFormat.format;
 	this->swapChain->chainExtend = extent;
@@ -276,8 +276,7 @@ void VKWindow::createSwapChain(void) {
 		VKS_VALIDATE(vkCreateImageView(getDevice(), &createInfo, nullptr, &this->swapChain->swapChainImageViews[i]));
 	}
 
-	VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
-	// findDepthFormat();
+	VkFormat depthFormat = findDepthFormat();
 
 	const VkPhysicalDeviceMemoryProperties &memProps =
 		getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties();
@@ -412,6 +411,11 @@ void VKWindow::cleanSwapChain(void) {
 	vkFreeMemory(getDevice(), swapChain->depthImageMemory, nullptr);
 
 	vkDestroySwapchainKHR(getDevice(), this->swapChain->swapchain, nullptr);
+}
+VkFormat VKWindow::findDepthFormat() {
+	return VKHelper::findSupportedFormat(physicalDevice(),
+		{VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}, VK_IMAGE_TILING_OPTIMAL,
+		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }

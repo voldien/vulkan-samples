@@ -89,6 +89,17 @@ class PhysicalDevice {
 			VKS_VALIDATE(result);
 	}
 
+	void getFormatProperties(VkFormat format) {
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(getHandle(), format, &props);
+	}
+
+	bool getSupportedFormat(VkFormat &supported, const std::vector<VkFormat> &candidates, VkImageTiling tiling,
+							VkFormatFeatureFlags features) const {
+		//supported = VKHelper::findSupportedFormat(getHandle(), candidates, tiling, features);
+		return true;
+	}
+
 	VkPhysicalDevice getHandle(void) const noexcept { return this->mdevice; }
 
 	/**

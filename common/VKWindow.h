@@ -110,6 +110,7 @@ class VKWindow : public SDLWindow {
 	const std::shared_ptr<VKDevice> &getLogicalDevice(void) const noexcept { return this->device; }
 
 	VkPhysicalDevice physicalDevice(void) const;
+	void setPhysicalDevice(VkPhysicalDevice device);
 	std::vector<VkQueue> getQueues(void) const noexcept;
 	const std::vector<VkPhysicalDevice> &availablePhysicalDevices(void) const;
 
@@ -124,6 +125,7 @@ class VKWindow : public SDLWindow {
 	virtual void createSwapChain(void);
 	virtual void recreateSwapChain(void);
 	virtual void cleanSwapChain(void);
+	VkFormat findDepthFormat();
 
   private:
 	std::shared_ptr<VKDevice> device;
@@ -162,21 +164,18 @@ class VKWindow : public SDLWindow {
 
 	/*  */
 	uint32_t graphics_queue_node_index;
-
 	VkSurfaceKHR surface;
-
 	/*  Collection of swap chain variables. */
 	SwapchainBuffers *swapChain; // TODO remove as pointer
 
 	/*  */
-	// VkSemaphore imageAvailableSemaphore;
-	// VkSemaphore renderFinishedSemaphore;
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
 	std::vector<VkFence> imagesInFlight;
 	std::vector<VkFence> imageAvailableFence;
 
+	/*	*/
 	VkCommandPool cmd_pool;
 	VkCommandPool compute_pool;
 	VkCommandPool transfer_pool;

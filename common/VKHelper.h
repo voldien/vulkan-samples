@@ -107,6 +107,22 @@ class VKHelper {
 		//		}
 	}
 
+	static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates,
+								 VkImageTiling tiling, VkFormatFeatureFlags features) {
+		for (VkFormat format : candidates) {
+			VkFormatProperties props;
+			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+
+			if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+				return format;
+			} else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+				return format;
+			}
+		}
+
+		throw std::runtime_error("failed to find supported format!");
+	}
+
 	/**
 	 * @brief Create a Buffer object
 	 *
@@ -125,8 +141,8 @@ class VKHelper {
 	static void createImage(VkDevice device, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
 							VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
 							const VkPhysicalDeviceMemoryProperties &memProperties, VkImage &image,
-							VkDeviceMemory &imageMemory,const VkAllocationCallbacks *pAllocator = nullptr,
-											 const char *pNext = nullptr);
+							VkDeviceMemory &imageMemory, const VkAllocationCallbacks *pAllocator = nullptr,
+							const char *pNext = nullptr);
 
 	/**
 	 * @brief Create a Image View object
@@ -208,7 +224,8 @@ class VKHelper {
 	 */
 	static void createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineLayout,
 									 const std::vector<VkDescriptorSetLayout> &descLayouts = {},
-									 const std::vector<VkPushConstantRange> &pushConstants = {}, const VkAllocationCallbacks *pAllocator = nullptr, void *pNext = nullptr);
+									 const std::vector<VkPushConstantRange> &pushConstants = {},
+									 const VkAllocationCallbacks *pAllocator = nullptr, void *pNext = nullptr);
 
 	/**
 	 * @brief Create a Descriptor Set Layout object
