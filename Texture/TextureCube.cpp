@@ -15,7 +15,8 @@ class SingleTextureWindow : public VKWindow {
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
-	VkDescriptorPool descpool;
+	VkDescriptorPool descpool = VK_NULL_HANDLE;
+	VkSampler sampler = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	std::vector<VkBuffer> uniformBuffers;
@@ -51,9 +52,17 @@ class SingleTextureWindow : public VKWindow {
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
+		vkDestroySampler(getDevice(), sampler, nullptr);
+
 		vkDestroyImageView(getDevice(), textureView, nullptr);
 		vkDestroyImage(getDevice(), texture, nullptr);
 		vkFreeMemory(getDevice(), textureMemory, nullptr);
+
+		for (int i = 0; i < uniformBuffers.size(); i++) {
+			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
+			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
+			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
+		}
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
@@ -259,7 +268,8 @@ class SingleTextureWindow : public VKWindow {
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineInfo.pDynamicState = &dynamicStateInfo;
 
-		VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+		VKS_VALIDATE(
+			vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
 
 		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -292,7 +302,6 @@ class SingleTextureWindow : public VKWindow {
 
 		// VKHelper::createImageView();
 
-		VkSampler sampler;
 		VKHelper::createSampler(getDevice(), sampler);
 
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
