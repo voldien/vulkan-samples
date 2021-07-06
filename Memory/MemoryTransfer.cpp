@@ -84,7 +84,7 @@ int main(int argc, const char **argv) {
 
 		/*	CPU->GPU	*/
 		/*	Allocate all buffers.	*/
-		for (int i = 0; i < memorySizes.size(); i++) {
+		for (size_t i = 0; i < memorySizes.size(); i++) {
 			VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, stagingBuffer[i], staging[i]);
 
@@ -98,7 +98,7 @@ int main(int argc, const char **argv) {
 								 memorySizes[i]);
 		}
 
-		for (int i = 0; i < memorySizes.size(); i++) {
+		for (size_t i = 0; i < memorySizes.size(); i++) {
 			vkDestroyBuffer(device->getHandle(), stagingBuffer[i], nullptr);
 			vkFreeMemory(device->getHandle(), staging[i], nullptr);
 			vkDestroyBuffer(device->getHandle(), cpu2gpuBuffer[i], nullptr);
@@ -106,7 +106,7 @@ int main(int argc, const char **argv) {
 		}
 
 		/*	Allocate all buffers.	*/
-		for (int i = 0; i < memorySizes.size(); i++) {
+		for (size_t i = 0; i < memorySizes.size(); i++) {
 
 			/*	*/
 			VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -117,12 +117,12 @@ int main(int argc, const char **argv) {
 
 		/*	GPU->GPU	*/
 		std::cout << "\nGPU to GPU Buffer Memory Transfer Speed" << std::endl;
-		for (int i = 0; i < memorySizes.size(); i++) {
+		for (size_t i = 0; i < memorySizes.size(); i++) {
 			bufferMemoryTransfer(device, transfer, cmds[0], timeSample, gpu2gpuBufferSrc[i], gpu2gpuBufferDst[i],
 								 memorySizes[i]);
 		}
 
-		for (int i = 0; i < memorySizes.size(); i++) {
+		for (size_t i = 0; i < memorySizes.size(); i++) {
 			vkDestroyBuffer(device->getHandle(), gpu2gpuBufferSrc[i], nullptr);
 			vkFreeMemory(device->getHandle(), gpu2gpu_src[i], nullptr);
 			vkDestroyBuffer(device->getHandle(), gpu2gpuBufferDst[i], nullptr);
@@ -130,7 +130,7 @@ int main(int argc, const char **argv) {
 		}
 
 		/*	Allocate all buffers.	*/
-		for (int i = 0; i < memorySizes.size(); i++) {
+		for (size_t i = 0; i < memorySizes.size(); i++) {
 			VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, gpu2cpuBufferSrc[i], gpu2cpu_src[i]);
 			VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -139,7 +139,7 @@ int main(int argc, const char **argv) {
 
 		/*	GPU->CPU	*/
 		std::cout << "\nGPU to CPU Buffer Memory Transfer Speed" << std::endl;
-		for (int i = 0; i < memorySizes.size(); i++) {
+		for (size_t i = 0; i < memorySizes.size(); i++) {
 			bufferMemoryTransfer(device, transfer, cmds[0], timeSample, gpu2cpuBufferSrc[i], gpu2cpuBufferDst[i],
 								 memorySizes[i]);
 		}
@@ -148,7 +148,7 @@ int main(int argc, const char **argv) {
 		vkDestroyCommandPool(device->getHandle(), commandPool, nullptr);
 
 		/*	Release buffers.	*/
-		for (int i = 0; i < memorySizes.size(); i++) {
+		for (size_t i = 0; i < memorySizes.size(); i++) {
 			vkDestroyBuffer(device->getHandle(), gpu2cpuBufferSrc[i], nullptr);
 			vkFreeMemory(device->getHandle(), gpu2cpu_src[i], nullptr);
 			vkDestroyBuffer(device->getHandle(), gpu2cpuBufferDst[i], nullptr);
