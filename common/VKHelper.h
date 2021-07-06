@@ -83,7 +83,7 @@ class VKHelper {
 			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 			destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		} else {
-			throw std::invalid_argument("unsupported layout transition!");
+			//throw std::invalid_argument("unsupported layout transition!");
 		}
 
 		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
