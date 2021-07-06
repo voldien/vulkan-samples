@@ -31,7 +31,7 @@ extern "C" {
 
 class AVVideoPlaybackWindow : public VKWindow {
   private:
-	static const int nrVideoFrames = 2;
+	static const int nrVideoFrames = 3;
 	int nthVideoFrame = 0;
 
 	std::array<VkImage, nrVideoFrames> videoFrames;
@@ -200,10 +200,10 @@ class AVVideoPlaybackWindow : public VKWindow {
 		this->frame = av_frame_alloc();
 		this->frameoutput = av_frame_alloc();
 		int m_bufferSize =
-			av_image_get_buffer_size(AV_PIX_FMT_BGRA, this->pVideoCtx->width, this->pVideoCtx->height, 4);
+			av_image_get_buffer_size(AV_PIX_FMT_RGBA, this->pVideoCtx->width, this->pVideoCtx->height, 4);
 		void *m_buffer = (uint8_t *)av_malloc(m_bufferSize);
 		av_image_alloc(this->frameoutput->data, this->frameoutput->linesize, this->pVideoCtx->width,
-					   this->pVideoCtx->height, AV_PIX_FMT_BGRA, 4);
+					   this->pVideoCtx->height, AV_PIX_FMT_RGBA, 4);
 
 		if (this->frame == nullptr)
 			throw std::runtime_error(fmt::format("Failed to allocate frame"));
@@ -216,7 +216,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 		// AVPacket *pPacket = av_packet_alloc();
 		this->sws_ctx = sws_getContext(this->pVideoCtx->width, this->pVideoCtx->height, this->pVideoCtx->pix_fmt,
-									   this->pVideoCtx->width, this->pVideoCtx->height, AV_PIX_FMT_BGRA, SWS_BICUBIC,
+									   this->pVideoCtx->width, this->pVideoCtx->height, AV_PIX_FMT_RGBA, SWS_BICUBIC,
 									   nullptr, nullptr, nullptr);
 
 		this->frame_timer = av_gettime() / 1000000.0;
@@ -224,18 +224,19 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 	virtual void Initialize(void) override {
 		loadVideo(path.c_str());
+
 		/*	*/
 		for (unsigned int i = 0; i < videoFrames.size(); i++) {
 
-			VKHelper::createBuffer(getDevice(), video_width * video_height * 3,
+			VKHelper::createBuffer(getDevice(), video_width * video_height * 4,
 											  getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
-								  VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-								  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+								  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+								  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 								  videoStagingFrames[i], videoStagingFrameMemory[i]);
 
 			VKHelper::createImage(
-				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_SRGB, VK_IMAGE_TILING_LINEAR,
-				VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
 				videoFrames[i], videoFrameMemory[i]);
 		}
@@ -256,19 +257,19 @@ class AVVideoPlaybackWindow : public VKWindow {
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 			VkBufferImageCopy imageCopyRegion{};
 			imageCopyRegion.bufferOffset = 0;
-			imageCopyRegion.bufferRowLength = video_width;
-			imageCopyRegion.bufferRowLength = video_height;
+			imageCopyRegion.bufferRowLength = 0;
+			imageCopyRegion.bufferImageHeight = 0;
 			imageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			imageCopyRegion.imageSubresource.layerCount = 1;
-			imageCopyRegion.imageExtent.width = width;
-			imageCopyRegion.imageExtent.height = height;
+			imageCopyRegion.imageExtent.width = video_width;
+			imageCopyRegion.imageExtent.height = video_height;
 			imageCopyRegion.imageExtent.depth = 1;
 
 			vkCmdCopyBufferToImage(cmd, videoStagingFrames[nthVideoFrame], videoFrames[nthVideoFrame],
-						   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 1, &imageCopyRegion);
+						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 
-			// VKHelper::transitionImageLayout(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_UNDEFINED,
-			// 								VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+			VKHelper::transitionImageLayout(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
 			VkImageBlit blitRegion {};
 			blitRegion.srcOffsets[1].x = video_width;
@@ -285,28 +286,28 @@ class AVVideoPlaybackWindow : public VKWindow {
 			blitRegion.dstSubresource.mipLevel = 0;
 
 			vkCmdBlitImage(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-						   getSwapChainImages()[i], VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1, &blitRegion,
+						   getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion,
 						   VK_FILTER_NEAREST);
-			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_GENERAL,
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 											VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 			nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
 		}
-		nthVideoFrame = 0;
+		nthVideoFrame = nrVideoFrames - 1;
 	}
 
 	virtual void draw(void) override {
-		// TODO relocate.
-		// TODO add audio decoder.
 		AVPacket *packet = av_packet_alloc();
 		if (!packet) {
 			throw std::runtime_error("failed to allocated memory for AVPacket");
 		}
 
 		int res, result;
-		res = av_seek_frame(this->pformatCtx, this->videoStream, 60000, AVSEEK_FLAG_FRAME);
-		// while (true) {
+		//res = av_seek_frame(this->pformatCtx, this->videoStream, 60000, AVSEEK_FLAG_FRAME);
 
 		res = av_read_frame(this->pformatCtx, packet);
 		if (res == 0) {
@@ -327,9 +328,9 @@ class AVVideoPlaybackWindow : public VKWindow {
 						av_strerror(result, buf, sizeof(buf));
 						throw std::runtime_error(fmt::format(" : {}", buf));
 					}
-					if (this->frame->format != AV_PIX_FMT_BGRA) {
 
-						if (this->frame->format == AV_PIX_FMT_YUV420P) {
+					if (this->frame->format == AV_PIX_FMT_YUV420P) {
+
 							this->frame->data[0] =
 								this->frame->data[0] + this->frame->linesize[0] * (this->pVideoCtx->height - 1);
 							this->frame->data[1] =
@@ -345,46 +346,27 @@ class AVVideoPlaybackWindow : public VKWindow {
 							/*	Upload the image to staging.	*/
 							void *_data;
 							VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame], 0,
-													 video_width * video_height * 3, 0, &_data));
-							memcpy(_data, this->frameoutput->data, video_width * video_height * 3);
+													 video_width * video_height * 4, 0, &_data));
+							//this->frameoutput->width
+							memcpy(_data, this->frameoutput->data[0], video_width * video_height * 4);
+							VkMappedMemoryRange stagingRange = {.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+																.memory = videoStagingFrameMemory[nthVideoFrame],
+																.offset = 0,
+																.size = video_width * video_height * 4};
+							VKS_VALIDATE(vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange));
 							vkUnmapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame]);
 							VKS_VALIDATE(vkDeviceWaitIdle(getDevice()));
 							nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
-						}
 					}
+
 				}
 			}
 			if (packet->stream_index == this->audioStream) {
-				// result = avcodec_send_packet(this->pAudioCtx, packet);
-				// if (result < 0) {
-				// 	char buf[AV_ERROR_MAX_STRING_SIZE];
-				// 	av_strerror(result, buf, sizeof(buf));
-				// 	throw std::runtime_error(
-				// 		fmt::format("Failed to send packet for decoding audio frame : %s", buf));
-				// }
 
-				// while (result >= 0) {
-				// 	result = avcodec_receive_frame(this->pAudioCtx, this->frame);
-				// 	if (result == AVERROR(EAGAIN) || result == AVERROR_EOF)
-				// 		break;
-				// 	if (result < 0) {
-				// 		char buf[AV_ERROR_MAX_STRING_SIZE];
-				// 		av_strerror(result, buf, sizeof(buf));
-				// 		throw std::runtime_error(fmt::format(" : %s", buf));
-				// 	}
-
-				// 	av_get_channel_layout_nb_channels(this->frame->channel_layout);
-				// 	this->frame->format != AV_SAMPLE_FMT_S16P;
-				// 	this->frame->channel_layout;
-				// 	// clip->setData(this->frame->extended_data[0], this->frame->linesize[0], 0);
-				// }
 			}
-
-			printf("duration %f\n", (float)packet->duration);
 		}
 		av_packet_unref(packet);
 		av_packet_free(&packet);
-		//}
 	}
 
 	virtual void update(void) {}
