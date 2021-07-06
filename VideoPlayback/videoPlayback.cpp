@@ -35,10 +35,10 @@ class AVVideoPlaybackWindow : public VKWindow {
 	int nthVideoFrame = 0;
 
 	std::array<VkImage, nrVideoFrames> videoFrames;
-	std::array<VkImageView, nrVideoFrames> videoImageViews;
+	//std::array<VkImageView, nrVideoFrames> videoImageViews;
 	std::array<VkDeviceMemory, nrVideoFrames> videoFrameMemory;
 
-	std::array<VkImage, nrVideoFrames> videoStagingFrames;
+	std::array<VkBuffer, nrVideoFrames> videoStagingFrames;
 	std::array<VkDeviceMemory, nrVideoFrames> videoStagingFrameMemory;
 
 	FPSCounter<float> fpsCounter;
@@ -81,9 +81,11 @@ class AVVideoPlaybackWindow : public VKWindow {
 	virtual void Release(void) override {
 
 		for (int i = 0; i < nrVideoFrames; i++) {
-			vkDestroyImageView(getDevice(), videoImageViews[i], nullptr);
+			//vkDestroyImageView(getDevice(), videoImageViews[i], nullptr);
 			vkDestroyImage(getDevice(), videoFrames[i], nullptr);
 			vkFreeMemory(getDevice(), videoFrameMemory[i], nullptr);
+			vkFreeMemory(getDevice(), videoStagingFrameMemory[i], nullptr);
+			vkDestroyBuffer(getDevice(), videoStagingFrames[i], nullptr);
 		}
 	}
 
@@ -151,14 +153,14 @@ class AVVideoPlaybackWindow : public VKWindow {
 			if (result < 0) {
 				char buf[AV_ERROR_MAX_STRING_SIZE];
 				av_strerror(result, buf, sizeof(buf));
-				throw std::runtime_error(fmt::format("Failed to set codec parameters : %s", buf));
+				throw std::runtime_error(fmt::format("Failed to set codec parameters : {}", buf));
 			}
 
 			result = avcodec_open2(this->pAudioCtx, audioCodec, nullptr);
 			if (result < 0) {
 				char buf[AV_ERROR_MAX_STRING_SIZE];
 				av_strerror(result, buf, sizeof(buf));
-				throw std::runtime_error(fmt::format("Failed to retrieve info from stream info : %s", buf));
+				throw std::runtime_error(fmt::format("Failed to retrieve info from stream info : {}", buf));
 			}
 		}
 
@@ -181,7 +183,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if (result < 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw std::runtime_error(fmt::format("Failed to set codec parameters : %s", buf));
+			throw std::runtime_error(fmt::format("Failed to set codec parameters : {}", buf));
 		}
 		// av_find_best_pix_fmt_of_2
 		// avcodec_default_get_format()
@@ -189,7 +191,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if ((result = avcodec_open2(this->pVideoCtx, pVideoCodec, nullptr)) != 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw std::runtime_error(fmt::format("Failed to retrieve info from stream info : %s", buf));
+			throw std::runtime_error(fmt::format("Failed to retrieve info from stream info : {}", buf));
 		}
 
 		video_width = this->pVideoCtx->width;
@@ -223,27 +225,19 @@ class AVVideoPlaybackWindow : public VKWindow {
 	virtual void Initialize(void) override {
 		loadVideo(path.c_str());
 		/*	*/
-		for (unsigned int i = 0; i < videoImageViews.size(); i++) {
+		for (unsigned int i = 0; i < videoFrames.size(); i++) {
 
-			VKHelper::createImage(getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UNORM,
-								  VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			VKHelper::createBuffer(getDevice(), video_width * video_height * 3,
+											  getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+								  VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 								  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-								  getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
 								  videoStagingFrames[i], videoStagingFrameMemory[i]);
 
-			// VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_UNDEFINED,
-			// 								VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
 			VKHelper::createImage(
-				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8_SRGB, VK_IMAGE_TILING_LINEAR,
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
 				videoFrames[i], videoFrameMemory[i]);
-			videoImageViews[i] = VKHelper::createImageView(getDevice(), videoFrames[i], VK_IMAGE_VIEW_TYPE_2D,
-														   VK_FORMAT_R8G8B8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-
-			// VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			// 								VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
 		onResize(width(), height());
 	}
@@ -260,44 +254,41 @@ class AVVideoPlaybackWindow : public VKWindow {
 			beginInfo.flags = 0;
 
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
-			VkImageCopy imageCopyRegion{};
-			imageCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			imageCopyRegion.srcSubresource.layerCount = 1;
-			imageCopyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			imageCopyRegion.dstSubresource.layerCount = 1;
-			imageCopyRegion.extent.width = width;
-			imageCopyRegion.extent.height = height;
-			imageCopyRegion.extent.depth = 1;
+			VkBufferImageCopy imageCopyRegion{};
+			imageCopyRegion.bufferOffset = 0;
+			imageCopyRegion.bufferRowLength = video_width;
+			imageCopyRegion.bufferRowLength = video_height;
+			imageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageCopyRegion.imageSubresource.layerCount = 1;
+			imageCopyRegion.imageExtent.width = width;
+			imageCopyRegion.imageExtent.height = height;
+			imageCopyRegion.imageExtent.depth = 1;
 
-			vkCmdCopyImage(cmd, videoStagingFrames[nthVideoFrame], VK_IMAGE_LAYOUT_GENERAL, videoFrames[nthVideoFrame],
-						   VK_IMAGE_LAYOUT_GENERAL, 1, &imageCopyRegion);
+			vkCmdCopyBufferToImage(cmd, videoStagingFrames[nthVideoFrame], videoFrames[nthVideoFrame],
+						   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 1, &imageCopyRegion);
 
-			VkImageMemoryBarrier imageMemoryBarrier = {};
-			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			imageMemoryBarrier.image = videoFrames[nthVideoFrame];
-			imageMemoryBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-			imageMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-			imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			// VKHelper::transitionImageLayout(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_UNDEFINED,
+			// 								VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
-								 nullptr, 1, &imageMemoryBarrier);
-			VkImageBlit blitRegion;
-			blitRegion.srcOffsets[1].x = width;
-			blitRegion.srcOffsets[1].y = height;
+			VkImageBlit blitRegion {};
+			blitRegion.srcOffsets[1].x = video_width;
+			blitRegion.srcOffsets[1].y = video_height;
+			blitRegion.srcOffsets[1].z = 1;
 			blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			blitRegion.srcSubresource.layerCount = 1;
 			blitRegion.srcSubresource.mipLevel = 0;
 			blitRegion.dstOffsets[1].x = width;
 			blitRegion.dstOffsets[1].y = height;
+			blitRegion.dstOffsets[1].z = 1;
 			blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			blitRegion.dstSubresource.layerCount = 1;
 			blitRegion.dstSubresource.mipLevel = 0;
 
 			vkCmdBlitImage(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-						   getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion,
+						   getSwapChainImages()[i], VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1, &blitRegion,
 						   VK_FILTER_NEAREST);
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_GENERAL,
+											VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 			nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
@@ -324,7 +315,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 				if (result < 0) {
 					char buf[AV_ERROR_MAX_STRING_SIZE];
 					av_strerror(result, buf, sizeof(buf));
-					throw std::runtime_error(fmt::format("Failed to send packet for decoding picture frame : %s", buf));
+					throw std::runtime_error(fmt::format("Failed to send packet for decoding picture frame : {}", buf));
 				}
 
 				while (result >= 0) {
@@ -334,7 +325,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 					if (result < 0) {
 						char buf[AV_ERROR_MAX_STRING_SIZE];
 						av_strerror(result, buf, sizeof(buf));
-						throw std::runtime_error(fmt::format(" : %s", buf));
+						throw std::runtime_error(fmt::format(" : {}", buf));
 					}
 					if (this->frame->format != AV_PIX_FMT_BGRA) {
 
@@ -357,7 +348,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 													 video_width * video_height * 3, 0, &_data));
 							memcpy(_data, this->frameoutput->data, video_width * video_height * 3);
 							vkUnmapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame]);
-							vkDeviceWaitIdle(getDevice());
+							VKS_VALIDATE(vkDeviceWaitIdle(getDevice()));
 							nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
 						}
 					}
