@@ -31,7 +31,7 @@ extern "C" {
 
 class AVVideoPlaybackWindow : public VKWindow {
   private:
-	static const int nrVideoFrames = 3;
+	static const int nrVideoFrames = 2;
 	int nthVideoFrame = 0;
 	int frameSize;
 
@@ -126,19 +126,19 @@ class AVVideoPlaybackWindow : public VKWindow {
 			/*  */
 			if (stream->codecpar) {
 
-			switch (stream->codecpar->codec_type) {
-			case AVMEDIA_TYPE_AUDIO:
-				this->audioStream = x;
-				audio_st = stream;
-				break;
-			case AVMEDIA_TYPE_SUBTITLE:
-				break;
-			case AVMEDIA_TYPE_VIDEO:
-				this->videoStream = x;
-				video_st = stream;
-				break;
+				switch (stream->codecpar->codec_type) {
+				case AVMEDIA_TYPE_AUDIO:
+					this->audioStream = x;
+					audio_st = stream;
+					break;
+				case AVMEDIA_TYPE_SUBTITLE:
+					break;
+				case AVMEDIA_TYPE_VIDEO:
+					this->videoStream = x;
+					video_st = stream;
+					break;
+				}
 			}
-		}
 		}
 
 		/*  Get selected codec parameters. */
@@ -207,7 +207,6 @@ class AVVideoPlaybackWindow : public VKWindow {
 		this->frameoutput = av_frame_alloc();
 		int m_bufferSize =
 			av_image_get_buffer_size(AV_PIX_FMT_RGBA, this->pVideoCtx->width, this->pVideoCtx->height, 4);
-		void *m_buffer = (uint8_t *)av_malloc(m_bufferSize);
 		av_image_alloc(this->frameoutput->data, this->frameoutput->linesize, this->pVideoCtx->width,
 					   this->pVideoCtx->height, AV_PIX_FMT_RGBA, 4);
 
@@ -302,7 +301,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 			nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
 		}
-		nthVideoFrame = nrVideoFrames - 1;
+		nthVideoFrame = 0;
 	}
 
 	virtual void draw(void) override {
