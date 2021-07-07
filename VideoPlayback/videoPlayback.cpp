@@ -39,7 +39,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 	/*	Stagning frames.	*/
 	std::array<VkBuffer, nrVideoFrames> videoStagingFrames;
 	std::array<VkDeviceMemory, nrVideoFrames> videoStagingFrameMemory;
-
+	std::array<void *, nrVideoFrames> mapMemory;
 	FPSCounter<float> fpsCounter;
 
 	/*  */
@@ -236,6 +236,9 @@ class AVVideoPlaybackWindow : public VKWindow {
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 								   videoStagingFrames[i], videoStagingFrameMemory[i]);
 
+			VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[i], 0,
+										video_width * video_height * 4, 0, &mapMemory[i]));
+
 			VKHelper::createImage(
 				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -344,18 +347,15 @@ class AVVideoPlaybackWindow : public VKWindow {
 						this->frame->linesize[2] *= -1;
 						sws_scale(this->sws_ctx, this->frame->data, this->frame->linesize, 0, this->frame->height,
 								  this->frameoutput->data, this->frameoutput->linesize);
+
+
 						/*	Upload the image to staging.	*/
-						void *_data;
-						VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame], 0,
-												 video_width * video_height * 4, 0, &_data));
-						// this->frameoutput->width
-						memcpy(_data, this->frameoutput->data[0], video_width * video_height * 4);
+						memcpy(mapMemory[nthVideoFrame], this->frameoutput->data[0], video_width * video_height * 4);
 						VkMappedMemoryRange stagingRange = {.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
 															.memory = videoStagingFrameMemory[nthVideoFrame],
 															.offset = 0,
 															.size = video_width * video_height * 4};
 						VKS_VALIDATE(vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange));
-						vkUnmapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame]);
 						VKS_VALIDATE(vkDeviceWaitIdle(getDevice()));
 						nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
 					}
