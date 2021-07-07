@@ -35,7 +35,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 	int nthVideoFrame = 0;
 
 	std::array<VkImage, nrVideoFrames> videoFrames;
-	//std::array<VkImageView, nrVideoFrames> videoImageViews;
+	// std::array<VkImageView, nrVideoFrames> videoImageViews;
 	std::array<VkDeviceMemory, nrVideoFrames> videoFrameMemory;
 
 	std::array<VkBuffer, nrVideoFrames> videoStagingFrames;
@@ -81,7 +81,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 	virtual void Release(void) override {
 
 		for (int i = 0; i < nrVideoFrames; i++) {
-			//vkDestroyImageView(getDevice(), videoImageViews[i], nullptr);
+			// vkDestroyImageView(getDevice(), videoImageViews[i], nullptr);
 			vkDestroyImage(getDevice(), videoFrames[i], nullptr);
 			vkFreeMemory(getDevice(), videoFrameMemory[i], nullptr);
 			vkFreeMemory(getDevice(), videoStagingFrameMemory[i], nullptr);
@@ -229,10 +229,10 @@ class AVVideoPlaybackWindow : public VKWindow {
 		for (unsigned int i = 0; i < videoFrames.size(); i++) {
 
 			VKHelper::createBuffer(getDevice(), video_width * video_height * 4,
-											  getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
-								  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-								  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-								  videoStagingFrames[i], videoStagingFrameMemory[i]);
+								   getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+								   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+								   videoStagingFrames[i], videoStagingFrameMemory[i]);
 
 			VKHelper::createImage(
 				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
@@ -265,12 +265,12 @@ class AVVideoPlaybackWindow : public VKWindow {
 			imageCopyRegion.imageExtent.depth = 1;
 
 			vkCmdCopyBufferToImage(cmd, videoStagingFrames[nthVideoFrame], videoFrames[nthVideoFrame],
-						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
+								   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 
 			VKHelper::transitionImageLayout(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 											VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-			VkImageBlit blitRegion {};
+			VkImageBlit blitRegion{};
 			blitRegion.srcOffsets[1].x = video_width;
 			blitRegion.srcOffsets[1].y = video_height;
 			blitRegion.srcOffsets[1].z = 1;
@@ -306,7 +306,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		}
 
 		int res, result;
-		//res = av_seek_frame(this->pformatCtx, this->videoStream, 60000, AVSEEK_FLAG_FRAME);
+		// res = av_seek_frame(this->pformatCtx, this->videoStream, 60000, AVSEEK_FLAG_FRAME);
 
 		res = av_read_frame(this->pformatCtx, packet);
 		if (res == 0) {
@@ -330,38 +330,36 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 					if (this->frame->format == AV_PIX_FMT_YUV420P) {
 
-							this->frame->data[0] =
-								this->frame->data[0] + this->frame->linesize[0] * (this->pVideoCtx->height - 1);
-							this->frame->data[1] =
-								this->frame->data[1] + this->frame->linesize[0] * this->pVideoCtx->height / 4 - 1;
-							this->frame->data[2] =
-								this->frame->data[2] + this->frame->linesize[0] * this->pVideoCtx->height / 4 - 1;
+						this->frame->data[0] =
+							this->frame->data[0] + this->frame->linesize[0] * (this->pVideoCtx->height - 1);
+						this->frame->data[1] =
+							this->frame->data[1] + this->frame->linesize[0] * this->pVideoCtx->height / 4 - 1;
+						this->frame->data[2] =
+							this->frame->data[2] + this->frame->linesize[0] * this->pVideoCtx->height / 4 - 1;
 
-							this->frame->linesize[0] *= -1;
-							this->frame->linesize[1] *= -1;
-							this->frame->linesize[2] *= -1;
-							sws_scale(this->sws_ctx, this->frame->data, this->frame->linesize, 0, this->frame->height,
-									  this->frameoutput->data, this->frameoutput->linesize);
-							/*	Upload the image to staging.	*/
-							void *_data;
-							VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame], 0,
-													 video_width * video_height * 4, 0, &_data));
-							//this->frameoutput->width
-							memcpy(_data, this->frameoutput->data[0], video_width * video_height * 4);
-							VkMappedMemoryRange stagingRange = {.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-																.memory = videoStagingFrameMemory[nthVideoFrame],
-																.offset = 0,
-																.size = video_width * video_height * 4};
-							VKS_VALIDATE(vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange));
-							vkUnmapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame]);
-							VKS_VALIDATE(vkDeviceWaitIdle(getDevice()));
-							nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
+						this->frame->linesize[0] *= -1;
+						this->frame->linesize[1] *= -1;
+						this->frame->linesize[2] *= -1;
+						sws_scale(this->sws_ctx, this->frame->data, this->frame->linesize, 0, this->frame->height,
+								  this->frameoutput->data, this->frameoutput->linesize);
+						/*	Upload the image to staging.	*/
+						void *_data;
+						VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame], 0,
+												 video_width * video_height * 4, 0, &_data));
+						// this->frameoutput->width
+						memcpy(_data, this->frameoutput->data[0], video_width * video_height * 4);
+						VkMappedMemoryRange stagingRange = {.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+															.memory = videoStagingFrameMemory[nthVideoFrame],
+															.offset = 0,
+															.size = video_width * video_height * 4};
+						VKS_VALIDATE(vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange));
+						vkUnmapMemory(getDevice(), videoStagingFrameMemory[nthVideoFrame]);
+						VKS_VALIDATE(vkDeviceWaitIdle(getDevice()));
+						nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
 					}
-
 				}
 			}
 			if (packet->stream_index == this->audioStream) {
-
 			}
 		}
 		av_packet_unref(packet);
