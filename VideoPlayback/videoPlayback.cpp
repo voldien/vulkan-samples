@@ -33,11 +33,13 @@ class AVVideoPlaybackWindow : public VKWindow {
   private:
 	static const int nrVideoFrames = 3;
 	int nthVideoFrame = 0;
+	int frameSize;
 
+	/*	Decoded video frames.	*/
 	std::array<VkImage, nrVideoFrames> videoFrames;
-	// std::array<VkImageView, nrVideoFrames> videoImageViews;
 	std::array<VkDeviceMemory, nrVideoFrames> videoFrameMemory;
 
+	/*	Stagning frames.	*/
 	std::array<VkBuffer, nrVideoFrames> videoStagingFrames;
 	std::array<VkDeviceMemory, nrVideoFrames> videoStagingFrameMemory;
 
@@ -69,19 +71,21 @@ class AVVideoPlaybackWindow : public VKWindow {
   public:
 	AVVideoPlaybackWindow(const char *path, std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
+		this->setTitle(fmt::format("VideoPlayback {}", path));
 		this->path = path;
 	}
 	~AVVideoPlaybackWindow(void) {
-		avformat_close_input(&pformatCtx);
-		// av_packet_free(&pPacket);
 		av_frame_free(&frame);
+		avcodec_free_context(&pAudioCtx);
 		avcodec_free_context(&pVideoCtx);
+
+		avformat_close_input(&pformatCtx);
+		avformat_free_context(pformatCtx);
 	}
 
 	virtual void Release(void) override {
 
 		for (int i = 0; i < nrVideoFrames; i++) {
-			// vkDestroyImageView(getDevice(), videoImageViews[i], nullptr);
 			vkDestroyImage(getDevice(), videoFrames[i], nullptr);
 			vkFreeMemory(getDevice(), videoFrameMemory[i], nullptr);
 			vkFreeMemory(getDevice(), videoStagingFrameMemory[i], nullptr);
@@ -94,7 +98,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 		this->pformatCtx = avformat_alloc_context();
 		if (!pformatCtx) {
-			throw std::runtime_error("ERROR could not allocate memory for Format Context");
+			throw std::runtime_error("Failed to allocate memory for the 'AVFormatContext'");
 		}
 		// Determine the input-format:
 		this->pformatCtx->iformat = av_find_input_format(path);
@@ -109,8 +113,9 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if ((result = avformat_find_stream_info(this->pformatCtx, nullptr)) < 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw std::runtime_error(fmt::format("Failed to retrieve info from stream info : %s", buf));
+			throw std::runtime_error(fmt::format("Failed to retrieve info from stream info : {}", buf));
 		}
+
 		struct AVStream *video_st = nullptr;
 		struct AVStream *audio_st = nullptr;
 
@@ -119,8 +124,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 			AVStream *stream = this->pformatCtx->streams[x];
 
 			/*  */
-			if (stream->codecpar == nullptr)
-				continue;
+			if (stream->codecpar) {
 
 			switch (stream->codecpar->codec_type) {
 			case AVMEDIA_TYPE_AUDIO:
@@ -135,10 +139,11 @@ class AVVideoPlaybackWindow : public VKWindow {
 				break;
 			}
 		}
+		}
 
 		/*  Get selected codec parameters. */
 		if (!video_st)
-			throw std::runtime_error("Failed to find video stream.");
+			throw std::runtime_error(fmt::format("Failed to find a video stream in {}.", path));
 
 		if (audio_st) {
 			AVCodecParameters *pAudioCodecParam = audio_st->codecpar;
@@ -166,6 +171,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 		AVCodecParameters *pVideoCodecParam = video_st->codecpar;
 
+		/*	*/
 		AVCodec *pVideoCodec = avcodec_find_decoder(pVideoCodecParam->codec_id);
 		if (pVideoCodec == nullptr)
 			throw std::runtime_error("failed to find decoder");
