@@ -4,9 +4,6 @@
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/mat4x4.hpp>
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,8 +50,8 @@ class AVVideoPlaybackWindow : public VKWindow {
 	/*  */
 	int videoStream;
 	int audioStream;
-	int video_width;
-	int video_height;
+	unsigned int video_width;
+	unsigned int video_height;
 	/*  */
 	struct AVFrame *frame;
 	struct AVFrame *frameoutput;
