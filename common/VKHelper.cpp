@@ -125,6 +125,7 @@ void VKHelper::createPipelineLayout(VkDevice device, VkPipelineLayout &pipelineL
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.pNext = pNext;
 	pipelineLayoutInfo.setLayoutCount = descLayouts.size();
 	pipelineLayoutInfo.pSetLayouts = descLayouts.data();
 	pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();

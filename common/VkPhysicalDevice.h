@@ -62,7 +62,7 @@ class PhysicalDevice {
 	 * @return true
 	 * @return false
 	 */
-	bool isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const noexcept;
+	bool isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const;
 
 	/**
 	 * @brief

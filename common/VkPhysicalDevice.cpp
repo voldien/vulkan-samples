@@ -27,7 +27,7 @@ PhysicalDevice::PhysicalDevice(VkInstance instance, VkPhysicalDevice device) {
 	this->mdevice = device;
 }
 
-bool PhysicalDevice::isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const noexcept {
+bool PhysicalDevice::isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const {
 	VkBool32 present_supported{VK_FALSE};
 
 	if (surface != VK_NULL_HANDLE) {

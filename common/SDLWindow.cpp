@@ -59,10 +59,15 @@ int SDLWindow::height(void) const {
 }
 
 void SDLWindow::setMinimumSize(int width, int height) { SDL_SetWindowMinimumSize(this->window, width, height); }
-void SDLWindow::getMinimumSize(int *width, int *height) {}
+void SDLWindow::getMinimumSize(int *width, int *height) {
+	SDL_GetWindowMinimumSize(this->window, width, height);
+
+}
 
 void SDLWindow::setMaximumSize(int width, int height) { SDL_SetWindowMaximumSize(this->window, width, height); }
-void SDLWindow::getMaximumSize(int *width, int *height) {}
+void SDLWindow::getMaximumSize(int *width, int *height) {
+	SDL_GetWindowMaximumSize(this->window, width, height);
+}
 
 void SDLWindow::focus(void) { SDL_SetWindowInputFocus(this->window); }
 

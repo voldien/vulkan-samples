@@ -42,12 +42,13 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	std::vector<VkDeviceQueueCreateInfo> queueCreations(nrQueues);
 	std::vector<float> queuePriorities(1.0f, nrQueues);
 	if ((requiredQueues & VK_QUEUE_COMPUTE_BIT) && computeQueueNodeIndex != UINT32_MAX) {
-		queueCreations[0] = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-							 .pNext = nullptr,
-							 .flags = 0,
-							 .queueFamilyIndex = this->graphics_queue_node_index,
-							 .queueCount = nrQueues,
-							 .pQueuePriorities = queuePriorities.data()};
+		VkDeviceQueueCreateInfo& queueCreateInfo = queueCreations[0];
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.pNext = nullptr;
+		queueCreateInfo.flags = 0;
+		queueCreateInfo.queueFamilyIndex = this->graphics_queue_node_index;
+		queueCreateInfo.queueCount = nrQueues;
+		queueCreateInfo.pQueuePriorities = queuePriorities.data();
 	}
 	const VkDeviceQueueCreateInfo queueInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 											   .pNext = nullptr,
@@ -72,9 +73,8 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 		}
 	}
 
-	VkDeviceGroupDeviceCreateInfo deviceGroupDeviceCreateInfo = {
-		.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO,
-	};
+	VkDeviceGroupDeviceCreateInfo deviceGroupDeviceCreateInfo{};
+	deviceGroupDeviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
 
 	VkDeviceCreateInfo deviceInfo = {};
 	deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
