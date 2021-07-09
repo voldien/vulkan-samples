@@ -89,22 +89,22 @@ class VKHelper {
 		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	}
 
-	static void createMemory(VkDevice device, VkDeviceSize size, VkMemoryPropertyFlags properties,
-							 const VkPhysicalDeviceMemoryProperties &memoryProperies, VkDeviceMemory &deviceMemory) {
+	static void createMemory(VkDevice device, VkDeviceSize size, VkMemoryPropertyFlags properties, const VkMemoryRequirements& memRequirements,
+							 const VkPhysicalDeviceMemoryProperties &memoryProperies, VkDeviceMemory &deviceMemory, const VkAllocationCallbacks *pAllocator = nullptr,
+							const char *pNext = nullptr) {
 		/**/
-		// VkMemoryAllocateInfo allocInfo = {};
-		// allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		// allocInfo.allocationSize = size;
-		// const auto typeIndex = findMemoryType(memoryProperies, memRequirements.memoryTypeBits, properties);
-		// if (typeIndex)
-		// 	allocInfo.memoryTypeIndex = typeIndex.value();
-		// else
-		// 	throw std::runtime_error("");
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.pNext = pNext;
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = size;
+		const auto typeIndex = findMemoryType(memoryProperies, memRequirements.memoryTypeBits, properties);
+		if (typeIndex)
+			allocInfo.memoryTypeIndex = typeIndex.value();
+		else
+			throw std::runtime_error("");
 
-		// /**/
-		// VkResult result = vkAllocateMemory(device, &allocInfo, NULL, &deviceMemory);
-		//			throw std::runtime_error("failed to allocate buffer memory!");
-		//		}
+		/**/
+		VKS_VALIDATE(vkAllocateMemory(device, &allocInfo, pAllocator, &deviceMemory));
 	}
 
 	static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates,
