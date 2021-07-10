@@ -10,11 +10,11 @@
 
 class SDLWindow {
   public:
-	virtual void show(void);
+	virtual void show(void)noexcept;
 
-	virtual void hide(void);
+	virtual void hide(void) noexcept;
 
-	virtual void close(void);
+	virtual void close(void)noexcept;
 
 	virtual void focus(void);
 
@@ -28,17 +28,17 @@ class SDLWindow {
 
 	virtual std::string getTitle(void);
 
-	virtual int x(void) const;
-	virtual int y(void) const;
+	virtual int x(void) const noexcept;
+	virtual int y(void) const noexcept;
 
-	virtual int width(void) const;
-	virtual int height(void) const;
+	virtual int width(void) const noexcept;
+	virtual int height(void) const noexcept;
 
 	virtual void getPosition(int *x, int *y) const;
 
-	virtual void setPosition(int x, int y);
+	virtual void setPosition(int x, int y) noexcept;
 
-	virtual void setSize(int width, int height);
+	virtual void setSize(int width, int height) noexcept;
 
 	virtual void getSize(int *width, int *height) const;
 

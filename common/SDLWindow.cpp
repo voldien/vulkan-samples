@@ -1,17 +1,17 @@
 #include"SDLWindow.h"
 
-void SDLWindow::show() { SDL_ShowWindow(this->window); }
+void SDLWindow::show()noexcept { SDL_ShowWindow(this->window); }
 
-void SDLWindow::hide() { SDL_HideWindow(this->window); }
+void SDLWindow::hide()noexcept { SDL_HideWindow(this->window); }
 
-void SDLWindow::close(void) {
+void SDLWindow::close(void) noexcept {
 	this->hide();
 	SDL_DestroyWindow(this->window);
 }
 
-void SDLWindow::setPosition(int x, int y) { SDL_SetWindowPosition(this->window, x, y); }
+void SDLWindow::setPosition(int x, int y)  noexcept{ SDL_SetWindowPosition(this->window, x, y); }
 
-void SDLWindow::setSize(int width, int height) {
+void SDLWindow::setSize(int width, int height)noexcept {
 	/*	TODO determine if it shall update framebuffera as well.	*/
 	SDL_SetWindowSize(this->window, width, height);
 }
@@ -23,12 +23,12 @@ void SDLWindow::setTitle(const std::string &title) { SDL_SetWindowTitle(window, 
 
 std::string SDLWindow::getTitle(void) { return SDL_GetWindowTitle(window); }
 
-int SDLWindow::x(void) const {
+int SDLWindow::x(void) const noexcept{
 	int x, y;
 	SDL_GetWindowPosition(this->window, &x, &y);
 	return x;
 }
-int SDLWindow::y(void) const {
+int SDLWindow::y(void) const noexcept{
 	int x, y;
 	SDL_GetWindowPosition(this->window, &x, &y);
 	return y;
@@ -47,12 +47,12 @@ bool SDLWindow::isFullScreen(void) const { return false; }
 
 void SDLWindow::setBordered(bool bordered) { SDL_SetWindowBordered(this->window, (SDL_bool)bordered); }
 
-int SDLWindow::width(void) const {
+int SDLWindow::width(void) const noexcept{
 	int w, h;
 	getSize(&w, &h);
 	return w;
 }
-int SDLWindow::height(void) const {
+int SDLWindow::height(void) const noexcept{
 	int w, h;
 	getSize(&w, &h);
 	return h;

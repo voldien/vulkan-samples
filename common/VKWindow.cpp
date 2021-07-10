@@ -116,9 +116,8 @@ void VKWindow::swapBuffer(void) {
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreateSwapChain();
 		return;
-	} else if (result != VK_SUCCESS) {
-		throw std::runtime_error("Failed to acquire next image - {}");
-	}
+	} else
+		VKS_VALIDATE(result);
 
 	if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
 		vkWaitForFences(getDevice(), 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
@@ -126,23 +125,8 @@ void VKWindow::swapBuffer(void) {
 	/*	*/
 	this->imagesInFlight[imageIndex] = this->inFlightFences[this->swapChain->currentFrame];
 
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkSemaphore waitSemaphores[] = {this->imageAvailableSemaphores[this->swapChain->currentFrame]};
-	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;
-	submitInfo.pWaitDstStageMask = waitStages;
-
-	/*	*/
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &this->swapChain->commandBuffers[imageIndex];
-
 	/*	*/
 	VkSemaphore signalSemaphores[] = {this->renderFinishedSemaphores[this->swapChain->currentFrame]};
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
 
 	vkResetFences(getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame]);
 
@@ -151,9 +135,6 @@ void VKWindow::swapBuffer(void) {
 											 {this->renderFinishedSemaphores[this->swapChain->currentFrame]},
 											 this->inFlightFences[this->swapChain->currentFrame],
 											 {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT});
-
-	// VKS_VALIDATE(vkQueueSubmit(device->getDefaultGraphicQueue(), 1, &submitInfo,
-	// 					   this->inFlightFences[this->swapChain->currentFrame]));
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

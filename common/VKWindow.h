@@ -9,6 +9,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
+
 class VKWindow : public SDLWindow {
   public:
 	/**
@@ -87,7 +88,7 @@ class VKWindow : public SDLWindow {
 	/*	*/
 	VkImage getDefaultImage(void) const;
 	VkImageView getDefaultImageView(void) const;
-	VkFormat getDefaultImageFormat(void) const { return this->swapChain->swapChainImageFormat; }
+	VkFormat getDefaultImageFormat(void) const noexcept{ return this->swapChain->swapChainImageFormat; }
 
 	/*	*/
 	VkCommandBuffer getCurrentCommandBuffer(void) const noexcept;

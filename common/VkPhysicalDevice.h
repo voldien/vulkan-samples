@@ -46,7 +46,7 @@ class PhysicalDevice {
 		return queueFamilyProperties;
 	}
 
-	bool isQueueSupported(VkQueueFlags queueFlag) const {
+	bool isQueueSupported(VkQueueFlags queueFlag) const noexcept {
 		for (const VkQueueFamilyProperties &a : getQueueFamilyProperties()) {
 			if (a.queueFlags & queueFlag)
 				return true;

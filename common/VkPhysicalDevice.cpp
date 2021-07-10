@@ -18,7 +18,6 @@ PhysicalDevice::PhysicalDevice(VkInstance instance, VkPhysicalDevice device) {
 	vkGetPhysicalDeviceProperties(device, &this->properties);
 
 	/*  Select queue family.    */
-	/*  TODO improve queue selection.   */
 	uint32_t nrQueueFamilies;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &nrQueueFamilies, VK_NULL_HANDLE);
 	this->queueFamilyProperties.resize(nrQueueFamilies);
