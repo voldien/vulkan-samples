@@ -42,7 +42,7 @@ class SDLWindow {
 
 	virtual void getSize(int *width, int *height) const;
 
-	virtual void resizable(bool resizable);
+	virtual void resizable(bool resizable)noexcept;
 
 	virtual void setFullScreen(bool fullscreen);
 

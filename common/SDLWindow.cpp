@@ -33,7 +33,7 @@ int SDLWindow::y(void) const noexcept{
 	SDL_GetWindowPosition(this->window, &x, &y);
 	return y;
 }
-void SDLWindow::resizable(bool resizable) { SDL_SetWindowResizable(this->window, (SDL_bool)resizable); }
+void SDLWindow::resizable(bool resizable) noexcept{ SDL_SetWindowResizable(this->window, (SDL_bool)resizable); }
 
 void SDLWindow::setFullScreen(bool fullscreen) {
 	// TODO add option for using either of the modes.
