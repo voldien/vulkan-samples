@@ -83,15 +83,16 @@ class VKHelper {
 			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 			destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		} else {
-			//throw std::invalid_argument("unsupported layout transition!");
+			// throw std::invalid_argument("unsupported layout transition!");
 		}
 
 		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	}
 
-	static void createMemory(VkDevice device, VkDeviceSize size, VkMemoryPropertyFlags properties, const VkMemoryRequirements& memRequirements,
-							 const VkPhysicalDeviceMemoryProperties &memoryProperies, VkDeviceMemory &deviceMemory, const VkAllocationCallbacks *pAllocator = nullptr,
-							const char *pNext = nullptr) {
+	static void createMemory(VkDevice device, VkDeviceSize size, VkMemoryPropertyFlags properties,
+							 const VkMemoryRequirements &memRequirements,
+							 const VkPhysicalDeviceMemoryProperties &memoryProperies, VkDeviceMemory &deviceMemory,
+							 const VkAllocationCallbacks *pAllocator = nullptr, const char *pNext = nullptr) {
 		/**/
 		VkMemoryAllocateInfo allocInfo = {};
 		allocInfo.pNext = pNext;
@@ -108,7 +109,7 @@ class VKHelper {
 	}
 
 	static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates,
-								 VkImageTiling tiling, VkFormatFeatureFlags features) {
+										VkImageTiling tiling, VkFormatFeatureFlags features) {
 		for (VkFormat format : candidates) {
 			VkFormatProperties props;
 			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);

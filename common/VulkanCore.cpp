@@ -123,10 +123,11 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 		.pNext = &callbackCreateInfoExt,
 	};
 	VkValidationCheckEXT validationCheckExt[] = {VK_VALIDATION_CHECK_ALL_EXT};
-	VkValidationFlagsEXT validationFlagsExt = {.sType = VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT,
-											   .pNext = VK_NULL_HANDLE, //&debugUtilsMessengerCreateInfoExt,
-											   .disabledValidationCheckCount = 1,
-											   .pDisabledValidationChecks = validationCheckExt};
+	VkValidationFlagsEXT validationFlagsExt {};
+	validationFlagsExt.sType = VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT;
+	validationFlagsExt.pNext = VK_NULL_HANDLE; //&debugUtilsMessengerCreateInfoExt,
+	validationFlagsExt.disabledValidationCheckCount = 1;
+	validationFlagsExt.pDisabledValidationChecks = validationCheckExt;
 
 	/*	Prepare the instance object. */
 	VkInstanceCreateInfo ici = {};
@@ -168,38 +169,6 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	/*  TODO add selection function. */
 	std::vector<VkPhysicalDevice> selectedDevices;
 	VKHelper::selectDefaultDevices(physicalDevices, selectedDevices);
-}
-
-void VulkanCore::parseOptions(int argc, const char **argv) {
-
-	/*	TODO reorder    */
-	static const char *shortarg = "vVdqh"
-								  "D:";
-	static struct option longoptions[] = {
-		/*  First pass arguments.   */
-		{"version", no_argument, NULL, 'v'}, /*	Print version of application.	*/
-		{"verbose", no_argument, NULL, 'V'}, /*	Print.	*/
-		{"debug", no_argument, NULL, 'd'},	 /*	Debug.	*/
-		{"quite", no_argument, NULL, 'q'},	 /*	Quite .	*/
-		{"help", no_argument, NULL, 'h'},	 /*	Help.	*/
-		{"device-index", no_argument, NULL, 'D'},
-		/*  Texture arguments.  16 texture unit support by default. */
-		{"texture0", required_argument, NULL, 't'}, /*	Texture on index 0. */
-
-		{NULL, 0, NULL, 0},
-	};
-
-	int c, index;
-	while ((c = getopt_long(argc, (char *const *)argv, shortarg, longoptions, &index)) != EOF) {
-		const char *option = NULL;
-		if (index >= 0 && index < sizeof(longoptions) / sizeof(longoptions[0]))
-			option = longoptions[index].name;
-	}
-
-	/*	Reset getopt.	*/
-	optind = 0;
-	optopt = 0;
-	opterr = 0;
 }
 
 std::vector<std::shared_ptr<PhysicalDevice>> VulkanCore::createPhysicalDevices(void) const {

@@ -111,9 +111,6 @@ class VulkanCore {
 	 */
 	std::shared_ptr<PhysicalDevice> createPhysicalDevice(unsigned int index) const;
 
-  private:
-	void parseOptions(int argc, const char **argv);
-
   protected:
 	/*	*/
 	std::vector<VkExtensionProperties> instanceExtensions;

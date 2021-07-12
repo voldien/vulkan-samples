@@ -394,9 +394,9 @@ void VKWindow::cleanSwapChain(void) {
 	vkDestroySwapchainKHR(getDevice(), this->swapChain->swapchain, nullptr);
 }
 VkFormat VKWindow::findDepthFormat() {
-	return VKHelper::findSupportedFormat(physicalDevice(),
-		{VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}, VK_IMAGE_TILING_OPTIMAL,
-		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	return VKHelper::findSupportedFormat(
+		physicalDevice(), {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+		VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }

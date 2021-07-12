@@ -10,11 +10,11 @@
 
 class SDLWindow {
   public:
-	virtual void show(void)noexcept;
+	virtual void show(void) noexcept;
 
 	virtual void hide(void) noexcept;
 
-	virtual void close(void)noexcept;
+	virtual void close(void) noexcept;
 
 	virtual void focus(void);
 
@@ -42,7 +42,7 @@ class SDLWindow {
 
 	virtual void getSize(int *width, int *height) const;
 
-	virtual void resizable(bool resizable)noexcept;
+	virtual void resizable(bool resizable) noexcept;
 
 	virtual void setFullScreen(bool fullscreen);
 
@@ -54,7 +54,6 @@ class SDLWindow {
 	virtual void getMinimumSize(int *width, int *height);
 	virtual void setMaximumSize(int width, int height);
 	virtual void getMaximumSize(int *width, int *height);
-
 
   protected:
 	SDL_Window *window;

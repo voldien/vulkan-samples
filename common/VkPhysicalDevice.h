@@ -96,7 +96,7 @@ class PhysicalDevice {
 
 	bool getSupportedFormat(VkFormat &supported, const std::vector<VkFormat> &candidates, VkImageTiling tiling,
 							VkFormatFeatureFlags features) const {
-		//supported = VKHelper::findSupportedFormat(getHandle(), candidates, tiling, features);
+		// supported = VKHelper::findSupportedFormat(getHandle(), candidates, tiling, features);
 		return true;
 	}
 
