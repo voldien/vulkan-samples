@@ -109,21 +109,19 @@ void VulkanCore::Initialize(const std::unordered_map<const char *, bool> &reques
 	ai.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 	ai.apiVersion = version;
 
-	VkDebugReportCallbackCreateInfoEXT callbackCreateInfoExt = {
-		.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT, // sType
-		.pNext = NULL,													  // pNext
-		.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |						  // flags
-				 VK_DEBUG_REPORT_WARNING_BIT_EXT,
-		.pfnCallback =
-			&myDebugReportCallbackEXT, // myOutputDebugString,                                        // pfnCallback
-		.pUserData = VK_NULL_HANDLE	   // pUserData
-	};
+	VkDebugReportCallbackCreateInfoEXT callbackCreateInfoExt{};
+	callbackCreateInfoExt.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT; // sType
+	callbackCreateInfoExt.pNext = NULL;														   // pNext
+	callbackCreateInfoExt.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |							   // flags
+								  VK_DEBUG_REPORT_WARNING_BIT_EXT;
+	callbackCreateInfoExt.pfnCallback = &myDebugReportCallbackEXT; // myOutputDebugString, // pfnCallback
+	callbackCreateInfoExt.pUserData = VK_NULL_HANDLE;			   // pUserData
 	VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoExt = {
 		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 		.pNext = &callbackCreateInfoExt,
 	};
 	VkValidationCheckEXT validationCheckExt[] = {VK_VALIDATION_CHECK_ALL_EXT};
-	VkValidationFlagsEXT validationFlagsExt {};
+	VkValidationFlagsEXT validationFlagsExt{};
 	validationFlagsExt.sType = VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT;
 	validationFlagsExt.pNext = VK_NULL_HANDLE; //&debugUtilsMessengerCreateInfoExt,
 	validationFlagsExt.disabledValidationCheckCount = 1;
