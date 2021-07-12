@@ -1,6 +1,6 @@
 #include "VKWindow.h"
-#include "VKDevice.h"
-#include "VKHelper.h"
+#include "Core/VKDevice.h"
+#include "Core/VKHelper.h"
 #include <SDL2/SDL_vulkan.h>
 #include <cassert>
 #include <stdexcept>

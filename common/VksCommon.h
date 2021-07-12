@@ -1,11 +1,11 @@
 #ifndef _VK_COMMON_SAMPLES_H_
 #define _VK_COMMON_SAMPLES_H_ 1
-#include "VKDevice.h"
+#include "Core/VKDevice.h"
 
-#include "VKHelper.h"
+#include "Core/VKHelper.h"
+#include "Core/VkPhysicalDevice.h"
+#include "Core/VulkanCore.h"
 #include "VKWindow.h"
-#include "VkPhysicalDevice.h"
-#include "VulkanCore.h"
 
 #include "Importer/IOUtil.h"
 

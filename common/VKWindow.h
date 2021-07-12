@@ -1,8 +1,8 @@
 #ifndef _STARTUP_WINDOW_SAMPLE_H_
 #define _STARTUP_WINDOW_SAMPLE_H_ 1
 #include "SDLWindow.h"
-#include "VKDevice.h"
-#include "VulkanCore.h"
+#include "Core/VKDevice.h"
+#include "Core/VulkanCore.h"
 #include <SDL2/SDL.h>
 #include <iostream>
 #include <memory>

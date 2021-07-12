@@ -1,7 +1,7 @@
 #ifndef _VK_SAMPLE_IMAGE_IMPORTER_H_
 #define _VK_SAMPLE_IMAGE_IMPORTER_H_ 1
-#include "../VKHelper.h"
-#include"../VKDevice.h"
+#include "../Core/VKHelper.h"
+#include"../Core/VKDevice.h"
 #include <stdio.h>
 #include <vulkan/vulkan.h>
 
