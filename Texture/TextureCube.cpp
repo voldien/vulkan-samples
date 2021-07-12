@@ -1,6 +1,5 @@
 #include "FPSCounter.h"
 #include "Importer/ImageImport.h"
-#include "VKHelper.h"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>

@@ -1,5 +1,4 @@
 #include "Importer/ImageImport.h"
-#include "VKHelper.h"
 #include "VKUtil.h"
 #include "VksCommon.h"
 #include <fmt/format.h>

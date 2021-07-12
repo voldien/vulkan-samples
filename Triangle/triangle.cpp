@@ -1,5 +1,4 @@
 #include "Importer/IOUtil.h"
-#include "VKHelper.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>

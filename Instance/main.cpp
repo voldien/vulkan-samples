@@ -1,4 +1,3 @@
-#include "VKHelper.h"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
