@@ -391,15 +391,15 @@ class CubeWindow : public VKWindow {
 
 			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
 
-			VkBufferMemoryBarrier ub_barrier = {
-				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-				.pNext = nullptr,
-				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-				.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-				.buffer = uniformBuffers[i],
-				.offset = 0,
-				.size = sizeof(mvp),
-			};
+			VkBufferMemoryBarrier ub_barrier{};
+
+			ub_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+			ub_barrier.pNext = nullptr;
+			ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			ub_barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+			ub_barrier.buffer = uniformBuffers[i];
+			ub_barrier.offset = 0;
+			ub_barrier.size = sizeof(mvp);
 			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
 
@@ -443,10 +443,11 @@ class CubeWindow : public VKWindow {
 
 		// Setup the range
 		memcpy(mapMemory[getCurrentFrame()], &mvp, (size_t)sizeof(this->mvp));
-		VkMappedMemoryRange stagingRange = {.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-											.memory = uniformBuffersMemory[getCurrentFrame()],
-											.offset = 0,
-											.size = (size_t)sizeof(this->mvp)};
+		VkMappedMemoryRange stagingRange{};
+		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		stagingRange.memory = uniformBuffersMemory[getCurrentFrame()];
+		stagingRange.offset = 0;
+		stagingRange.size = (size_t)sizeof(this->mvp);
 		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 

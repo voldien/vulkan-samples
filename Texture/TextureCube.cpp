@@ -516,10 +516,11 @@ class SingleTextureWindow : public VKWindow {
 
 		// Setup the range
 		memcpy(mapMemory[getCurrentFrame()], &mvp, (size_t)sizeof(this->mvp));
-		VkMappedMemoryRange stagingRange = {.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-											.memory = uniformBuffersMemory[getCurrentFrame()],
-											.offset = 0,
-											.size = (size_t)sizeof(this->mvp)};
+		VkMappedMemoryRange stagingRange{};
+		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		stagingRange.memory = uniformBuffersMemory[getCurrentFrame()];
+		stagingRange.offset = 0;
+		stagingRange.size = (size_t)sizeof(this->mvp);
 		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 

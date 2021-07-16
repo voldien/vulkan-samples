@@ -3,6 +3,7 @@
 
 class ParticleSystemWindow : public VKWindow {
   private:
+	/**/
 	VkPipeline particleSim = VK_NULL_HANDLE;
 	VkPipelineLayout particleSimLayout = VK_NULL_HANDLE;
 	VkPipeline particleGraphicPipeline = VK_NULL_HANDLE;
@@ -11,6 +12,8 @@ class ParticleSystemWindow : public VKWindow {
 	/*	*/
 	std::vector<VkBuffer> particleBuffers;
 	std::vector<VkDeviceMemory> particleBufferMemory;
+	std::vector<VkBuffer> uniformBuffersss;
+	std::vector<VkDeviceMemory> uniformBuffersMemoryss;
 
 	/*	*/
 	VkBuffer vectorFieldBuffer;
@@ -23,6 +26,7 @@ class ParticleSystemWindow : public VKWindow {
 
 	const int nrParticles = 1000;
 	typedef struct particle_t {
+		float t;
 		float x, y;		  /*	Position.	*/
 		float xdir, ydir; /*	Velocity.	*/
 	} alignas(16) Particle;
@@ -34,8 +38,6 @@ class ParticleSystemWindow : public VKWindow {
 	}
 
 	virtual void Initialize(void) { /*	*/
-
-
 
 		onResize(width(), height());
 	}

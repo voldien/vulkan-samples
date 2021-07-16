@@ -195,9 +195,9 @@ class ReactionDiffusionWindow : public VKWindow {
 								   cellsBuffers[i], cellsMemory[i]);
 			float *cellData;
 			VKS_VALIDATE(vkMapMemory(getDevice(), cellsMemory[i], 0, cellBufferSize, 0, (void **)&cellData));
-			for (int h = 0; h < height; h++) {
-				for (int w = 0; w < width; w++) {
-					for (int c = 0; c < nrChemicalComponents; c++) {
+			for (unsigned int h = 0; h < height; h++) {
+				for (unsigned int w = 0; w < width; w++) {
+					for (unsigned int c = 0; c < nrChemicalComponents; c++) {
 						cellData[h * height * nrChemicalComponents + w * nrChemicalComponents + c] =
 							Math::perlinNoise<float>((float)w * 0.05f + c, (float)h* 0.05f + c, 1) * 1.0f;
 					}
