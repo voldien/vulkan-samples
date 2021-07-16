@@ -114,6 +114,7 @@ class VKHelper {
 			VkFormatProperties props;
 			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
 
+			/*	*/
 			if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
 				return format;
 			} else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
@@ -122,6 +123,10 @@ class VKHelper {
 		}
 
 		throw std::runtime_error("failed to find supported format!");
+	}
+
+	static void getImageFormatProperties(void){
+		//vkGetPhysicalDeviceImageFormatProperties()
 	}
 
 	/**
@@ -443,29 +448,31 @@ class VKHelper {
 		vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 	}
 
-	static void stageBufferCmdCopy(VkDevice device, VkQueue queue, VkCommandBuffer cmd, VkBuffer src, VkBuffer dst,
-								   VkDeviceSize size) {}
-	static void stageBufferToImageCmdCopyDirect(VkDevice device, VkQueue queue, VkCommandBuffer cmd, VkBuffer src,
-												VkImage dst, const VkExtent3D &size,
-												const VkOffset3D &offset = {0, 0, 0}) {
+	// static void stageBufferCmdCopy(VkDevice device, VkQueue queue, VkCommandBuffer cmd, VkBuffer src, VkBuffer dst,
+	// 							   VkDeviceSize size) {
 
-		// VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+	// 							   }
+	// static void stageBufferToImageCmdCopyDirect(VkDevice device, VkQueue queue, VkCommandBuffer cmd, VkBuffer src,
+	// 											VkImage dst, const VkExtent3D &size,
+	// 											const VkOffset3D &offset = {0, 0, 0}) {
 
-		// VkBufferImageCopy region{};
-		// region.bufferOffset = 0;
-		// region.bufferRowLength = 0;
-		// region.bufferImageHeight = 0;
-		// region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		// region.imageSubresource.mipLevel = 0;
-		// region.imageSubresource.baseArrayLayer = 0;
-		// region.imageSubresource.layerCount = 1;
-		// region.imageOffset = {0, 0, 0};
-		// region.imageExtent = {width, height, 1};
+	// 	// VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
-		// vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	// 	// VkBufferImageCopy region{};
+	// 	// region.bufferOffset = 0;
+	// 	// region.bufferRowLength = 0;
+	// 	// region.bufferImageHeight = 0;
+	// 	// region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	// 	// region.imageSubresource.mipLevel = 0;
+	// 	// region.imageSubresource.baseArrayLayer = 0;
+	// 	// region.imageSubresource.layerCount = 1;
+	// 	// region.imageOffset = {0, 0, 0};
+	// 	// region.imageExtent = {width, height, 1};
 
-		// endSingleTimeCommands(commandBuffer);
-	}
+	// 	// vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	// 	// endSingleTimeCommands(commandBuffer);
+	// }
 
 	static void copyBufferToImageCmd(VkCommandBuffer cmd, VkBuffer src, VkImage dst, const VkExtent3D &size,
 									 const VkOffset3D &offset = {0, 0, 0}) {

@@ -42,7 +42,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	std::vector<VkDeviceQueueCreateInfo> queueCreations(nrQueues);
 	std::vector<float> queuePriorities(1.0f, nrQueues);
 	if ((requiredQueues & VK_QUEUE_COMPUTE_BIT) && computeQueueNodeIndex != UINT32_MAX) {
-		VkDeviceQueueCreateInfo& queueCreateInfo = queueCreations[0];
+		VkDeviceQueueCreateInfo &queueCreateInfo = queueCreations[0];
 		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queueCreateInfo.pNext = nullptr;
 		queueCreateInfo.flags = 0;
@@ -50,12 +50,14 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 		queueCreateInfo.queueCount = nrQueues;
 		queueCreateInfo.pQueuePriorities = queuePriorities.data();
 	}
-	const VkDeviceQueueCreateInfo queueInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-											   .pNext = nullptr,
-											   .flags = 0,
-											   .queueFamilyIndex = this->graphics_queue_node_index,
-											   .queueCount = nrQueues,
-											   .pQueuePriorities = queuePriorities.data()};
+	std::vector<VkDeviceQueueCreateInfo> queueInfos(1);
+
+	queueInfos[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueInfos[0].pNext = nullptr;
+	queueInfos[0].flags = 0;
+	queueInfos[0].queueFamilyIndex = this->graphics_queue_node_index;
+	queueInfos[0].queueCount = nrQueues;
+	queueInfos[0].pQueuePriorities = queuePriorities.data();
 
 	/*  Required extensions.    */
 	std::vector<const char *> deviceExtensions = {
@@ -79,8 +81,8 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	VkDeviceCreateInfo deviceInfo = {};
 	deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceInfo.pNext = VK_NULL_HANDLE;
-	deviceInfo.queueCreateInfoCount = 1;
-	deviceInfo.pQueueCreateInfos = &queueInfo;
+	deviceInfo.queueCreateInfoCount = queueInfos.size();
+	deviceInfo.pQueueCreateInfos = queueInfos.data();
 
 	// /*	Enable group if supported.	*/
 	std::vector<VkPhysicalDevice> groupDevices(devices.size());
@@ -89,7 +91,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 			groupDevices[i] = devices[i]->getHandle();
 		deviceGroupDeviceCreateInfo.physicalDeviceCount = groupDevices.size();
 		deviceGroupDeviceCreateInfo.pPhysicalDevices = groupDevices.data();
-		// deviceInfo.pNext = &deviceGroupDeviceCreateInfo;
+		deviceInfo.pNext = &deviceGroupDeviceCreateInfo;
 	}
 
 	deviceInfo.enabledExtensionCount = deviceExtensions.size();

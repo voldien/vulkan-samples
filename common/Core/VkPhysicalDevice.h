@@ -1,5 +1,6 @@
 #ifndef _VULKAN_COMMON_PHYSICAL_DEVICE_H_
 #define _VULKAN_COMMON_PHYSICAL_DEVICE_H_ 1
+#include "VKHelper.h"
 #include "VulkanCore.h"
 #include <stdexcept>
 
@@ -89,16 +90,19 @@ class PhysicalDevice {
 			VKS_VALIDATE(result);
 	}
 
-	void getFormatProperties(VkFormat format) {
-		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(getHandle(), format, &props);
+	void getFormatProperties(VkFormat format, VkFormatProperties &props) const noexcept {
+		vkGetPhysicalDeviceFormatProperties(this->getHandle(), format, &props);
 	}
 
 	bool getSupportedFormat(VkFormat &supported, const std::vector<VkFormat> &candidates, VkImageTiling tiling,
 							VkFormatFeatureFlags features) const {
-		// supported = VKHelper::findSupportedFormat(getHandle(), candidates, tiling, features);
-		return true;
+		supported = VKHelper::findSupportedFormat(this->getHandle(), candidates, tiling, features);
+		return candidates.size() != VK_FORMAT_UNDEFINED;
 	}
+
+	// VkFormat getSupportedFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats,
+	// 							const std::vector<VkFormat> &requestFormats, VkImageTiling tiling,
+	// 							VkFormatFeatureFlags features) {}
 
 	VkPhysicalDevice getHandle(void) const noexcept { return this->mdevice; }
 
