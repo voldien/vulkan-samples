@@ -60,18 +60,19 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	queueInfos[0].pQueuePriorities = queuePriorities.data();
 
 	/*  Required extensions.    */
-	std::vector<const char *> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME, /*	*/
-	};
+	std::vector<const char *> deviceExtensions(requested_extensions.size());
 
-	/*	Iterate through each extension and add if supported.	*/
-	for (const std::pair<const char *, bool> &n : requested_extensions) {
-		if (n.second) {
-			if (devices[0]->isExtensionSupported(n.first))
-				deviceExtensions.push_back(n.first);
-			else
-				throw std::runtime_error(
-					fmt::format("{} does not support: {}\n", devices[0]->getDeviceName(), n.first));
+	for (uint32_t j = 0; j < devices.size(); j++) {
+		const std::shared_ptr<PhysicalDevice> &device = devices[j];
+		/*	Iterate through each extension and add if supported.	*/
+		for (const std::pair<const char *, bool> &n : requested_extensions) {
+			if (n.second) {
+				if (device->isExtensionSupported(n.first))
+					deviceExtensions.push_back(n.first);
+				else
+					throw std::runtime_error(
+						fmt::format("{} does not support: {}\n", device->getDeviceName(), n.first));
+			}
 		}
 	}
 

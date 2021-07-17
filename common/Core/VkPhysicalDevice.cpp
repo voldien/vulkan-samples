@@ -23,6 +23,11 @@ PhysicalDevice::PhysicalDevice(VkInstance instance, VkPhysicalDevice device) {
 	this->queueFamilyProperties.resize(nrQueueFamilies);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &nrQueueFamilies, this->queueFamilyProperties.data());
 
+	uint32_t nrExtensions;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &nrExtensions, nullptr);
+	this->extensions.resize(nrExtensions);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &nrExtensions, this->extensions.data());
+
 	this->mdevice = device;
 }
 
@@ -30,7 +35,8 @@ bool PhysicalDevice::isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyInd
 	VkBool32 present_supported{VK_FALSE};
 
 	if (surface != VK_NULL_HANDLE) {
-		VKS_VALIDATE(vkGetPhysicalDeviceSurfaceSupportKHR(this->getHandle(), queueFamilyIndex, surface, &present_supported));
+		VKS_VALIDATE(
+			vkGetPhysicalDeviceSurfaceSupportKHR(this->getHandle(), queueFamilyIndex, surface, &present_supported));
 	}
 
 	return present_supported;

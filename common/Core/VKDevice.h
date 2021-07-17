@@ -23,7 +23,7 @@ class VKDevice {
 	 * @param requiredQueues
 	 */
 	VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &physicalDevices,
-			 const std::unordered_map<const char *, bool> &requested_extensions = {},
+			 const std::unordered_map<const char *, bool> &requested_extensions = {{"VK_KHR_swapchain", true}},
 			 VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
 	// TODO add std::fucntion for override the select GPU.
 
