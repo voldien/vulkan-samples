@@ -9,6 +9,24 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 	uint32_t presentQueueNodeIndex = UINT32_MAX;
 	uint32_t transferQueueNodeIndex = UINT32_MAX;
 
+	/*  Required extensions.    */
+	std::vector<const char *> deviceExtensions;
+	deviceExtensions.reserve(requested_extensions.size());
+
+	for (uint32_t j = 0; j < devices.size(); j++) {
+		const std::shared_ptr<PhysicalDevice> &device = devices[j];
+		/*	Iterate through each extension and add if supported.	*/
+		for (const std::pair<const char *, bool> &n : requested_extensions) {
+			if (n.second) {
+				if (device->isExtensionSupported(n.first))
+					deviceExtensions.push_back(n.first);
+				else
+					throw std::runtime_error(
+						fmt::format("{} does not support: {}\n", device->getDeviceName(), n.first));
+			}
+		}
+	}
+
 	uint32_t nrQueues = 1;
 	for (uint32_t j = 0; j < devices.size(); j++) {
 		const std::shared_ptr<PhysicalDevice> &phDevice = devices[j];
@@ -41,7 +59,7 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreations(nrQueues);
 	std::vector<float> queuePriorities(1.0f, nrQueues);
-	if ((requiredQueues & VK_QUEUE_COMPUTE_BIT) && computeQueueNodeIndex != UINT32_MAX) {
+	//if ((requiredQueues & VK_QUEUE_COMPUTE_BIT) && computeQueueNodeIndex != UINT32_MAX) {
 		VkDeviceQueueCreateInfo &queueCreateInfo = queueCreations[0];
 		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queueCreateInfo.pNext = nullptr;
@@ -49,41 +67,26 @@ VKDevice::VKDevice(const std::vector<std::shared_ptr<PhysicalDevice>> &devices,
 		queueCreateInfo.queueFamilyIndex = this->graphics_queue_node_index;
 		queueCreateInfo.queueCount = nrQueues;
 		queueCreateInfo.pQueuePriorities = queuePriorities.data();
-	}
-	std::vector<VkDeviceQueueCreateInfo> queueInfos(1);
+	//}
+	// std::vector<VkDeviceQueueCreateInfo> queueInfos(1);
 
-	queueInfos[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueInfos[0].pNext = nullptr;
-	queueInfos[0].flags = 0;
-	queueInfos[0].queueFamilyIndex = this->graphics_queue_node_index;
-	queueInfos[0].queueCount = nrQueues;
-	queueInfos[0].pQueuePriorities = queuePriorities.data();
+	// queueInfos[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	// queueInfos[0].pNext = nullptr;
+	// queueInfos[0].flags = 0;
+	// queueInfos[0].queueFamilyIndex = this->graphics_queue_node_index;
+	// queueInfos[0].queueCount = nrQueues;
+	// queueInfos[0].pQueuePriorities = queuePriorities.data();
 
-	/*  Required extensions.    */
-	std::vector<const char *> deviceExtensions(requested_extensions.size());
-
-	for (uint32_t j = 0; j < devices.size(); j++) {
-		const std::shared_ptr<PhysicalDevice> &device = devices[j];
-		/*	Iterate through each extension and add if supported.	*/
-		for (const std::pair<const char *, bool> &n : requested_extensions) {
-			if (n.second) {
-				if (device->isExtensionSupported(n.first))
-					deviceExtensions.push_back(n.first);
-				else
-					throw std::runtime_error(
-						fmt::format("{} does not support: {}\n", device->getDeviceName(), n.first));
-			}
-		}
-	}
-
+	/*	*/
 	VkDeviceGroupDeviceCreateInfo deviceGroupDeviceCreateInfo{};
 	deviceGroupDeviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
 
+	/*	*/
 	VkDeviceCreateInfo deviceInfo = {};
 	deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceInfo.pNext = VK_NULL_HANDLE;
-	deviceInfo.queueCreateInfoCount = queueInfos.size();
-	deviceInfo.pQueueCreateInfos = queueInfos.data();
+	deviceInfo.queueCreateInfoCount = queueCreations.size();
+	deviceInfo.pQueueCreateInfos = queueCreations.data();
 
 	// /*	Enable group if supported.	*/
 	std::vector<VkPhysicalDevice> groupDevices(devices.size());

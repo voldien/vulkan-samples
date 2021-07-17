@@ -28,7 +28,7 @@ class VKDevice {
 	// TODO add std::fucntion for override the select GPU.
 
 	VKDevice(const std::shared_ptr<PhysicalDevice> &physicalDevice,
-			 const std::unordered_map<const char *, bool> &requested_extensions = {},
+			 const std::unordered_map<const char *, bool> &requested_extensions = {{"VK_KHR_swapchain", true}},
 			 VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
 	VKDevice(const VKDevice &) = delete;
 	VKDevice(VKDevice &&) = delete;
