@@ -494,8 +494,10 @@ void VKWindow::run(void) {
 				break;
 			}
 		}
-		this->draw();
-		this->swapBuffer();
+		if (visible) {
+			this->draw();
+			this->swapBuffer();
+		}
 	}
 finished:
 	vkDeviceWaitIdle(getDevice());
