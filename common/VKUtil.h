@@ -2,7 +2,7 @@
 #define _VKSAMPLES_VK_UTILS_H_ 1
 #include <fmt/format.h>
 #include <stdexcept>
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan.h>
 
 static const char *getVKResultSymbol(int symbol) {
 	switch (symbol) {
