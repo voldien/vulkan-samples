@@ -205,12 +205,10 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if (this->frame == nullptr || this->frameoutput == nullptr)
 			throw std::runtime_error(fmt::format("Failed to allocate frame"));
 
-
 		int m_bufferSize =
 			av_image_get_buffer_size(AV_PIX_FMT_RGBA, this->pVideoCtx->width, this->pVideoCtx->height, 4);
 		av_image_alloc(this->frameoutput->data, this->frameoutput->linesize, this->pVideoCtx->width,
 					   this->pVideoCtx->height, AV_PIX_FMT_RGBA, 4);
-
 
 		// AVPacket *pPacket = av_packet_alloc();
 		this->sws_ctx = sws_getContext(this->pVideoCtx->width, this->pVideoCtx->height, this->pVideoCtx->pix_fmt,
@@ -232,8 +230,8 @@ class AVVideoPlaybackWindow : public VKWindow {
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 								   videoStagingFrames[i], videoStagingFrameMemory[i]);
 
-			VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[i], 0,
-										video_width * video_height * 4, 0, &mapMemory[i]));
+			VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[i], 0, video_width * video_height * 4, 0,
+									 &mapMemory[i]));
 
 			VKHelper::createImage(
 				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
@@ -344,14 +342,13 @@ class AVVideoPlaybackWindow : public VKWindow {
 						sws_scale(this->sws_ctx, this->frame->data, this->frame->linesize, 0, this->frame->height,
 								  this->frameoutput->data, this->frameoutput->linesize);
 
-
 						/*	Upload the image to staging.	*/
 						memcpy(mapMemory[nthVideoFrame], this->frameoutput->data[0], video_width * video_height * 4);
 						VkMappedMemoryRange stagingRange{};
 						stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-															stagingRange.memory = videoStagingFrameMemory[nthVideoFrame];
-															stagingRange.offset = 0;
-															stagingRange.size = video_width * video_height * 4;
+						stagingRange.memory = videoStagingFrameMemory[nthVideoFrame];
+						stagingRange.offset = 0;
+						stagingRange.size = video_width * video_height * 4;
 						VKS_VALIDATE(vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange));
 						VKS_VALIDATE(vkDeviceWaitIdle(getDevice()));
 						nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
