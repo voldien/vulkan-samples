@@ -25,18 +25,8 @@ class ReactionDiffusionWindow : public VKWindow {
 
 	const uint32_t nrChemicalComponents = 2;
 	struct reaction_diffusion_param_t {
-		float kernelA[4][4] = {
-			{0.1,0.5,0.1,0},
-			{0.5,-1,0.5,0},
-			{0.1,0.5,0.1,0},
-			{0,0,0,0}
-		};
-		float kernelB[4][4] = {
-			{0.1,0.5,0.1,0},
-			{0.5,-1,0.5,0},
-			{0.1,0.5,0.1,0},
-			{0,0,0,0}
-		};
+		float kernelA[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
+		float kernelB[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
 		float feedRate = 0.055f;
 		float killRate = .062;
 		float diffuseRateA = 1.0;
@@ -199,7 +189,7 @@ class ReactionDiffusionWindow : public VKWindow {
 				for (unsigned int w = 0; w < width; w++) {
 					for (unsigned int c = 0; c < nrChemicalComponents; c++) {
 						cellData[h * height * nrChemicalComponents + w * nrChemicalComponents + c] =
-							Math::perlinNoise<float>((float)w * 0.05f + c, (float)h* 0.05f + c, 1) * 1.0f;
+							Math::perlinNoise<float>((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
 					}
 				}
 			}

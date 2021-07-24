@@ -68,7 +68,6 @@ class MandelBrotWindow : public VKWindow {
 		compShaderStageInfo.module = compShaderModule;
 		compShaderStageInfo.pName = "main";
 
-
 		std::array<VkDescriptorSetLayoutBinding, 2> uboLayoutBindings;
 		/*	*/
 		uboLayoutBindings[0].binding = 0;
@@ -84,7 +83,7 @@ class MandelBrotWindow : public VKWindow {
 		uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 		/*	*/
-		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout,uboLayoutBindings);
+		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings);
 
 		/*	*/
 		VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
@@ -242,7 +241,8 @@ class MandelBrotWindow : public VKWindow {
 	virtual void draw(void) override {
 		// Setup the range
 		void *data;
-		VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
+		VKS_VALIDATE(
+			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
 		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 

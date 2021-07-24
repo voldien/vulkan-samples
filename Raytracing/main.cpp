@@ -55,7 +55,6 @@ class RayTracing : public VKWindow {
 			renderPassInfo.clearValueCount = 1;
 			renderPassInfo.pClearValues = &clearColor;
 
-
 			// /*	*/
 			// vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
@@ -63,8 +62,8 @@ class RayTracing : public VKWindow {
 			// VkDeviceSize offsets[] = {0};
 			// vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
 
-			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0,
-			// 						nullptr);
+			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i],
+			// 0, 						nullptr);
 
 			// vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
 

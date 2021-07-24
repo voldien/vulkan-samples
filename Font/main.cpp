@@ -4,8 +4,8 @@
 int main(int argc, const char **argv) {
 
 	VulkanCore core();
-//	StartUpWindow window(core);
+	//	StartUpWindow window(core);
 
-	//window.run();
+	// window.run();
 	return EXIT_SUCCESS;
 }

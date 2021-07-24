@@ -164,7 +164,6 @@ class GameOfLifeWindow : public VKWindow {
 
 		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
-
 		/*	Update params.	*/
 		params.kernelA[0][0] = 0.1;
 		params.kernelA[0][1] = 0.1;
@@ -319,7 +318,8 @@ class GameOfLifeWindow : public VKWindow {
 	virtual void draw(void) override {
 		// Setup the range
 		void *data;
-		VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
+		VKS_VALIDATE(
+			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
 		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 

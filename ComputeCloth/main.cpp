@@ -42,7 +42,7 @@ class CubeWindow : public VKWindow {
 
 	virtual void Release(void) override {
 
-		//vkFreeDescriptorSets 
+		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -91,10 +91,8 @@ class CubeWindow : public VKWindow {
 										  {1.0f, -1.0f, 1.0f, 1, 0}
 
 	};
-	
 
-		VkPipeline
-		createGraphicPipeline() {
+	VkPipeline createGraphicPipeline() {
 
 		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
 		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
@@ -235,7 +233,8 @@ class CubeWindow : public VKWindow {
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-		VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+		VKS_VALIDATE(
+			vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
 
 		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -375,14 +374,14 @@ class CubeWindow : public VKWindow {
 
 			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
 
-		VkBufferMemoryBarrier ub_barrier = {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-			.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-			.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-			.buffer = uniformBuffers[i],
-			.offset = 0,
+			VkBufferMemoryBarrier ub_barrier = {
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+				.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+				.buffer = uniformBuffers[i],
+				.offset = 0,
 				.size = sizeof(mvp),
-		};
+			};
 			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
 
@@ -411,8 +410,8 @@ class CubeWindow : public VKWindow {
 
 	virtual void draw(void) override {
 
-
-		float elapsedTime = ((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
+		float elapsedTime =
+			((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
 
 		printf("%f\n", elapsedTime);
 		this->mvp.model = glm::mat4(1.0f);
