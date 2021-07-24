@@ -1,7 +1,7 @@
 #ifndef _VKS_COMMON_MATH_H_
 #define _VKS_COMMON_MATH_H_ 1
 #include <cmath>
-#include<cstdint>
+#include <cstdint>
 /**
  *
  */

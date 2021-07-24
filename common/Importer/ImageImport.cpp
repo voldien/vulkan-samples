@@ -161,8 +161,7 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 						  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, textureImage, textureImageMemory);
 
-	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_UNDEFINED,
-									VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 	VKHelper::copyBufferToImageCmd(cmd, stagingBuffer, textureImage,
 								   {static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1});

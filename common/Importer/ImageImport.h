@@ -1,7 +1,7 @@
 #ifndef _VK_SAMPLE_IMAGE_IMPORTER_H_
 #define _VK_SAMPLE_IMAGE_IMPORTER_H_ 1
+#include "../Core/VKDevice.h"
 #include "../Core/VKHelper.h"
-#include"../Core/VKDevice.h"
 #include <stdio.h>
 #include <vulkan/vulkan.h>
 
@@ -63,17 +63,17 @@ class ImageImporter {
 		R8G8B8A8_SNorm, //	A four-component, 32-bit signed normalized fvformatf that has an 8-bit R component in byte
 						// 0, an 8-bit G component in byte 1, an 8-bit B component in byte 2, and an 8-bit A component
 						// in byte 3.
-		R8_UInt,	 //	A one-component, 8-bit unsigned integer fvformatf that has a single 8-bit R component.
-		R8G8_UInt,	 //	A two-component, 16-bit unsigned integer fvformatf that has an 8-bit R component in byte 0, and
-					 // an 8-bit G component in byte 1.
+		R8_UInt,   //	A one-component, 8-bit unsigned integer fvformatf that has a single 8-bit R component.
+		R8G8_UInt, //	A two-component, 16-bit unsigned integer fvformatf that has an 8-bit R component in byte 0, and
+				   // an 8-bit G component in byte 1.
 		R8G8B8_UInt, //	A three-component, 24-bit unsigned integer fvformatf that has an 8-bit R component in byte 0, an
 					 // 8-bit G component in byte 1, and an 8-bit B component in byte 2.
 		R8G8B8A8_UInt, //	A four-component, 32-bit unsigned integer fvformatf that has an 8-bit R component in byte 0,
 					   // an 8-bit G component in byte 1, an 8-bit B component in byte 2, and an 8-bit A component in
 					   // byte 3.
 		R8_SInt,	   //	A one-component, 8-bit signed integer fvformatf that has a single 8-bit R component.
-		R8G8_SInt,	 //	A two-component, 16-bit signed integer fvformatf that has an 8-bit R component in byte 0, and an
-					 // 8-bit G component in byte 1.
+		R8G8_SInt, //	A two-component, 16-bit signed integer fvformatf that has an 8-bit R component in byte 0, and an
+				   // 8-bit G component in byte 1.
 		R8G8B8_SInt, //	A three-component, 24-bit signed integer fvformatf that has an 8-bit R component in byte 0, an
 					 // 8-bit G component in byte 1, and an 8-bit B component in byte 2.
 		R8G8B8A8_SInt,	 //	A four-component, 32-bit signed integer fvformatf that has an 8-bit R component in byte 0,
@@ -155,8 +155,8 @@ class ImageImporter {
 		B8G8R8A8_UNorm, //	A four-component, 32-bit unsigned normalized fvformatf that has an 8-bit B component in byte
 						// 0, an 8-bit G component in byte 1, an 8-bit R component in byte 2, and an 8-bit A component
 						// in byte 3.
-		B8G8R8_SNorm,	//	A three-component, 24-bit signed normalized fvformatf that has an 8-bit B component in byte
-						// 0, an 8-bit G component in byte 1, and an 8-bit R component in byte 2.
+		B8G8R8_SNorm, //	A three-component, 24-bit signed normalized fvformatf that has an 8-bit B component in byte
+					  // 0, an 8-bit G component in byte 1, and an 8-bit R component in byte 2.
 		B8G8R8A8_SNorm, //	A four-component, 32-bit signed normalized fvformatf that has an 8-bit B component in byte
 						// 0, an 8-bit G component in byte 1, an 8-bit R component in byte 2, and an 8-bit A component
 						// in byte 3.
@@ -312,13 +312,14 @@ class ImageImporter {
 	static void *loadTextureData(const char *cfilename, unsigned int *pwidth, unsigned int *pheight,
 								 unsigned int *pformat, unsigned int *pinternalformat, unsigned int *ptype,
 								 unsigned long *pixelSize);
-	static void saveTextureData(const char* cfilename, const void* pixelData, unsigned int width, unsigned int height, int layers, unsigned int format);
+	static void saveTextureData(const char *cfilename, const void *pixelData, unsigned int width, unsigned int height,
+								int layers, unsigned int format);
 
-	static void saveTextureData(const char* filename, VkDevice device,VkImage image);
+	static void saveTextureData(const char *filename, VkDevice device, VkImage image);
 
 	static void createImage(const char *filename, const VKDevice &device, VkImage &image);
 
-	static void createImage(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue ,
+	static void createImage(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue,
 							VkPhysicalDevice physicalDevice, VkImage &textureImage, VkDeviceMemory &textureImageMemory);
 };
 
