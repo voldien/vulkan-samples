@@ -1,0 +1,3 @@
+[submodule "extern/flythough_camera"]
+	path = extern/flythough_camera
+	url = https://github.com/nlguillemot/flythrough_camera.git
