@@ -23,7 +23,6 @@ class ParticleSystemWindow : public VKWindow {
 	VkPipeline particleGraphicPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout particleGraphicLayout = VK_NULL_HANDLE;
 
-
 	/*	*/
 	std::vector<VkBuffer> particleBuffers;
 	std::vector<VkDeviceMemory> particleBufferMemory;
@@ -35,18 +34,16 @@ class ParticleSystemWindow : public VKWindow {
 	std::vector<VkDeviceMemory> uniformBuffersMemories;
 	std::vector<void *> mapMemory;
 
-
-
 	/*	*/
 	VkBuffer vectorFieldBuffer;
 	VkDeviceMemory vectorFieldMemory;
 
+	/*	*/
 	VkDescriptorSetLayout particleDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout particleGraphicDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 	std::vector<VkDescriptorSet> descriptorSets;
 	std::vector<VkDescriptorSet> particleDescriptorSets;
-
 
 	unsigned int paramMemSize = sizeof(mvp);
 
@@ -276,15 +273,14 @@ class ParticleSystemWindow : public VKWindow {
 		VkDeviceSize particleGraphicBufferSize = paramMemSize * getSwapChainImageCount();
 		VkDeviceSize particleSimBufferSize = paramMemSize * getSwapChainImageCount();
 
-		const VkPhysicalDeviceMemoryProperties &memProperties = this->getLogicalDevice()
-			->getPhysicalDevice(0)
-			->getMemoryProperties();
+		const VkPhysicalDeviceMemoryProperties &memProperties =
+			this->getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties();
 
 		/*	Create pipelines.	*/
 		this->particleSim = createComputePipeline(&particleSimLayout);
 		this->particleGraphicPipeline = createGraphicPipeline(&particleGraphicLayout);
 
-		/*	Generate */
+		/*	Generate uniform buffers. */
 		this->uniformBuffers.resize(getSwapChainImageCount());
 		this->uniformBuffersMemories.resize(getSwapChainImageCount());
 		this->particleSimUniformBuffers.resize(getSwapChainImageCount());
@@ -307,14 +303,16 @@ class ParticleSystemWindow : public VKWindow {
 			mapMemory.push_back(_data);
 		}
 
-		VkDescriptorPoolSize poolSize{};
-		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
+		std::array<VkDescriptorPoolSize, 2> poolSize;
+		poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSize[0].descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
+		poolSize[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		poolSize[1].descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
+		poolInfo.poolSizeCount = poolSize.size();
+		poolInfo.pPoolSizes = poolSize.data();
 		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
 
 		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
@@ -327,9 +325,11 @@ class ParticleSystemWindow : public VKWindow {
 		allocdescInfo.pSetLayouts = layouts.data();
 
 		descriptorSets.resize(getSwapChainImageCount());
+		particleDescriptorSets.resize(getSwapChainImageCount());
 		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()));
+		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, particleDescriptorSets.data()));
 
-		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
+		for (size_t i = 0; i < descriptorSets.size(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
