@@ -10,10 +10,6 @@ layout(set = 0, binding = 1, std430) readonly buffer Velocity
     vec2 vel[];
 } velocities;
 
-layout(set = 0, binding = 2) uniform params{
-    vec3 min, max;
-}uno;
-
 
 void main()
 {

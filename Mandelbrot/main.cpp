@@ -1,6 +1,5 @@
 #include "FPSCounter.h"
 #include "VksCommon.h"
-#include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 
@@ -150,7 +149,7 @@ class MandelBrotWindow : public VKWindow {
 		}
 
 		/*	*/
-		vkResetDescriptorPool(getDevice(), descpool, 0);
+		VKS_VALIDATE(vkResetDescriptorPool(getDevice(), descpool, 0));
 
 		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 		VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};

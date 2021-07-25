@@ -220,8 +220,6 @@ class CubeWindow : public VKWindow {
 
 		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
 
-		// VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
-
 		VkDynamicState dynamicStateEnables[1];
 		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 		VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
@@ -287,7 +285,7 @@ class CubeWindow : public VKWindow {
 		poolInfo.pPoolSizes = &poolSize;
 		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
 
-		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
+		VKS_VALIDATE(vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool));
 
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
@@ -300,9 +298,7 @@ class CubeWindow : public VKWindow {
 		allocdescInfo.pSetLayouts = layouts.data();
 
 		descriptorSets.resize(getSwapChainImageCount());
-		if (vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()) != VK_SUCCESS) {
-			throw std::runtime_error("failed to allocate descriptor sets!");
-		}
+		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()));
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};

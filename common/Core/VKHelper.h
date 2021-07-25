@@ -89,6 +89,17 @@ class VKHelper {
 		vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	}
 
+	static void memoryBarrier(VkCommandBuffer cmd, VkAccessFlags a, VkAccessFlags b, VkPipelineStageFlags src,
+							  VkPipelineStageFlags dest, const char *pNext = nullptr) {
+		VkMemoryBarrier memoryBarrier = {};
+		memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+		memoryBarrier.pNext = pNext;
+		memoryBarrier.srcAccessMask = a;
+		memoryBarrier.dstAccessMask = b;
+
+		vkCmdPipelineBarrier(cmd, src, dest, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+	}
+
 	static void createMemory(VkDevice device, VkDeviceSize size, VkMemoryPropertyFlags properties,
 							 const VkMemoryRequirements &memRequirements,
 							 const VkPhysicalDeviceMemoryProperties &memoryProperies, VkDeviceMemory &deviceMemory,
@@ -125,8 +136,8 @@ class VKHelper {
 		throw std::runtime_error("failed to find supported format!");
 	}
 
-	static void getImageFormatProperties(void){
-		//vkGetPhysicalDeviceImageFormatProperties()
+	static void getImageFormatProperties(void) {
+		// vkGetPhysicalDeviceImageFormatProperties()
 	}
 
 	/**
