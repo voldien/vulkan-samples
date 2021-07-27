@@ -244,18 +244,14 @@ VkSurfaceFormatKHR VKHelper::selectSurfaceFormat(const std::vector<VkSurfaceForm
 }
 
 VkPresentModeKHR VKHelper::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes,
-												 const std::vector<VkPresentModeKHR> &requestFormats, bool vsync) {
+												 const std::vector<VkPresentModeKHR> &requestPresentModes, bool vsync) {
 	VkPresentModeKHR bestMode = VK_PRESENT_MODE_FIFO_KHR;
 
 	for (const auto &availablePresentMode : availablePresentModes) {
-		if (vsync && availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-			return VK_PRESENT_MODE_MAILBOX_KHR;
-		}
-	}
-
-	for (const auto &availablePresentMode : availablePresentModes) {
-		if (vsync && availablePresentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR) {
-			return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+		for (const auto &requestPresentMode : requestPresentModes) {
+			if (availablePresentMode == requestPresentMode) {
+				return requestPresentMode;
+			}
 		}
 	}
 

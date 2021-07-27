@@ -379,7 +379,7 @@ class VKHelper {
 	 * @return VkPresentModeKHR
 	 */
 	static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes,
-												  const std::vector<VkPresentModeKHR> &requestFormats, bool vsync);
+												  const std::vector<VkPresentModeKHR> &requestPresentModes, bool vsync);
 
 	/**
 	 * @brief
