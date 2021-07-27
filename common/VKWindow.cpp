@@ -173,7 +173,7 @@ void VKWindow::createSwapChain(void) {
 	VkSurfaceFormatKHR surfaceFormat = VKHelper::selectSurfaceFormat(swapChainSupport.formats, swapChainSupport.formats,
 																	 VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
 	VkPresentModeKHR presentMode =
-		VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes, swapChainSupport.presentModes, swapChain->vsync);
+		VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes, swapChainSupport.presentModes);
 	VkExtent2D extent =
 		VKHelper::chooseSwapExtent(swapChainSupport.capabilities, {(uint32_t)width(), (uint32_t)height()});
 

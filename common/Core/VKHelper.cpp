@@ -244,7 +244,7 @@ VkSurfaceFormatKHR VKHelper::selectSurfaceFormat(const std::vector<VkSurfaceForm
 }
 
 VkPresentModeKHR VKHelper::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes,
-												 const std::vector<VkPresentModeKHR> &requestPresentModes, bool vsync) {
+												 const std::vector<VkPresentModeKHR> &requestPresentModes) {
 	VkPresentModeKHR bestMode = VK_PRESENT_MODE_FIFO_KHR;
 
 	for (const auto &availablePresentMode : availablePresentModes) {
