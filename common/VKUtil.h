@@ -43,9 +43,9 @@ static const char *getVKResultSymbol(int symbol) {
 
 #define VKS_VALIDATE(x)                                                                                                \
 	do {                                                                                                               \
-		VkResult err = x;                                                                                              \
-		if (err != VK_SUCCESS) {                                                                                       \
-			throw std::runtime_error(fmt::format("{} {} {} - {}", __FILE__, __LINE__, x, getVKResultSymbol(x)));       \
+		VkResult _err = x;                                                                                             \
+		if (_err != VK_SUCCESS) {                                                                                      \
+			throw std::runtime_error(fmt::format("{} {} {} - {}", __FILE__, __LINE__, _err, getVKResultSymbol(_err))); \
 		}                                                                                                              \
 	} while (0)
 
