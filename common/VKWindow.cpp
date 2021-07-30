@@ -186,9 +186,9 @@ void VKWindow::createSwapChain(void) {
 		imageCount = std::max(swapChainSupport.capabilities.maxImageCount, (uint32_t)imagesInFlight.size());
 	}
 
-	VKHelper::QueueFamilyIndices indices =
+	const VKHelper::QueueFamilyIndices indices =
 		VKHelper::findQueueFamilies(device->getPhysicalDevices()[0]->getHandle(), this->surface);
-	uint32_t queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
+	const uint32_t queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
 
 	/*  */
 	VkSwapchainCreateInfoKHR createSwapChainInfo = {};

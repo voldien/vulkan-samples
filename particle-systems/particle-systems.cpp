@@ -53,12 +53,34 @@ class ParticleSystemWindow : public VKWindow {
 		float t;
 		float x, y;		  /*	Position.	*/
 		float xdir, ydir; /*	Velocity.	*/
-	} alignas(16) Particle;
+	} Particle;
 
   public:
 	ParticleSystemWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		setTitle("Particle System");
+	}
+
+	virtual void Release(void) override {
+
+		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
+
+		for (unsigned int i = 0; i < particleBuffers.size(); i++) {
+			vkDestroyBuffer(getDevice(), particleBuffers[i], nullptr);
+			vkFreeMemory(getDevice(), particleBufferMemory[i], nullptr);
+		}
+		for (unsigned int i = 0; i < uniformBuffers.size(); i++) {
+			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
+			vkUnmapMemory(getDevice(), uniformBuffersMemories[i]);
+			vkFreeMemory(getDevice(), uniformBuffersMemories[i], nullptr);
+		}
+
+		vkDestroyDescriptorSetLayout(getDevice(), particleGraphicDescriptorSetLayout, nullptr);
+		vkDestroyPipeline(getDevice(), particleGraphicPipeline, nullptr);
+		vkDestroyPipelineLayout(getDevice(), particleGraphicLayout, nullptr);
+		vkDestroyDescriptorSetLayout(getDevice(), particleDescriptorSetLayout, nullptr);
+		vkDestroyPipeline(getDevice(), particleSim, nullptr);
+		vkDestroyPipelineLayout(getDevice(), particleSimLayout, nullptr);
 	}
 
 	VkPipeline createGraphicPipeline(VkPipelineLayout *layout) {
@@ -233,7 +255,7 @@ class ParticleSystemWindow : public VKWindow {
 		compShaderStageInfo.module = compShaderModule;
 		compShaderStageInfo.pName = "main";
 
-		std::array<VkDescriptorSetLayoutBinding, 2> uboLayoutBindings;
+		std::array<VkDescriptorSetLayoutBinding, 3> uboLayoutBindings;
 		/*	*/
 		uboLayoutBindings[0].binding = 0;
 		uboLayoutBindings[0].descriptorCount = 1;
@@ -247,11 +269,11 @@ class ParticleSystemWindow : public VKWindow {
 		uboLayoutBindings[1].pImmutableSamplers = nullptr;
 		uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		uboLayoutBindings[1].binding = 2;
-		uboLayoutBindings[1].descriptorCount = 1;
-		uboLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBindings[1].pImmutableSamplers = nullptr;
-		uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		uboLayoutBindings[2].binding = 2;
+		uboLayoutBindings[2].descriptorCount = 1;
+		uboLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBindings[2].pImmutableSamplers = nullptr;
+		uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 		/*	*/
 		VKHelper::createDescriptorSetLayout(getDevice(), particleDescriptorSetLayout, uboLayoutBindings);
@@ -270,8 +292,8 @@ class ParticleSystemWindow : public VKWindow {
 		paramMemSize =
 			std::max((unsigned int)getLogicalDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
 					 (unsigned int)paramMemSize);
-		VkDeviceSize particleGraphicBufferSize = paramMemSize * getSwapChainImageCount();
-		VkDeviceSize particleSimBufferSize = paramMemSize * getSwapChainImageCount();
+		const VkDeviceSize particleGraphicBufferSize = paramMemSize * getSwapChainImageCount();
+		const VkDeviceSize particleSimBufferSize = paramMemSize * getSwapChainImageCount();
 
 		const VkPhysicalDeviceMemoryProperties &memProperties =
 			this->getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties();
