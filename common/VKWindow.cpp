@@ -26,6 +26,8 @@ VKWindow::~VKWindow(void) {
 	vkDestroySurfaceKHR(core->getHandle(), this->surface, nullptr);
 
 	this->close();
+
+	SDL_QuitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
 }
 
 VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
@@ -52,7 +54,7 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 		SDL_CreateWindow("Vulkan Sample", x, y, width, height,
 						 SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 	if (window == NULL) {
-		// throw std::runtime_error(fvformatf("failed create window - %s", SDL_GetError()));
+		throw std::runtime_error(fmt::format("failed create window - %s", SDL_GetError()));
 	}
 
 	/*  Create surface. */
@@ -78,7 +80,6 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	/*	Create swap chain.	*/
 	createSwapChain();
 
-	// TODO resolve and move the the chain
 	const int MAX_FRAMES_IN_FLIGHT = 3;
 	this->imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	this->renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -92,13 +93,11 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	// TODO improve error message.
+	/*	*/
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(getDevice(), &semaphoreInfo, nullptr, &this->imageAvailableSemaphores[i]) != VK_SUCCESS ||
-			vkCreateSemaphore(getDevice(), &semaphoreInfo, nullptr, &this->renderFinishedSemaphores[i]) != VK_SUCCESS ||
-			vkCreateFence(getDevice(), &fenceInfo, nullptr, &this->inFlightFences[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create synchronization objects for a frame!");
-		}
+		VKS_VALIDATE(vkCreateSemaphore(getDevice(), &semaphoreInfo, nullptr, &this->imageAvailableSemaphores[i]));
+		VKS_VALIDATE(vkCreateSemaphore(getDevice(), &semaphoreInfo, nullptr, &this->renderFinishedSemaphores[i]));
+		VKS_VALIDATE(vkCreateFence(getDevice(), &fenceInfo, nullptr, &this->inFlightFences[i]));
 	}
 }
 
@@ -164,38 +163,46 @@ void VKWindow::swapBuffer(void) {
 }
 
 void VKWindow::createSwapChain(void) {
+	const std::shared_ptr<PhysicalDevice> &physicalDevice = device->getPhysicalDevice(0);
 
 	/*  */
 	VKHelper::SwapChainSupportDetails swapChainSupport =
-		VKHelper::querySwapChainSupport(device->getPhysicalDevices()[0]->getHandle(), this->surface);
+		VKHelper::querySwapChainSupport(physicalDevice->getHandle(), this->surface);
 
-	/*	*/
+	/*	TODO add option support.	*/
 	VkSurfaceFormatKHR surfaceFormat = VKHelper::selectSurfaceFormat(swapChainSupport.formats, swapChainSupport.formats,
 																	 VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
-	VkPresentModeKHR presentMode =
-		VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes, swapChainSupport.presentModes);
-	VkExtent2D extent =
+	// TODO add support to determine which present mode.
+	std::vector<VkPresentModeKHR> requestedPresentModes = {VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR,
+														   VK_PRESENT_MODE_FIFO_KHR};
+	const VkPresentModeKHR presentMode =
+		VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes, requestedPresentModes);
+	const VkExtent2D extent =
 		VKHelper::chooseSwapExtent(swapChainSupport.capabilities, {(uint32_t)width(), (uint32_t)height()});
 
-	/*	*/
+	/*	Reset frame counter.	*/
 	this->swapChain->currentFrame = 0;
 
 	/*	TODO evoluate if this is thec correct.	*/
-	uint32_t imageCount = std::max((uint32_t)swapChainSupport.capabilities.minImageCount, (uint32_t)1);
+	/*	Compute number of image to use in the swapchain.	*/
+	uint32_t imageCount =
+		std::max((uint32_t)swapChainSupport.capabilities.minImageCount, (uint32_t)1); /*	Atleast one.	*/
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+		/*	Clamp it to number of semaphores/fences.	*/
 		imageCount = std::max(swapChainSupport.capabilities.maxImageCount, (uint32_t)imagesInFlight.size());
 	}
 
+	/*	*/
 	const VKHelper::QueueFamilyIndices indices =
-		VKHelper::findQueueFamilies(device->getPhysicalDevices()[0]->getHandle(), this->surface);
-	const uint32_t queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
+		VKHelper::findQueueFamilies(physicalDevice->getHandle(), this->surface);
+	std::vector<uint32_t> queueFamilyIndices = {indices.graphicsFamily, indices.presentFamily};
 
 	/*  */
 	VkSwapchainCreateInfoKHR createSwapChainInfo = {};
 	createSwapChainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createSwapChainInfo.surface = this->surface;
 
-	/*  */
+	/*  Image configurations.	*/
 	createSwapChainInfo.minImageCount = imageCount;
 	createSwapChainInfo.imageFormat = surfaceFormat.format;
 	createSwapChainInfo.imageColorSpace = surfaceFormat.colorSpace;
@@ -206,8 +213,8 @@ void VKWindow::createSwapChain(void) {
 	/*  */
 	if (indices.graphicsFamily != indices.presentFamily) {
 		createSwapChainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-		createSwapChainInfo.queueFamilyIndexCount = 2;
-		createSwapChainInfo.pQueueFamilyIndices = queueFamilyIndices;
+		createSwapChainInfo.queueFamilyIndexCount = queueFamilyIndices.size();
+		createSwapChainInfo.pQueueFamilyIndices = queueFamilyIndices.data();
 	} else {
 		createSwapChainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	}
@@ -218,6 +225,7 @@ void VKWindow::createSwapChain(void) {
 	createSwapChainInfo.presentMode = presentMode;
 	createSwapChainInfo.clipped = VK_TRUE;
 
+	/*	*/
 	createSwapChainInfo.oldSwapchain = VK_NULL_HANDLE;
 
 	/*  Create swapchain.   */

@@ -306,8 +306,10 @@ VKHelper::QueueFamilyIndices VKHelper::findQueueFamilies(VkPhysicalDevice device
 VKHelper::SwapChainSupportDetails VKHelper::querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
 	SwapChainSupportDetails details;
 
+	/*	*/
 	VKS_VALIDATE(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities));
 
+	/*	*/
 	uint32_t formatCount;
 	VKS_VALIDATE(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr));
 
@@ -316,9 +318,11 @@ VKHelper::SwapChainSupportDetails VKHelper::querySwapChainSupport(VkPhysicalDevi
 		VKS_VALIDATE(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data()));
 	}
 
+	/*	*/
 	uint32_t presentModeCount;
 	VKS_VALIDATE(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr));
 
+	/*	*/
 	if (presentModeCount != 0) {
 		details.presentModes.resize(presentModeCount);
 		VKS_VALIDATE(
