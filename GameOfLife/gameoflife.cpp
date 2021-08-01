@@ -1,7 +1,6 @@
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
-#include <glm/glm.hpp>
 
 class GameOfLifeWindow : public VKWindow {
   private:

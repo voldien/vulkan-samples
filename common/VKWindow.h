@@ -108,6 +108,7 @@ class VKWindow : public SDLWindow {
 	}
 
 	const std::shared_ptr<VKDevice> &getLogicalDevice(void) const noexcept { return this->device; }
+	const std::shared_ptr<PhysicalDevice> getPhysicalDevice(void) const noexcept;
 
 	VkPhysicalDevice physicalDevice(void) const;
 	void setPhysicalDevice(VkPhysicalDevice device);

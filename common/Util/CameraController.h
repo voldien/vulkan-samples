@@ -20,6 +20,7 @@ class CameraController {
 		flythrough_camera_update(&pos[0], &look[0], &up[0], &view[0][0], delta, 100.0f * 1, 0.5f * activated, fov,
 								 xDiff, yDiff, w, a, s, d, 0, 0, FLYTHROUGH_CAMERA_LEFT_HANDED_BIT);
 	}
+	const glm::mat4 &getViewMatrix(void) const noexcept { return this->view; }
 
   private:
 	float fov = 80.0f;

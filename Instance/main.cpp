@@ -15,11 +15,13 @@ class InstanceWindow : public VKWindow {
 		glm::mat4 view;
 		glm::mat4 proj;
 	};
+	static const size_t nrInstances = 100;
+	std::array<glm::mat4, nrInstances> instanceModel;
 
   public:
 	InstanceWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		//	this->setTitle(std::string("Triangle"));
+		this->setTitle(std::string("Triangle"));
 	}
 	~InstanceWindow(void) {}
 
@@ -251,7 +253,7 @@ class InstanceWindow : public VKWindow {
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
 
-			vkCmdDraw(cmd, 3, 1, 0, 0);
+			vkCmdDraw(cmd, 3, nrInstances, 0, 0);
 
 			vkCmdEndRenderPass(cmd);
 

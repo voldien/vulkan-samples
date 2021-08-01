@@ -292,7 +292,7 @@ class SingleTextureWindow : public VKWindow {
 		vkEndCommandBuffer(cmds[0]);
 		this->getLogicalDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
 
-		vkQueueWaitIdle(getDefaultGraphicQueue());
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
 		textureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8A8_SRGB,
@@ -356,9 +356,7 @@ class SingleTextureWindow : public VKWindow {
 		allocdescInfo.pSetLayouts = layouts.data();
 
 		descriptorSets.resize(getSwapChainImageCount());
-		if (vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()) != VK_SUCCESS) {
-			throw std::runtime_error("failed to allocate descriptor sets!");
-		}
+		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()));
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
@@ -504,9 +502,6 @@ class SingleTextureWindow : public VKWindow {
 	virtual void draw(void) override {
 
 		float elapsedTime = ((float)(SDL_GetPerformanceCounter() - ntime) / (float)SDL_GetPerformanceFrequency());
-
-		// fpsCounter.
-
 		// printf("%f\n", elapsedTime);
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);

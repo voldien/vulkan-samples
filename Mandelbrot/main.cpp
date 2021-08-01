@@ -40,6 +40,8 @@ class MandelBrotWindow : public VKWindow {
 	~MandelBrotWindow(void) {}
 
 	virtual void Release(void) override {
+		vkDestroyCommandPool(getDevice(), this->computeCmdPool, nullptr);
+
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 
@@ -245,6 +247,7 @@ class MandelBrotWindow : public VKWindow {
 		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 
+		/*	Update.	*/
 		int x, y;
 		SDL_GetMouseState(&x, &y);
 		params.mousePosX = x;

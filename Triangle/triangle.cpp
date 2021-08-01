@@ -166,7 +166,8 @@ class TriangleWindow : public VKWindow {
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-		VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+		VKS_VALIDATE(
+			vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
 
 		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
