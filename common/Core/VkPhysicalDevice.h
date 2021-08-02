@@ -37,6 +37,7 @@ class PhysicalDevice {
 		return devceProp;
 	}
 
+	unsigned int getNrQueueFamilyProperties(void) const noexcept { return this->queueFamilyProperties.size(); }
 	/**
 	 * @brief Get the Queue Family Properties object
 	 * Get all the support family properties.

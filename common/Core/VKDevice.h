@@ -45,6 +45,7 @@ class VKDevice {
 		return physicalDevices;
 	}
 
+	unsigned int getNrPhysicalDevices(void) const noexcept { return this->physicalDevices.size(); }
 	const std::shared_ptr<PhysicalDevice> &getPhysicalDevice(unsigned int index) const {
 		return physicalDevices[index];
 	}
