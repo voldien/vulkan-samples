@@ -16,8 +16,8 @@ class StartUpWindow : public VKWindow {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		for (unsigned int i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (unsigned int i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -28,7 +28,7 @@ class StartUpWindow : public VKWindow {
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
-			renderPassInfo.framebuffer = getFrameBuffers()[i];
+			renderPassInfo.framebuffer = getFrameBuffer(i);
 			renderPassInfo.renderArea.offset = {0, 0};
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;

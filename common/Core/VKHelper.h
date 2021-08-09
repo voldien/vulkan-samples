@@ -510,29 +510,30 @@ class VKHelper {
 		allocInfo.commandBufferCount = 1;
 
 		VkCommandBuffer commandBuffer;
-		vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+		VKS_VALIDATE(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer));
 
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		VKS_VALIDATE(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
 		return commandBuffer;
 	}
 
 	static void endSingleTimeCommands(VkDevice device, VkQueue queue, VkCommandBuffer commandBuffer,
 									  VkCommandPool commandPool) {
-		vkEndCommandBuffer(commandBuffer);
+		VKS_VALIDATE(vkEndCommandBuffer(commandBuffer));
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffer;
 
-		vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(queue);
+		VKS_VALIDATE(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+		VKS_VALIDATE(vkQueueWaitIdle(queue));
 
+		/*	*/
 		vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 	}
 };

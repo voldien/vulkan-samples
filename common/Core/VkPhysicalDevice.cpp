@@ -41,3 +41,5 @@ bool PhysicalDevice::isPresentable(VkSurfaceKHR surface, uint32_t queueFamilyInd
 
 	return present_supported;
 }
+
+const char *PhysicalDevice::getDeviceName(void) const noexcept { return this->properties.deviceName; }

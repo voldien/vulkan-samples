@@ -45,7 +45,7 @@ void VKHelper::createBuffer(VkDevice device, VkDeviceSize size, const VkPhysical
 	if (typeIndex)
 		allocInfo.memoryTypeIndex = typeIndex.value();
 	else
-		throw std::runtime_error("");
+		throw std::runtime_error("Could not find valid memory index");
 
 	/**/
 	VKS_VALIDATE(vkAllocateMemory(device, &allocInfo, NULL, &bufferMemory));
@@ -280,7 +280,7 @@ VKHelper::QueueFamilyIndices VKHelper::findQueueFamilies(VkPhysicalDevice device
 	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-	int i = 0;
+	unsigned int i = 0;
 	for (const auto &queueFamily : queueFamilies) {
 		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.graphicsFamily = i;

@@ -105,6 +105,17 @@ class PhysicalDevice {
 	// 							const std::vector<VkFormat> &requestFormats, VkImageTiling tiling,
 	// 							VkFormatFeatureFlags features) {}
 
+	bool isLocalandStagning(void) const noexcept {
+		const VkPhysicalDeviceMemoryProperties &prop = getMemoryProperties();
+		for (unsigned int i = 0; i < prop.memoryHeapCount; i++) {
+			const VkMemoryType &memoryType = prop.memoryTypes[i];
+			if(memoryType.propertyFlags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT){
+
+			}
+		}
+		return false;
+	}
+
 	VkPhysicalDevice getHandle(void) const noexcept { return this->mdevice; }
 
 	/**
@@ -161,7 +172,7 @@ class PhysicalDevice {
 		vkGetPhysicalDeviceProperties2(getHandle(), &properties);
 	}
 
-	const char *getDeviceName(void) const noexcept { return this->properties.deviceName; }
+	const char *getDeviceName(void) const noexcept;
 
   private:
 	VkPhysicalDevice mdevice;

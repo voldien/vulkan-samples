@@ -11,10 +11,7 @@ void SDLWindow::close(void) noexcept {
 
 void SDLWindow::setPosition(int x, int y) noexcept { SDL_SetWindowPosition(this->window, x, y); }
 
-void SDLWindow::setSize(int width, int height) noexcept {
-	/*	TODO determine if it shall update framebuffera as well.	*/
-	SDL_SetWindowSize(this->window, width, height);
-}
+void SDLWindow::setSize(int width, int height) noexcept { SDL_SetWindowSize(this->window, width, height); }
 
 void SDLWindow::getPosition(int *x, int *y) const { SDL_GetWindowPosition(this->window, x, y); }
 
@@ -36,7 +33,7 @@ int SDLWindow::y(void) const noexcept {
 void SDLWindow::resizable(bool resizable) noexcept { SDL_SetWindowResizable(this->window, (SDL_bool)resizable); }
 
 void SDLWindow::setFullScreen(bool fullscreen) {
-	// TODO add option for using either of the modes.
+
 	if (fullscreen)
 		SDL_SetWindowFullscreen(this->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 	else

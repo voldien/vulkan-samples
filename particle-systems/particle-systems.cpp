@@ -290,13 +290,13 @@ class ParticleSystemWindow : public VKWindow {
 
 	virtual void Initialize(void) { /*	*/
 		paramMemSize =
-			std::max((unsigned int)getLogicalDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
+			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
 					 (unsigned int)paramMemSize);
 		const VkDeviceSize particleGraphicBufferSize = paramMemSize * getSwapChainImageCount();
 		const VkDeviceSize particleSimBufferSize = paramMemSize * getSwapChainImageCount();
 
 		const VkPhysicalDeviceMemoryProperties &memProperties =
-			this->getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties();
+			this->getVKDevice()->getPhysicalDevice(0)->getMemoryProperties();
 
 		/*	Create pipelines.	*/
 		this->particleSim = createComputePipeline(&particleSimLayout);
@@ -373,8 +373,8 @@ class ParticleSystemWindow : public VKWindow {
 	}
 
 	virtual void onResize(int width, int height) override {
-		for (uint32_t i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -385,7 +385,7 @@ class ParticleSystemWindow : public VKWindow {
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
-			renderPassInfo.framebuffer = getFrameBuffers()[i];
+			renderPassInfo.framebuffer = getFrameBuffer(i);
 			renderPassInfo.renderArea.offset = {0, 0};
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;
@@ -440,10 +440,10 @@ class ParticleSystemWindow : public VKWindow {
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
 		// Setup the range
-		memcpy(mapMemory[getCurrentFrame()], &mvp, (size_t)sizeof(this->mvp));
+		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
 		VkMappedMemoryRange stagingRange{};
 		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		stagingRange.memory = uniformBuffersMemories[getCurrentFrame()];
+		stagingRange.memory = uniformBuffersMemories[getCurrentFrameIndex()];
 		stagingRange.offset = 0;
 		stagingRange.size = (size_t)sizeof(this->mvp);
 		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);

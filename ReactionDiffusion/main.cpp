@@ -121,7 +121,7 @@ class ReactionDiffusionWindow : public VKWindow {
 	virtual void Initialize(void) override {
 
 		paramMemSize =
-			std::max((unsigned int)getLogicalDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
+			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
 					 (unsigned int)paramMemSize);
 
 		/*	Create pipeline.	*/
@@ -178,7 +178,7 @@ class ReactionDiffusionWindow : public VKWindow {
 		cellsMemory.resize(getSwapChainImageCount() * 2);
 		for (unsigned int i = 0; i < cellsBuffers.size(); i++) {
 			VKHelper::createBuffer(getDevice(), cellBufferSize,
-								   getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
+								   getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
 								   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 									   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -289,8 +289,8 @@ class ReactionDiffusionWindow : public VKWindow {
 			vkUnmapMemory(getDevice(), paramMemory[0]);
 		}
 
-		for (unsigned int i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (unsigned int i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -327,7 +327,7 @@ class ReactionDiffusionWindow : public VKWindow {
 		// Setup the range
 		void *data;
 		VKS_VALIDATE(
-			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
+			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
 		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 

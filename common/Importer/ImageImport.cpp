@@ -81,6 +81,7 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 		*pwidth = FreeImage_GetWidth(firsbitmap);
 	if (pheight)
 		*pheight = FreeImage_GetHeight(firsbitmap);
+	/*	*/
 	bpp = (FreeImage_GetBPP(firsbitmap) / 8);
 	if (pixelSize)
 		*pixelSize = (*pwidth) * (*pheight) * bpp;
@@ -100,6 +101,7 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 	if (pixels == nullptr)
 		throw std::runtime_error(fmt::format("Failed to allocate %d, %s.\n", io.size(), strerror(errno)));
 
+	/*	Copy the buffer.	*/
 	memcpy(pixels, pixel, *pixelSize);
 
 	/*	Release free image resources.	*/
@@ -139,9 +141,8 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
-	if (!pixels) {
+	if (!pixels)
 		throw std::runtime_error("failed to load texture image!");
-	}
 
 	VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(device, commandPool);
 
@@ -149,14 +150,14 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 	VKHelper::createBuffer(device, imageSize, memProperties, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-						   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
-						   stagingBufferMemory);
+						   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, stagingBuffer, stagingBufferMemory);
 
 	void *data;
 	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
 	memcpy(data, pixels, static_cast<size_t>(imageSize));
 	vkUnmapMemory(device, stagingBufferMemory);
 
+	/*	Create staging buffer.	*/
 	VKHelper::createImage(device, texWidth, texHeight, 1, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
 						  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, textureImage, textureImageMemory);

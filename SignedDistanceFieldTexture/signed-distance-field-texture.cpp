@@ -22,7 +22,7 @@ class SignedDistanceFieldTextureWindow : public VKWindow {
 		// 						   textureMemory);
 
 		VkCommandPool computePool =
-			this->getLogicalDevice()->createCommandPool(this->getLogicalDevice()->getDefaultComputeQueueIndex());
+			this->getVKDevice()->createCommandPool(this->getVKDevice()->getDefaultComputeQueueIndex());
 		// std::vector<VkCommandBuffer> computeCmds = this->getLogicalDevice()->beginSingleTimeCommands(computePool);
 
 		// getLogicalDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
@@ -59,8 +59,8 @@ class SignedDistanceFieldTextureWindow : public VKWindow {
 	}
 
 	virtual void onResize(int width, int height) override {
-		for (uint32_t i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -71,7 +71,7 @@ class SignedDistanceFieldTextureWindow : public VKWindow {
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
-			renderPassInfo.framebuffer = getFrameBuffers()[i];
+			renderPassInfo.framebuffer = getFrameBuffer(i);
 			renderPassInfo.renderArea.offset = {0, 0};
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;

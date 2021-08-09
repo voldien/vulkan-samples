@@ -16,9 +16,9 @@ class RayTracing : public VKWindow {
 
 		VkPhysicalDeviceRayTracingPipelineFeaturesKHR raytracingFeatures = {};
 		VkPhysicalDeviceRayTracingPipelinePropertiesKHR prop;
-		getLogicalDevice()->getPhysicalDevices()[0]->checkFeature(
+		getVKDevice()->getPhysicalDevices()[0]->checkFeature(
 			VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR, raytracingFeatures);
-		getLogicalDevice()->getPhysicalDevices()[0]->getProperties(
+		getVKDevice()->getPhysicalDevices()[0]->getProperties(
 			VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR, prop);
 		if (!raytracingFeatures.rayTracingPipeline)
 			throw std::runtime_error("RayTracing not supported!");
@@ -31,8 +31,8 @@ class RayTracing : public VKWindow {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		for (uint32_t i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -46,7 +46,7 @@ class RayTracing : public VKWindow {
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
-			renderPassInfo.framebuffer = getFrameBuffers()[i];
+			renderPassInfo.framebuffer = getFrameBuffer(i);
 			renderPassInfo.renderArea.offset = {0, 0};
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;

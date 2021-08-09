@@ -194,7 +194,7 @@ class TriangleWindow : public VKWindow {
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex =
-			getLogicalDevice()
+			getVKDevice()
 				->findMemoryType(memRequirements.memoryTypeBits,
 								 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
 				.value();
@@ -215,8 +215,8 @@ class TriangleWindow : public VKWindow {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		for (uint32_t i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -227,7 +227,7 @@ class TriangleWindow : public VKWindow {
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
-			renderPassInfo.framebuffer = getFrameBuffers()[i];
+			renderPassInfo.framebuffer = getFrameBuffer(i);
 			renderPassInfo.renderArea.offset = {0, 0};
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;

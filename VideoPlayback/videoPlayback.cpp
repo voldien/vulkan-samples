@@ -225,7 +225,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		for (unsigned int i = 0; i < videoFrames.size(); i++) {
 
 			VKHelper::createBuffer(getDevice(), video_width * video_height * 4,
-								   getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+								   getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
 								   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 								   videoStagingFrames[i], videoStagingFrameMemory[i]);
@@ -236,7 +236,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 			VKHelper::createImage(
 				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				getLogicalDevice()->getPhysicalDevice(0)->getMemoryProperties(), videoFrames[i], videoFrameMemory[i]);
+				getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(), videoFrames[i], videoFrameMemory[i]);
 		}
 		onResize(width(), height());
 	}
@@ -245,8 +245,8 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 		nthVideoFrame = 0;
 
-		for (size_t i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (size_t i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

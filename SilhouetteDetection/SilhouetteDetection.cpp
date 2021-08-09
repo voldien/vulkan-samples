@@ -359,8 +359,8 @@ class SilhouetteDetectionWindow : public VKWindow {
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 
-		for (size_t i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (size_t i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -374,7 +374,7 @@ class SilhouetteDetectionWindow : public VKWindow {
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
-			renderPassInfo.framebuffer = getFrameBuffers()[i];
+			renderPassInfo.framebuffer = getFrameBuffer(i);
 			renderPassInfo.renderArea.offset = {0, 0};
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;
@@ -438,10 +438,10 @@ class SilhouetteDetectionWindow : public VKWindow {
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
 		// Setup the range
-		memcpy(mapMemory[getCurrentFrame()], &mvp, (size_t)sizeof(this->mvp));
+		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
 		VkMappedMemoryRange stagingRange{};
 		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		stagingRange.memory = uniformBuffersMemory[getCurrentFrame()];
+		stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
 		stagingRange.offset = 0;
 		stagingRange.size = (size_t)sizeof(this->mvp);
 		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);

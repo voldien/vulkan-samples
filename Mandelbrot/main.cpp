@@ -99,7 +99,7 @@ class MandelBrotWindow : public VKWindow {
 	virtual void Initialize(void) override {
 
 		paramMemSize =
-			std::max((unsigned int)getLogicalDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
+			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
 					 (unsigned int)paramMemSize);
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
@@ -133,7 +133,7 @@ class MandelBrotWindow : public VKWindow {
 
 		onResize(width(), height());
 
-		computeCmdPool = getLogicalDevice()->createCommandPool(getLogicalDevice()->getDefaultComputeQueueIndex());
+		computeCmdPool = getVKDevice()->createCommandPool(getVKDevice()->getDefaultComputeQueueIndex());
 	}
 
 	virtual void onResize(int width, int height) override {
@@ -205,8 +205,8 @@ class MandelBrotWindow : public VKWindow {
 		}
 
 		// TODO resolve for if compute queue is not part of graphic queue.
-		for (unsigned int i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (unsigned int i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -243,7 +243,7 @@ class MandelBrotWindow : public VKWindow {
 		// Setup the range
 		void *data;
 		VKS_VALIDATE(
-			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrame(), paramMemSize, 0, &data));
+			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
 		memcpy(data, &params, paramMemSize);
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 

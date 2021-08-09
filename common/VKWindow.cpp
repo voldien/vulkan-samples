@@ -129,7 +129,7 @@ void VKWindow::swapBuffer(void) {
 
 	vkResetFences(getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame]);
 
-	this->getLogicalDevice()->submitCommands(getDefaultGraphicQueue(), {this->swapChain->commandBuffers[imageIndex]},
+	this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), {this->swapChain->commandBuffers[imageIndex]},
 											 {this->imageAvailableSemaphores[this->swapChain->currentFrame]},
 											 {this->renderFinishedSemaphores[this->swapChain->currentFrame]},
 											 this->inFlightFences[this->swapChain->currentFrame],
@@ -200,6 +200,7 @@ void VKWindow::createSwapChain(void) {
 	/*  */
 	VkSwapchainCreateInfoKHR createSwapChainInfo = {};
 	createSwapChainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	createSwapChainInfo.pNext = nullptr;
 	createSwapChainInfo.surface = this->surface;
 
 	/*  Image configurations.	*/
@@ -229,11 +230,11 @@ void VKWindow::createSwapChain(void) {
 	createSwapChainInfo.oldSwapchain = VK_NULL_HANDLE;
 
 	/*  Create swapchain.   */
-	VKS_VALIDATE(vkCreateSwapchainKHR(getDevice(), &createSwapChainInfo, NULL, &this->swapChain->swapchain));
+	VKS_VALIDATE(vkCreateSwapchainKHR(getDevice(), &createSwapChainInfo, nullptr, &this->swapChain->swapchain));
 
 	/*  Get the image associated with the swap chain.   */
 	uint32_t nrChainImageCount = 1;
-	VKS_VALIDATE(vkGetSwapchainImagesKHR(getDevice(), this->swapChain->swapchain, &nrChainImageCount, NULL));
+	VKS_VALIDATE(vkGetSwapchainImagesKHR(getDevice(), this->swapChain->swapchain, &nrChainImageCount, nullptr));
 
 	this->swapChain->swapChainImages.resize(nrChainImageCount);
 	VKS_VALIDATE(vkGetSwapchainImagesKHR(getDevice(), this->swapChain->swapchain, &nrChainImageCount,
@@ -268,7 +269,7 @@ void VKWindow::createSwapChain(void) {
 	VkFormat depthFormat = findDepthFormat();
 
 	const VkPhysicalDeviceMemoryProperties &memProps =
-		getLogicalDevice()->getPhysicalDevices()[0]->getMemoryProperties();
+		getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties();
 
 	VKHelper::createImage(getDevice(), this->swapChain->chainExtend.width, this->swapChain->chainExtend.height, 1,
 						  depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -409,7 +410,7 @@ VkFormat VKWindow::findDepthFormat() {
 
 uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }
 
-uint32_t VKWindow::getCurrentFrame(void) const noexcept { return this->swapChain->currentFrame; }
+uint32_t VKWindow::getCurrentFrameIndex(void) const noexcept { return this->swapChain->currentFrame; }
 
 VkDevice VKWindow::getDevice(void) const noexcept { return device->getHandle(); }
 
@@ -417,9 +418,6 @@ VkFramebuffer VKWindow::getDefaultFrameBuffer(void) const noexcept {
 	return this->swapChain->swapChainFramebuffers[this->swapChain->currentFrame];
 }
 
-VkCommandBuffer VKWindow::getCurrentCommandBuffer(void) const noexcept {
-	return this->swapChain->commandBuffers[this->swapChain->currentFrame];
-}
 VkRenderPass VKWindow::getDefaultRenderPass(void) const noexcept { return this->swapChain->renderPass; }
 VkCommandPool VKWindow::getGraphicCommandPool(void) const noexcept { return this->cmd_pool; }
 VkImage VKWindow::getDefaultImage(void) const {
@@ -429,20 +427,43 @@ VkImageView VKWindow::getDefaultImageView(void) const {
 	return this->swapChain->swapChainImageViews[this->swapChain->currentFrame];
 }
 
+VkFormat VKWindow::getDefaultImageFormat(void) const noexcept { return this->swapChain->swapChainImageFormat; }
+
 VkQueue VKWindow::getDefaultGraphicQueue(void) const { return this->device->getDefaultGraphicQueue(); }
 
 VkQueue VKWindow::getDefaultComputeQueue(void) const { return this->device->getDefaultCompute(); }
 
+const std::vector<VkImage> &VKWindow::getSwapChainImages(void) const noexcept { return this->swapChain->swapChainImages; }
+const std::vector<VkImageView> &VKWindow::getSwapChainImageViews(void) const noexcept {
+	return this->swapChain->swapChainImageViews;
+}
+
+const std::shared_ptr<VKDevice> &VKWindow::getVKDevice(void) const noexcept { return this->device; }
+const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice(void) const noexcept{}
+
 VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
+
+void VKWindow::setPhysicalDevice(VkPhysicalDevice device){
+
+}
+std::vector<VkQueue> VKWindow::getQueues(void) const noexcept{
+
+}
 
 const std::vector<VkPhysicalDevice> &VKWindow::availablePhysicalDevices(void) const { return {}; }
 
-const std::vector<VkCommandBuffer> &VKWindow::getCommandBuffers(void) const noexcept {
-	return this->swapChain->commandBuffers;
+
+VkCommandBuffer VKWindow::getCurrentCommandBuffer(void) const noexcept {
+	return this->swapChain->commandBuffers[getCurrentFrameIndex()];
+}
+size_t VKWindow::getNrCommandBuffers(void) const noexcept { return this->swapChain->commandBuffers.size(); }
+
+VkCommandBuffer VKWindow::getCommandBuffers(unsigned int index) const noexcept {
+	return this->swapChain->commandBuffers[index];
 }
 
-const std::vector<VkFramebuffer> &VKWindow::getFrameBuffers(void) const noexcept {
-	return this->swapChain->swapChainFramebuffers;
+VkFramebuffer VKWindow::getFrameBuffer(unsigned int index) const noexcept {
+	return this->swapChain->swapChainFramebuffers[index];
 }
 
 void VKWindow::vsync(bool state) {

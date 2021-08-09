@@ -66,15 +66,16 @@ class VKWindow : public SDLWindow {
 
 	// virtual void createLogisticDevice(VkQueueFlags queues);
 
-  public:
-	/*	Vulkan methods.	*/
+  public: /*	Vulkan methods.	*/
+	/*	*/
 	VkDevice getDevice(void) const noexcept;
 	/*	*/
-	uint32_t getCurrentFrame(void) const noexcept;
+	uint32_t getCurrentFrameIndex(void) const noexcept;
 	uint32_t getSwapChainImageCount() const noexcept;
 	VkFramebuffer getDefaultFrameBuffer(void) const noexcept;
 	VkRenderPass getDefaultRenderPass(void) const noexcept;
-	const std::vector<VkFramebuffer> &getFrameBuffers(void) const noexcept;
+
+	VkFramebuffer getFrameBuffer(unsigned int index) const noexcept;
 	/*	*/
 	VkFormat depthStencilFormat(void) const noexcept;
 	VkImage depthStencilImage(void) const noexcept;
@@ -87,13 +88,15 @@ class VKWindow : public SDLWindow {
 	/*	*/
 	VkImage getDefaultImage(void) const;
 	VkImageView getDefaultImageView(void) const;
-	VkFormat getDefaultImageFormat(void) const noexcept { return this->swapChain->swapChainImageFormat; }
+	VkFormat getDefaultImageFormat(void) const noexcept;
 
 	/*	*/
 	VkCommandBuffer getCurrentCommandBuffer(void) const noexcept;
-	const std::vector<VkCommandBuffer> &getCommandBuffers(void) const noexcept;
+	size_t getNrCommandBuffers(void) const noexcept;
+	VkCommandBuffer getCommandBuffers(unsigned int index) const noexcept;
 	VkCommandPool getGraphicCommandPool(void) const noexcept;
 
+  public:
 	// VkCommandPool getComputeCommandPool(void) const noexcept;
 	const VkPhysicalDeviceProperties &physicalDeviceProperties() const noexcept;
 
@@ -102,12 +105,10 @@ class VKWindow : public SDLWindow {
 	VkQueue getDefaultGraphicQueue(void) const;
 	VkQueue getDefaultComputeQueue(void) const;
 
-	const std::vector<VkImage> &getSwapChainImages(void) const noexcept { return this->swapChain->swapChainImages; }
-	const std::vector<VkImageView> &getSwapChainImageViews(void) const noexcept {
-		return this->swapChain->swapChainImageViews;
-	}
+	const std::vector<VkImage> &getSwapChainImages(void) const noexcept;
+	const std::vector<VkImageView> &getSwapChainImageViews(void) const noexcept;
 
-	const std::shared_ptr<VKDevice> &getLogicalDevice(void) const noexcept { return this->device; }
+	const std::shared_ptr<VKDevice> &getVKDevice(void) const noexcept;
 	const std::shared_ptr<PhysicalDevice> getPhysicalDevice(void) const noexcept;
 
 	VkPhysicalDevice physicalDevice(void) const;
@@ -126,7 +127,7 @@ class VKWindow : public SDLWindow {
 	virtual void createSwapChain(void);
 	virtual void recreateSwapChain(void);
 	virtual void cleanSwapChain(void);
-	VkFormat findDepthFormat();
+	VkFormat findDepthFormat(void);
 
   private:
 	std::shared_ptr<VKDevice> device;
@@ -159,7 +160,6 @@ class VKWindow : public SDLWindow {
 	} SwapchainBuffers;
 
 	/*  */
-	// VkDevice device;
 	VkQueue queue; // TODO rename graphicsQueue
 	VkQueue presentQueue;
 
@@ -169,7 +169,7 @@ class VKWindow : public SDLWindow {
 	/*  Collection of swap chain variables. */
 	SwapchainBuffers *swapChain; // TODO remove as pointer
 
-	/*  */
+	/*  Synchronization.	*/
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
