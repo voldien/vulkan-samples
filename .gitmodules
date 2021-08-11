@@ -1,3 +1,6 @@
 [submodule "extern/flythough_camera"]
 	path = extern/flythough_camera
 	url = https://github.com/nlguillemot/flythrough_camera.git
+[submodule "extern/Vulkan-Headers"]
+	path = extern/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
