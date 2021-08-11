@@ -8,7 +8,6 @@
 extern "C" {
 #endif
 #include <libavcodec/avcodec.h>
-#include <libavcodec/vdpau.h>
 #include <libavformat/avformat.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/frame.h>
