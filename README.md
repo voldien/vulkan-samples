@@ -7,8 +7,10 @@
 apt install libfmt-dev libvulkan-dev libglm-dev libsdl2-dev
 ```
 
+## Build Instruction
 
 ```bash
+git submodule update --init --recursive
 mkdir build && cd build
 cmake ..
 make
