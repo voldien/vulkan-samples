@@ -7,7 +7,7 @@ IF(PKG_CONFIG_FOUND)
     PKG_CHECK_MODULES(AVUTIL QUIET libavutil)
     PKG_CHECK_MODULES(SWSCALE QUIET libswscale)
 ELSE()
-	MESSAGE(ERROR "")
+	MESSAGE(ERROR "Could not find AV Libraries.")
 	# TODO add logic for handling if pkg-config not available.
 ENDIF()
 ADD_EXECUTABLE(VideoPlayback ${SOURCE_FILES} ${HEADER_FILES} )

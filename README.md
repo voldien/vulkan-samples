@@ -1,11 +1,14 @@
 # Vulkan Samples #
 
-```
+[![Linux Build](https://github.com/voldien/vulkan-samples/actions/workflows/linux-build.yml/badge.svg)](https://github.com/voldien/vulkan-samples/actions/workflows/linux-build.yml)
+
+
+```bash
 apt install libfmt-dev libvulkan-dev libglm-dev libsdl2-dev
 ```
 
 
-```
+```bash
 mkdir build && cd build
 cmake ..
 make

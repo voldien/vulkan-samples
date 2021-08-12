@@ -39,8 +39,9 @@ static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue tran
 
 	averageTime /= timeSample.size();
 	float totalTransferRate = (1.0 / averageTime) * memorySize;
-	std::string resultMsg = fmt::format("{} KB - average: {} secs - ( Average Transfer Rate {} MB/s) (samples: {})", memorySize / 1024,
-										averageTime, totalTransferRate / (1024 * 1024), timeSample.size());
+	std::string resultMsg =
+		fmt::format("{} KB - average: {} secs - ( Average Transfer Rate {} MB/s) (samples: {})", memorySize / 1024,
+					averageTime, totalTransferRate / (1024 * 1024), timeSample.size());
 	std::cout << resultMsg << std::endl;
 }
 

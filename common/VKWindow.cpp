@@ -54,14 +54,13 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 		SDL_CreateWindow("Vulkan Sample", x, y, width, height,
 						 SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 	if (window == NULL) {
-		throw std::runtime_error(fmt::format("failed create window - %s", SDL_GetError()));
+		throw std::runtime_error(fmt::format("failed create window - {}", SDL_GetError()));
 	}
 
 	/*  Create surface. */
 	bool surfaceResult = SDL_Vulkan_CreateSurface(this->window, core->getHandle(), &this->surface);
-	if (surfaceResult == SDL_FALSE) {
-		throw std::runtime_error("failed create vulkan surface - %s");
-	}
+	if (surfaceResult == SDL_FALSE)
+		throw std::runtime_error("failed create vulkan surface - {}");
 
 	/*	*/
 	this->device = device;
@@ -80,7 +79,7 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	/*	Create swap chain.	*/
 	createSwapChain();
 
-	const int MAX_FRAMES_IN_FLIGHT = 3;
+	const int MAX_FRAMES_IN_FLIGHT = this->getSwapChainImageCount();
 	this->imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	this->renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	this->inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -99,6 +98,61 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 		VKS_VALIDATE(vkCreateSemaphore(getDevice(), &semaphoreInfo, nullptr, &this->renderFinishedSemaphores[i]));
 		VKS_VALIDATE(vkCreateFence(getDevice(), &fenceInfo, nullptr, &this->inFlightFences[i]));
 	}
+}
+
+uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }
+
+uint32_t VKWindow::getCurrentFrameIndex(void) const noexcept { return this->swapChain->currentFrame; }
+
+VkDevice VKWindow::getDevice(void) const noexcept { return device->getHandle(); }
+
+VkFramebuffer VKWindow::getDefaultFrameBuffer(void) const noexcept {
+	return this->swapChain->swapChainFramebuffers[this->swapChain->currentFrame];
+}
+
+VkRenderPass VKWindow::getDefaultRenderPass(void) const noexcept { return this->swapChain->renderPass; }
+VkCommandPool VKWindow::getGraphicCommandPool(void) const noexcept { return this->cmd_pool; }
+VkImage VKWindow::getDefaultImage(void) const {
+	return this->swapChain->swapChainImages[this->swapChain->currentFrame];
+}
+VkImageView VKWindow::getDefaultImageView(void) const {
+	return this->swapChain->swapChainImageViews[this->swapChain->currentFrame];
+}
+
+VkFormat VKWindow::getDefaultImageFormat(void) const noexcept { return this->swapChain->swapChainImageFormat; }
+
+VkQueue VKWindow::getDefaultGraphicQueue(void) const { return this->device->getDefaultGraphicQueue(); }
+
+VkQueue VKWindow::getDefaultComputeQueue(void) const { return this->device->getDefaultCompute(); }
+
+const std::vector<VkImage> &VKWindow::getSwapChainImages(void) const noexcept {
+	return this->swapChain->swapChainImages;
+}
+const std::vector<VkImageView> &VKWindow::getSwapChainImageViews(void) const noexcept {
+	return this->swapChain->swapChainImageViews;
+}
+
+const std::shared_ptr<VKDevice> &VKWindow::getVKDevice(void) const noexcept { return this->device; }
+const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice(void) const noexcept {}
+
+VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
+
+void VKWindow::setPhysicalDevice(VkPhysicalDevice device) {}
+std::vector<VkQueue> VKWindow::getQueues(void) const noexcept {}
+
+const std::vector<VkPhysicalDevice> &VKWindow::availablePhysicalDevices(void) const { return {}; }
+
+VkCommandBuffer VKWindow::getCurrentCommandBuffer(void) const noexcept {
+	return this->swapChain->commandBuffers[getCurrentFrameIndex()];
+}
+size_t VKWindow::getNrCommandBuffers(void) const noexcept { return this->swapChain->commandBuffers.size(); }
+
+VkCommandBuffer VKWindow::getCommandBuffers(unsigned int index) const noexcept {
+	return this->swapChain->commandBuffers[index];
+}
+
+VkFramebuffer VKWindow::getFrameBuffer(unsigned int index) const noexcept {
+	return this->swapChain->swapChainFramebuffers[index];
 }
 
 void VKWindow::swapBuffer(void) {
@@ -130,10 +184,10 @@ void VKWindow::swapBuffer(void) {
 	vkResetFences(getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame]);
 
 	this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), {this->swapChain->commandBuffers[imageIndex]},
-											 {this->imageAvailableSemaphores[this->swapChain->currentFrame]},
-											 {this->renderFinishedSemaphores[this->swapChain->currentFrame]},
-											 this->inFlightFences[this->swapChain->currentFrame],
-											 {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT});
+										{this->imageAvailableSemaphores[this->swapChain->currentFrame]},
+										{this->renderFinishedSemaphores[this->swapChain->currentFrame]},
+										this->inFlightFences[this->swapChain->currentFrame],
+										{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT});
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -268,8 +322,7 @@ void VKWindow::createSwapChain(void) {
 
 	VkFormat depthFormat = findDepthFormat();
 
-	const VkPhysicalDeviceMemoryProperties &memProps =
-		getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties();
+	const VkPhysicalDeviceMemoryProperties &memProps = getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties();
 
 	VKHelper::createImage(getDevice(), this->swapChain->chainExtend.width, this->swapChain->chainExtend.height, 1,
 						  depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -406,64 +459,6 @@ VkFormat VKWindow::findDepthFormat() {
 	return VKHelper::findSupportedFormat(
 		physicalDevice(), {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
 		VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-}
-
-uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }
-
-uint32_t VKWindow::getCurrentFrameIndex(void) const noexcept { return this->swapChain->currentFrame; }
-
-VkDevice VKWindow::getDevice(void) const noexcept { return device->getHandle(); }
-
-VkFramebuffer VKWindow::getDefaultFrameBuffer(void) const noexcept {
-	return this->swapChain->swapChainFramebuffers[this->swapChain->currentFrame];
-}
-
-VkRenderPass VKWindow::getDefaultRenderPass(void) const noexcept { return this->swapChain->renderPass; }
-VkCommandPool VKWindow::getGraphicCommandPool(void) const noexcept { return this->cmd_pool; }
-VkImage VKWindow::getDefaultImage(void) const {
-	return this->swapChain->swapChainImages[this->swapChain->currentFrame];
-}
-VkImageView VKWindow::getDefaultImageView(void) const {
-	return this->swapChain->swapChainImageViews[this->swapChain->currentFrame];
-}
-
-VkFormat VKWindow::getDefaultImageFormat(void) const noexcept { return this->swapChain->swapChainImageFormat; }
-
-VkQueue VKWindow::getDefaultGraphicQueue(void) const { return this->device->getDefaultGraphicQueue(); }
-
-VkQueue VKWindow::getDefaultComputeQueue(void) const { return this->device->getDefaultCompute(); }
-
-const std::vector<VkImage> &VKWindow::getSwapChainImages(void) const noexcept { return this->swapChain->swapChainImages; }
-const std::vector<VkImageView> &VKWindow::getSwapChainImageViews(void) const noexcept {
-	return this->swapChain->swapChainImageViews;
-}
-
-const std::shared_ptr<VKDevice> &VKWindow::getVKDevice(void) const noexcept { return this->device; }
-const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice(void) const noexcept{}
-
-VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
-
-void VKWindow::setPhysicalDevice(VkPhysicalDevice device){
-
-}
-std::vector<VkQueue> VKWindow::getQueues(void) const noexcept{
-
-}
-
-const std::vector<VkPhysicalDevice> &VKWindow::availablePhysicalDevices(void) const { return {}; }
-
-
-VkCommandBuffer VKWindow::getCurrentCommandBuffer(void) const noexcept {
-	return this->swapChain->commandBuffers[getCurrentFrameIndex()];
-}
-size_t VKWindow::getNrCommandBuffers(void) const noexcept { return this->swapChain->commandBuffers.size(); }
-
-VkCommandBuffer VKWindow::getCommandBuffers(unsigned int index) const noexcept {
-	return this->swapChain->commandBuffers[index];
-}
-
-VkFramebuffer VKWindow::getFrameBuffer(unsigned int index) const noexcept {
-	return this->swapChain->swapChainFramebuffers[index];
 }
 
 void VKWindow::vsync(bool state) {
