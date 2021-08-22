@@ -1,10 +1,11 @@
 # Vulkan Samples #
 
 [![Linux Build](https://github.com/voldien/vulkan-samples/actions/workflows/linux-build.yml/badge.svg)](https://github.com/voldien/vulkan-samples/actions/workflows/linux-build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
 ```bash
-apt install libfmt-dev libvulkan-dev libglm-dev libsdl2-dev
+apt install libfmt-dev libglm-dev libsdl2-dev
 ```
 
 ## Build Instruction
@@ -19,13 +20,13 @@ make Shaders
 
 ## Startup Window ##
 
-## Triangle ## 
+## Triangle ##
 
 ## Triangle - Vertex Interpolation ##
 
 ## Particle System - Compute Shader ##
 
-##  Shader Uniforms - Cube ##
+## Shader Uniforms - Cube ##
 
 | Name - Headless | Description |
 | --- | --- |
