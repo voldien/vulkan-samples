@@ -1,4 +1,5 @@
 #include "Importer/ImageImport.h"
+#include "Util/Time.hpp"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -19,7 +20,7 @@ class CubeWindow : public VKWindow {
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
-	long prevTimeCounter;
+	vkscommon::Time time;
 
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
@@ -35,7 +36,6 @@ class CubeWindow : public VKWindow {
   public:
 	CubeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		prevTimeCounter = SDL_GetPerformanceCounter();
 	}
 	~CubeWindow(void) {}
 
@@ -347,11 +347,11 @@ class CubeWindow : public VKWindow {
 		vkUnmapMemory(getDevice(), vertexMemory);
 
 		onResize(width(), height());
+
+		time.start();
 	}
 
 	virtual void onResize(int width, int height) override {
-
-		prevTimeCounter = SDL_GetPerformanceCounter();
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
@@ -427,8 +427,9 @@ class CubeWindow : public VKWindow {
 
 	virtual void draw(void) override {
 
-		float elapsedTime =
-			((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
+		time.update();
+		float elapsedTime = time.getElapsed();
+//		((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
 
 		printf("%f\n", elapsedTime);
 		this->mvp.model = glm::mat4(1.0f);
