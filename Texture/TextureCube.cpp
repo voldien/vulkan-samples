@@ -1,5 +1,6 @@
 #include "FPSCounter.h"
 #include "Importer/ImageImport.h"
+#include"Util/Time.hpp"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -25,7 +26,7 @@ class SingleTextureWindow : public VKWindow {
 	VkImage texture;
 	VkImageView textureView;
 	VkDeviceMemory textureMemory;
-	long ntime;
+	vkscommon::Time time;
 
 	FPSCounter<float> fpsCounter;
 	struct UniformBufferObject {
@@ -42,7 +43,7 @@ class SingleTextureWindow : public VKWindow {
   public:
 	SingleTextureWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		ntime = SDL_GetPerformanceCounter();
+
 	}
 	~SingleTextureWindow(void) {}
 
@@ -420,11 +421,11 @@ class SingleTextureWindow : public VKWindow {
 		vkUnmapMemory(getDevice(), vertexMemory);
 
 		onResize(width(), height());
+
+		time.start();
 	}
 
 	virtual void onResize(int width, int height) override {
-
-		ntime = SDL_GetPerformanceCounter();
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
@@ -501,8 +502,8 @@ class SingleTextureWindow : public VKWindow {
 
 	virtual void draw(void) override {
 
-		float elapsedTime = ((float)(SDL_GetPerformanceCounter() - ntime) / (float)SDL_GetPerformanceFrequency());
-		// printf("%f\n", elapsedTime);
+		float elapsedTime = time.getElapsed();
+
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
