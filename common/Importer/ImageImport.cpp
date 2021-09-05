@@ -81,10 +81,16 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 		*pwidth = FreeImage_GetWidth(firsbitmap);
 	if (pheight)
 		*pheight = FreeImage_GetHeight(firsbitmap);
+
 	/*	*/
 	bpp = (FreeImage_GetBPP(firsbitmap) / 8);
-	if (pixelSize)
-		*pixelSize = (*pwidth) * (*pheight) * bpp;
+	/*	Compute the size in bytes.	*/
+	if (pixelSize) {
+		/*	Round up,	*/
+		*pixelSize = FreeImage_GetWidth(firsbitmap) * FreeImage_GetHeight(firsbitmap) * FreeImage_GetBPP(firsbitmap);
+		*pixelSize += *pixelSize % 8;
+		*pixelSize /= 8;
+	}
 
 	if (ptype)
 		*ptype = UnsignedByte;
@@ -152,24 +158,26 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 	VKHelper::createBuffer(device, imageSize, memProperties, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 						   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, stagingBuffer, stagingBufferMemory);
 
-	void *data;
-	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-	memcpy(data, pixels, static_cast<size_t>(imageSize));
+	void *stageData;
+	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &stageData);
+	memcpy(stageData, pixels, static_cast<size_t>(imageSize));
 	vkUnmapMemory(device, stagingBufferMemory);
 
 	/*	Create staging buffer.	*/
 	VKHelper::createImage(device, texWidth, texHeight, 1, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
 						  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, textureImage, textureImageMemory);
-
+	/*	*/
 	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 	VKHelper::copyBufferToImageCmd(cmd, stagingBuffer, textureImage,
 								   {static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1});
 
+	/*	*/
 	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 									VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+	/*	*/
 	VKHelper::endSingleTimeCommands(device, queue, cmd, commandPool);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
