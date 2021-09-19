@@ -8,11 +8,11 @@ ADD_LIBRARY(vkcommon-core ${VKS_CORE_SOURCE_FILES} ${VKS_CORE_HEADER_FILES})
 TARGET_LINK_LIBRARIES(vkcommon-core PUBLIC ${Vulkan_LIBRARIES} fmt Vulkan-Headers)
 
 ADD_LIBRARY(vkcommon ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(vkcommon PUBLIC ${Vulkan_LIBRARIES} fmt ${SDL2_LIBRARIES} vkcommon-core Vulkan-Headers )
+TARGET_LINK_LIBRARIES(vkcommon PUBLIC ${Vulkan_LIBRARIES} fmt ${SDL2_LIBRARIES} vkcommon-core spirv-cross-c Vulkan-Headers )
+ADD_DEPENDENCIES(vkcommon vkcommon-core spirv-cross-c Vulkan-Headers)
 
 # Vulkan dependencies headers.
-TARGET_INCLUDE_DIRECTORIES(vkcommon-core PRIVATE ${Vulkan_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/Core
-    PUBLIC     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Core )
+TARGET_INCLUDE_DIRECTORIES(vkcommon-core PUBLIC ${Vulkan_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/Core )
 TARGET_INCLUDE_DIRECTORIES(vkcommon PRIVATE ${Vulkan_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 )
