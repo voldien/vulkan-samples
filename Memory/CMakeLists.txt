@@ -2,7 +2,7 @@ FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 ADD_EXECUTABLE(MemoryTransfer ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(MemoryTransfer ${Vulkan_LIBRARIES} vkcommon SDL2)
+TARGET_LINK_LIBRARIES(MemoryTransfer vkcommon )
 ADD_DEPENDENCIES(MemoryTransfer vkcommon)
 
 # Vulkan dependies headers.

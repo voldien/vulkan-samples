@@ -4,8 +4,25 @@ FILE(GLOB VKS_CORE_HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Core/*.h )
 FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
+#
+IF(PKG_CONFIG_FOUND)
+	MESSAGE(STATUS "Found pkg-config: ${PKG_CONFIG_EXECUTABLE} -- version ${PKG_CONFIG_VERSION_STRING}.")
+	PKG_CHECK_MODULES(SDL2 QUIET sdl2)
+ELSE()
+	# TODO add logic for handling if pkg-config not available.
+ENDIF()
+
+IF(SDL2_FOUND)
+	MESSAGE(STATUS "Found sdl2: ${SDL2_LIBRARIES} -- version ${SDL2_VERSION}.")
+ENDIF()
+
 ADD_LIBRARY(vkcommon-core ${VKS_CORE_SOURCE_FILES} ${VKS_CORE_HEADER_FILES})
 TARGET_LINK_LIBRARIES(vkcommon-core PUBLIC ${Vulkan_LIBRARIES} fmt Vulkan-Headers)
+
+
+TARGET_COMPILE_FEATURES(vkcommon-core PUBLIC cxx_constexpr cxx_noexcept cxx_override
+	cxx_sizeof_member cxx_static_assert cxx_decltype cxx_defaulted_functions
+	cxx_default_function_template_args)
 
 ADD_LIBRARY(vkcommon ${SOURCE_FILES} ${HEADER_FILES} )
 TARGET_LINK_LIBRARIES(vkcommon PUBLIC ${Vulkan_LIBRARIES} fmt ${SDL2_LIBRARIES} vkcommon-core spirv-cross-c Vulkan-Headers )

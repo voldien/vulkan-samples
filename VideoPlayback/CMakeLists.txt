@@ -11,7 +11,7 @@ ELSE()
 	# TODO add logic for handling if pkg-config not available.
 ENDIF()
 ADD_EXECUTABLE(VideoPlayback ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(VideoPlayback ${Vulkan_LIBRARIES} ${AVUTIL_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVCODEC_LIBRARIES} ${SWSCALE_LIBRARIES} vkcommon SDL2)
+TARGET_LINK_LIBRARIES(VideoPlayback ${Vulkan_LIBRARIES} ${AVUTIL_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVCODEC_LIBRARIES} ${SWSCALE_LIBRARIES} vkcommon )
 ADD_DEPENDENCIES(VideoPlayback vkcommon)
 
 # Vulkan dependies headers.
