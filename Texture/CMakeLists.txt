@@ -6,4 +6,4 @@ TARGET_LINK_LIBRARIES(SingleTexture ${Vulkan_LIBRARIES} vkcommon vkcommon-asset-
 ADD_DEPENDENCIES(SingleTexture vkcommon vkcommon-asset-importer)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(SingleTexture PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(SingleTexture PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

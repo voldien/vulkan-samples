@@ -6,4 +6,4 @@ TARGET_LINK_LIBRARIES(PushConstant ${Vulkan_LIBRARIES} vkcommon )
 ADD_DEPENDENCIES(PushConstant vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(PushConstant PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(PushConstant PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

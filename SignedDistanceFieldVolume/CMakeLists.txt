@@ -6,6 +6,6 @@ TARGET_LINK_LIBRARIES(SignedDistanceFieldVolume ${Vulkan_LIBRARIES} vkcommon )
 ADD_DEPENDENCIES(SignedDistanceFieldVolume vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(SignedDistanceFieldVolume PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(SignedDistanceFieldVolume PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
 
 ## Generate the SPV object

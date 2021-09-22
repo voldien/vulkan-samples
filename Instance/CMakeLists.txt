@@ -6,7 +6,7 @@ TARGET_LINK_LIBRARIES(Instance ${Vulkan_LIBRARIES} vkcommon )
 ADD_DEPENDENCIES(Instance vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(Instance PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(Instance PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
 
 
 

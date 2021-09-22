@@ -6,6 +6,6 @@ TARGET_LINK_LIBRARIES(RayTracing ${Vulkan_LIBRARIES} vkcommon )
 ADD_DEPENDENCIES(RayTracing vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(RayTracing PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(RayTracing PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
 
 ## Generate the SPV object

@@ -6,4 +6,4 @@ TARGET_LINK_LIBRARIES(VarianceShadowMap ${Vulkan_LIBRARIES} vkcommon )
 ADD_DEPENDENCIES(VarianceShadowMap vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(VarianceShadowMap PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(VarianceShadowMap PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

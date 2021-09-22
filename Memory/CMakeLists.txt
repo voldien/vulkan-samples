@@ -6,4 +6,4 @@ TARGET_LINK_LIBRARIES(MemoryTransfer vkcommon )
 ADD_DEPENDENCIES(MemoryTransfer vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(MemoryTransfer PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(MemoryTransfer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

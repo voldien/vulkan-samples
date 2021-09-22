@@ -6,7 +6,7 @@ TARGET_LINK_LIBRARIES(Mandelbrot ${Vulkan_LIBRARIES} vkcommon)
 ADD_DEPENDENCIES(Mandelbrot vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(Mandelbrot PRIVATE ${Vulkan_INCLUDE_DIRS} )
+#TARGET_INCLUDE_DIRECTORIES(Mandelbrot PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
 
 
 

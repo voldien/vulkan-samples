@@ -6,4 +6,4 @@ TARGET_LINK_LIBRARIES(RenderHeadless ${Vulkan_LIBRARIES} vkcommon )
 ADD_DEPENDENCIES(RenderHeadless vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(RenderHeadless PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(RenderHeadless PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

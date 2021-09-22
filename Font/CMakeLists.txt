@@ -6,4 +6,4 @@ TARGET_LINK_LIBRARIES(SignedDistanceFont ${Vulkan_LIBRARIES} vkcommon )
 ADD_DEPENDENCIES(SignedDistanceFont vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(SignedDistanceFont PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(SignedDistanceFont PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

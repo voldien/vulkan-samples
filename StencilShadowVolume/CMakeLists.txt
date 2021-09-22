@@ -6,4 +6,4 @@ TARGET_LINK_LIBRARIES(StencilShadowVolume ${Vulkan_LIBRARIES} vkcommon)
 ADD_DEPENDENCIES(StencilShadowVolume vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(StencilShadowVolume PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(StencilShadowVolume PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

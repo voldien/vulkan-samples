@@ -6,7 +6,7 @@ TARGET_LINK_LIBRARIES(Triangle ${Vulkan_LIBRARIES} vkcommon )
 ADD_DEPENDENCIES(Triangle vkcommon)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(Triangle PRIVATE ${Vulkan_INCLUDE_DIRS} )
+TARGET_INCLUDE_DIRECTORIES(Triangle PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
 
 
 
