@@ -1,4 +1,4 @@
-#include "SDLWindow.h"
+#include "../SDLWindow.h"
 
 void SDLWindow::show() noexcept { SDL_ShowWindow(this->window); }
 

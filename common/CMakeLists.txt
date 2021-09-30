@@ -16,6 +16,12 @@ IF(SDL2_FOUND)
 	MESSAGE(STATUS "Found sdl2: ${SDL2_LIBRARIES} -- version ${SDL2_VERSION}.")
 ENDIF()
 
+
+ADD_LIBRARY(vkcommon-window-backend-sdl2 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/SDLWindow.cpp)
+ADD_LIBRARY(vkcommon-window-backend-glfw3 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/GLFW3Window.cpp)
+TARGET_LINK_LIBRARIES(vkcommon-window-backend-sdl2  PUBLIC ${SDL2_LIBRARIES} )
+
+
 ADD_LIBRARY(vkcommon-core ${VKS_CORE_SOURCE_FILES} ${VKS_CORE_HEADER_FILES})
 TARGET_LINK_LIBRARIES(vkcommon-core PUBLIC ${Vulkan_LIBRARIES} fmt Vulkan-Headers)
 
@@ -25,7 +31,7 @@ TARGET_COMPILE_FEATURES(vkcommon-core PUBLIC cxx_constexpr cxx_noexcept cxx_over
 	cxx_default_function_template_args)
 
 ADD_LIBRARY(vkcommon ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(vkcommon PUBLIC ${Vulkan_LIBRARIES} fmt ${SDL2_LIBRARIES} vkcommon-core spirv-cross-c Vulkan-Headers )
+TARGET_LINK_LIBRARIES(vkcommon PUBLIC ${Vulkan_LIBRARIES} fmt vkcommon-core vkcommon-window-backend-sdl2 spirv-cross-c Vulkan-Headers )
 ADD_DEPENDENCIES(vkcommon vkcommon-core spirv-cross-c Vulkan-Headers)
 
 # Vulkan dependencies headers.
@@ -34,7 +40,7 @@ TARGET_INCLUDE_DIRECTORIES(vkcommon-core PUBLIC ${Vulkan_INCLUDE_DIRS} ${CMAKE_C
 	$<INSTALL_INTERFACE:vkcommon>
 )
 TARGET_INCLUDE_DIRECTORIES(vkcommon PRIVATE ${Vulkan_INCLUDE_DIRS}
-    PUBLIC 
+    PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 	$<INSTALL_INTERFACE:vkcommon>
 )

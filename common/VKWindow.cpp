@@ -533,7 +533,7 @@ finished:
 std::vector<const char *> VKWindow::getRequiredExtensions() {
 
 	std::vector<const char *> usedInstanceExtensionNames;
-	
+
 	SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
 	if (tmpWindow == NULL)
 		throw std::runtime_error(fmt::format("Failed to create Tmp Vulkan window - {}", SDL_GetError()));
