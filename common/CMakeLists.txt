@@ -8,6 +8,7 @@ FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 IF(PKG_CONFIG_FOUND)
 	MESSAGE(STATUS "Found pkg-config: ${PKG_CONFIG_EXECUTABLE} -- version ${PKG_CONFIG_VERSION_STRING}.")
 	PKG_CHECK_MODULES(SDL2 QUIET sdl2)
+	PKG_CHECK_MODULES(GLFW3 QUIET glfw3)
 ELSE()
 	# TODO add logic for handling if pkg-config not available.
 ENDIF()
@@ -16,10 +17,15 @@ IF(SDL2_FOUND)
 	MESSAGE(STATUS "Found sdl2: ${SDL2_LIBRARIES} -- version ${SDL2_VERSION}.")
 ENDIF()
 
+IF(GLFW3_FOUND)
+	MESSAGE(STATUS "Found glfw3: ${GLFW3_LIBRARIES} -- version ${GLFW3_VERSION}.")
+ENDIF()
+
 
 ADD_LIBRARY(vkcommon-window-backend-sdl2 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/SDLWindow.cpp)
 ADD_LIBRARY(vkcommon-window-backend-glfw3 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/GLFW3Window.cpp)
 TARGET_LINK_LIBRARIES(vkcommon-window-backend-sdl2  PUBLIC ${SDL2_LIBRARIES} )
+TARGET_LINK_LIBRARIES(vkcommon-window-backend-glfw3  PUBLIC ${GLFW3_LIBRARIES} )
 
 
 ADD_LIBRARY(vkcommon-core ${VKS_CORE_SOURCE_FILES} ${VKS_CORE_HEADER_FILES})

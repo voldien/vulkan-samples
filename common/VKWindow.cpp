@@ -1,3 +1,4 @@
+#define VK_USE_PLATFORM_XLIB_KHR
 #include "VKWindow.h"
 #include "Core/VKDevice.h"
 #include "Core/VKHelper.h"
@@ -6,7 +7,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
-VKWindow::~VKWindow(void) {
+VKWindow::~VKWindow() {
 
 	/*	Relase*/
 	this->Release();
@@ -33,6 +34,7 @@ VKWindow::~VKWindow(void) {
 VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
 				   int height) {
 
+	/*TODO	Relocate to be part of the backend*/
 	if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
 		throw std::runtime_error(fmt::format("Failed to init subsystem {}", SDL_GetError()));
 	}
@@ -102,50 +104,46 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 
 uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }
 
-uint32_t VKWindow::getCurrentFrameIndex(void) const noexcept { return this->swapChain->currentFrame; }
+uint32_t VKWindow::getCurrentFrameIndex() const noexcept { return this->swapChain->currentFrame; }
 
-VkDevice VKWindow::getDevice(void) const noexcept { return device->getHandle(); }
+VkDevice VKWindow::getDevice() const noexcept { return device->getHandle(); }
 
-VkFramebuffer VKWindow::getDefaultFrameBuffer(void) const noexcept {
+VkFramebuffer VKWindow::getDefaultFrameBuffer() const noexcept {
 	return this->swapChain->swapChainFramebuffers[this->swapChain->currentFrame];
 }
 
-VkRenderPass VKWindow::getDefaultRenderPass(void) const noexcept { return this->swapChain->renderPass; }
-VkCommandPool VKWindow::getGraphicCommandPool(void) const noexcept { return this->cmd_pool; }
-VkImage VKWindow::getDefaultImage(void) const {
-	return this->swapChain->swapChainImages[this->swapChain->currentFrame];
-}
-VkImageView VKWindow::getDefaultImageView(void) const {
+VkRenderPass VKWindow::getDefaultRenderPass() const noexcept { return this->swapChain->renderPass; }
+VkCommandPool VKWindow::getGraphicCommandPool() const noexcept { return this->cmd_pool; }
+VkImage VKWindow::getDefaultImage() const { return this->swapChain->swapChainImages[this->swapChain->currentFrame]; }
+VkImageView VKWindow::getDefaultImageView() const {
 	return this->swapChain->swapChainImageViews[this->swapChain->currentFrame];
 }
 
-VkFormat VKWindow::getDefaultImageFormat(void) const noexcept { return this->swapChain->swapChainImageFormat; }
+VkFormat VKWindow::getDefaultImageFormat() const noexcept { return this->swapChain->swapChainImageFormat; }
 
-VkQueue VKWindow::getDefaultGraphicQueue(void) const { return this->device->getDefaultGraphicQueue(); }
+VkQueue VKWindow::getDefaultGraphicQueue() const { return this->device->getDefaultGraphicQueue(); }
 
-VkQueue VKWindow::getDefaultComputeQueue(void) const { return this->device->getDefaultCompute(); }
+VkQueue VKWindow::getDefaultComputeQueue() const { return this->device->getDefaultCompute(); }
 
-const std::vector<VkImage> &VKWindow::getSwapChainImages(void) const noexcept {
-	return this->swapChain->swapChainImages;
-}
-const std::vector<VkImageView> &VKWindow::getSwapChainImageViews(void) const noexcept {
+const std::vector<VkImage> &VKWindow::getSwapChainImages() const noexcept { return this->swapChain->swapChainImages; }
+const std::vector<VkImageView> &VKWindow::getSwapChainImageViews() const noexcept {
 	return this->swapChain->swapChainImageViews;
 }
 
-const std::shared_ptr<VKDevice> &VKWindow::getVKDevice(void) const noexcept { return this->device; }
-const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice(void) const noexcept {}
+const std::shared_ptr<VKDevice> &VKWindow::getVKDevice() const noexcept { return this->device; }
+const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice() const noexcept {}
 
 VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
 
 void VKWindow::setPhysicalDevice(VkPhysicalDevice device) {}
-std::vector<VkQueue> VKWindow::getQueues(void) const noexcept {}
+std::vector<VkQueue> VKWindow::getQueues() const noexcept {}
 
-const std::vector<VkPhysicalDevice> &VKWindow::availablePhysicalDevices(void) const { return {}; }
+const std::vector<VkPhysicalDevice> &VKWindow::availablePhysicalDevices() const { return {}; }
 
-VkCommandBuffer VKWindow::getCurrentCommandBuffer(void) const noexcept {
+VkCommandBuffer VKWindow::getCurrentCommandBuffer() const noexcept {
 	return this->swapChain->commandBuffers[getCurrentFrameIndex()];
 }
-size_t VKWindow::getNrCommandBuffers(void) const noexcept { return this->swapChain->commandBuffers.size(); }
+size_t VKWindow::getNrCommandBuffers() const noexcept { return this->swapChain->commandBuffers.size(); }
 
 VkCommandBuffer VKWindow::getCommandBuffers(unsigned int index) const noexcept {
 	return this->swapChain->commandBuffers[index];
@@ -155,7 +153,7 @@ VkFramebuffer VKWindow::getFrameBuffer(unsigned int index) const noexcept {
 	return this->swapChain->swapChainFramebuffers[index];
 }
 
-void VKWindow::swapBuffer(void) {
+void VKWindow::swapBuffer() {
 	VkResult result;
 
 	vkWaitForFences(getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame], VK_TRUE, UINT64_MAX);
@@ -216,7 +214,7 @@ void VKWindow::swapBuffer(void) {
 		(this->swapChain->currentFrame + 1) % std::min((uint32_t)this->inFlightFences.size(), getSwapChainImageCount());
 }
 
-void VKWindow::createSwapChain(void) {
+void VKWindow::createSwapChain() {
 	const std::shared_ptr<PhysicalDevice> &physicalDevice = device->getPhysicalDevice(0);
 
 	/*  */
@@ -232,7 +230,7 @@ void VKWindow::createSwapChain(void) {
 	const VkPresentModeKHR presentMode =
 		VKHelper::chooseSwapPresentMode(swapChainSupport.presentModes, requestedPresentModes);
 	const VkExtent2D extent =
-		VKHelper::chooseSwapExtent(swapChainSupport.capabilities, {(uint32_t)width(), (uint32_t)height()});
+		VKHelper::chooseSwapExtent(swapChainSupport.capabilities, {(uint32_t)this->width(), (uint32_t)this->height()});
 
 	/*	Reset frame counter.	*/
 	this->swapChain->currentFrame = 0;
@@ -420,7 +418,7 @@ void VKWindow::createSwapChain(void) {
 	VKS_VALIDATE(vkAllocateCommandBuffers(getDevice(), &cmdBufAllocInfo, this->swapChain->commandBuffers.data()));
 }
 
-void VKWindow::recreateSwapChain(void) {
+void VKWindow::recreateSwapChain() {
 
 	vkDeviceWaitIdle(getDevice());
 
@@ -429,7 +427,7 @@ void VKWindow::recreateSwapChain(void) {
 	createSwapChain();
 }
 
-void VKWindow::cleanSwapChain(void) {
+void VKWindow::cleanSwapChain() {
 	for (auto framebuffer : swapChain->swapChainFramebuffers) {
 		vkDestroyFramebuffer(getDevice(), framebuffer, nullptr);
 	}
@@ -461,6 +459,20 @@ VkFormat VKWindow::findDepthFormat() {
 		VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
+VkSurfaceKHR VKWindow::createSurface() {
+	VkXlibSurfaceCreateInfoKHR createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+	createInfo.window = _window->getNativePtr();
+	createInfo.pNext = nullptr;
+	// createInfo.dpy = _window->getNativePtr();
+	createInfo.flags = 0;
+
+	VkSurfaceKHR surface;
+	VKS_VALIDATE(vkCreateXlibSurfaceKHR(core->getHandle(), &createInfo, nullptr, &surface));
+
+	return surface;
+}
+
 void VKWindow::vsync(bool state) {
 	if (state != this->swapChain->vsync) {
 		this->swapChain->vsync = state;
@@ -468,17 +480,17 @@ void VKWindow::vsync(bool state) {
 	}
 }
 
-void VKWindow::setFullScreen(bool fullscreen) { SDLWindow::setFullScreen(fullscreen); }
+void VKWindow::setFullScreen(bool fullscreen) { this->setFullScreen(fullscreen); }
 
-void VKWindow::Initialize(void) {}
+void VKWindow::Initialize() {}
 
-void VKWindow::Release(void) {}
+void VKWindow::Release() {}
 
-void VKWindow::draw(void) {}
+void VKWindow::draw() {}
 
 void VKWindow::onResize(int width, int height) {}
 
-void VKWindow::run(void) {
+void VKWindow::run() {
 	/*	*/
 	this->Initialize();
 
