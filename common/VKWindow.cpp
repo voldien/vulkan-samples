@@ -529,3 +529,23 @@ finished:
 	/*	Release all the resources associated with the window application.	*/
 	this->Release();
 }
+
+std::vector<const char *> VKWindow::getRequiredExtensions() {
+
+	std::vector<const char *> usedInstanceExtensionNames;
+	
+	SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
+	if (tmpWindow == NULL)
+		throw std::runtime_error(fmt::format("Failed to create Tmp Vulkan window - {}", SDL_GetError()));
+	/*	*/
+	unsigned int count;
+	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, nullptr))
+		throw std::runtime_error("SDL_Vulkan_GetInstanceExtensions");
+	unsigned int additional_extension_count = (unsigned int)usedInstanceExtensionNames.size();
+	usedInstanceExtensionNames.resize((size_t)(additional_extension_count + count));
+	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, &usedInstanceExtensionNames[additional_extension_count]))
+		throw std::runtime_error("SDL_Vulkan_GetInstanceExtensions");
+	SDL_DestroyWindow(tmpWindow);
+
+	return usedInstanceExtensionNames;
+}

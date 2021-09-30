@@ -123,6 +123,9 @@ class VKWindow : public SDLWindow {
 
 	virtual void swapBuffer(void);
 
+  public:
+	std::vector<const char *> getRequiredExtensions();
+
   protected: /*	Internal method for creating swapchains.	*/
 	virtual void createSwapChain(void);
 	virtual void recreateSwapChain(void);
