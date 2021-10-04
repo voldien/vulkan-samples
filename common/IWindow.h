@@ -25,13 +25,6 @@ class IWindow {
 
 	virtual const char *getTitle(void) const = 0;
 
-	// TODO change the type to image.
-	virtual void setIcon(void *) = 0;
-	//		virtual void setIcon(Image* image) = 0;
-
-	virtual void *getIcon(void) const = 0;
-	//		virtual Image* setIcon(Image* image) = 0;
-
 	virtual void getPosition(int *x, int *y) const = 0;
 
 	virtual void setPosition(int x, int y) = 0;
@@ -43,8 +36,6 @@ class IWindow {
 	virtual int width(void) const noexcept;
 	virtual int height(void) const noexcept;
 
-	// virtual Display *getCurrentDisplay(void) const = 0;
-
 	virtual float getGamma(void) const = 0;
 
 	virtual void setGamma(float gamma) = 0;
@@ -52,7 +43,6 @@ class IWindow {
 	virtual void resizable(bool resizable) = 0;
 
 	virtual void setFullScreen(bool fullscreen) = 0;
-	// virtual void setFullScreen(Display &display) = 0;
 
 	virtual bool isFullScreen(void) const = 0;
 
@@ -68,11 +58,6 @@ class IWindow {
 	virtual void *getUserData(void) const noexcept { return this->userData; }
 
 	virtual intptr_t getNativePtr(void) const = 0; /*  Get native window reference object. */
-
-  protected: /*  Internal utility methods.   */
-	// TODO determine how to handle it.
-	virtual void calculateGammaLookupTable(float gamma, ushort *rgbRamp) const; /*  */
-	virtual float computeGammaExponent(const ushort *rgbRamp) const;			/*  */
 
   protected:
 	void *userData = nullptr;
