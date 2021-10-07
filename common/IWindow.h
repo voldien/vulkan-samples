@@ -1,6 +1,7 @@
 #ifndef _VKSCOMMON_IWINDOW_H_
 #define _VKSCOMMON_IWINDOW_H_ 1
-
+#include <stdint.h>
+#include <string>
 /**
  * @brief
  *
@@ -21,9 +22,9 @@ class IWindow {
 
 	virtual void minimize(void) = 0;
 
-	virtual void setTitle(const char *title) = 0;
+	virtual void setTitle(const std::string &title) = 0;
 
-	virtual const char *getTitle(void) const = 0;
+	virtual std::string getTitle() const = 0;
 
 	virtual void getPosition(int *x, int *y) const = 0;
 
@@ -32,9 +33,11 @@ class IWindow {
 	virtual void setSize(int width, int height) = 0;
 
 	virtual void getSize(int *width, int *height) const = 0;
+	virtual int x() const noexcept = 0;
+	virtual int y() const noexcept = 0;
 
-	virtual int width(void) const noexcept;
-	virtual int height(void) const noexcept;
+	virtual int width() const noexcept = 0;
+	virtual int height() const noexcept = 0;
 
 	virtual float getGamma(void) const = 0;
 

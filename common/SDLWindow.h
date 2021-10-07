@@ -2,58 +2,68 @@
 	Vulkan common and core library
 	Copyright (C) 2021  Valdemar Lindberg
 */
-#ifndef _VKCOMMON_WINDOW_H_
-#define _VKCOMMON_WINDOW_H_ 1
+#ifndef _VKCOMMON_SDL_WINDOW_H_
+#define _VKCOMMON_SDL_WINDOW_H_ 1
+#include "IWindow.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
 #include <string>
 
-class SDLWindow {
+class SDLWindow : public IWindow {
   public:
-	virtual void show(void) noexcept;
+	SDLWindow();
+	virtual ~SDLWindow();
 
-	virtual void hide(void) noexcept;
+	virtual void show() override;
 
-	virtual void close(void) noexcept;
+	virtual void hide() override;
 
-	virtual void focus(void);
+	virtual void close() override;
 
-	virtual void restore(void);
+	virtual void focus() override;
 
-	virtual void maximize(void);
+	virtual void restore() override;
 
-	virtual void minimize(void);
+	virtual void maximize() override;
 
-	virtual void setTitle(const std::string &title);
+	virtual void minimize() override;
 
-	virtual std::string getTitle(void);
+	virtual void setTitle(const std::string &title) override;
 
-	virtual int x(void) const noexcept;
-	virtual int y(void) const noexcept;
+	virtual std::string getTitle() const override;
 
-	virtual int width(void) const noexcept;
-	virtual int height(void) const noexcept;
+	virtual int x() const noexcept override;
+	virtual int y() const noexcept override;
 
-	virtual void getPosition(int *x, int *y) const;
+	virtual int width() const noexcept override;
+	virtual int height() const noexcept override;
 
-	virtual void setPosition(int x, int y) noexcept;
+	virtual void getPosition(int *x, int *y) const override;
 
-	virtual void setSize(int width, int height) noexcept;
+	virtual void setPosition(int x, int y) noexcept override;
 
-	virtual void getSize(int *width, int *height) const;
+	virtual void setSize(int width, int height) noexcept override;
+
+	virtual void getSize(int *width, int *height) const override;
 
 	virtual void resizable(bool resizable) noexcept;
 
 	virtual void setFullScreen(bool fullscreen);
 
-	virtual bool isFullScreen(void) const;
+	virtual bool isFullScreen() const;
 
 	virtual void setBordered(bool borded);
 
-	virtual void setMinimumSize(int width, int height);
-	virtual void getMinimumSize(int *width, int *height);
-	virtual void setMaximumSize(int width, int height);
-	virtual void getMaximumSize(int *width, int *height);
+	virtual float getGamma() const override;
+
+	virtual void setGamma(float gamma) override;
+
+	virtual void setMinimumSize(int width, int height) override;
+	virtual void getMinimumSize(int *width, int *height) override;
+	virtual void setMaximumSize(int width, int height) override;
+	virtual void getMaximumSize(int *width, int *height) override;
+
+	virtual intptr_t getNativePtr() const override; /*  Get native window reference object. */
 
   protected:
 	SDL_Window *window;

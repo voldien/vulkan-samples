@@ -1,9 +1,9 @@
 #ifndef _STARTUP_WINDOW_SAMPLE_H_
 #define _STARTUP_WINDOW_SAMPLE_H_ 1
-#include<VKDevice.h>
 #include "IWindow.h"
 #include "SDLWindow.h"
 #include <SDL2/SDL.h>
+#include <VKDevice.h>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -117,14 +117,10 @@ class VKWindow : public IWindow {
 	const std::vector<VkPhysicalDevice> &availablePhysicalDevices() const;
 
   public:
-	virtual void vsync(bool state);
-
-	virtual void setFullScreen(bool fullscreen);
-
 	virtual void swapBuffer();
 
   public:
-	std::vector<const char *> getRequiredExtensions();
+	static std::vector<const char *> getRequiredDeviceExtensions();
 
   protected: /*	Internal method for creating swapchains.	*/
 	virtual void createSwapChain();
@@ -132,6 +128,60 @@ class VKWindow : public IWindow {
 	virtual void cleanSwapChain();
 	VkFormat findDepthFormat();
 	VkSurfaceKHR createSurface();
+
+  public:
+	virtual void show() override;
+
+	virtual void hide() override;
+
+	virtual void close() override;
+
+	virtual void focus() override;
+
+	virtual void restore() override;
+
+	virtual void maximize() override;
+
+	virtual void minimize() override;
+
+	virtual void setTitle(const std::string &title) override;
+
+	virtual std::string getTitle() const override;
+
+	virtual int x() const noexcept override;
+	virtual int y() const noexcept override;
+
+	virtual int width() const noexcept override;
+	virtual int height() const noexcept override;
+
+	virtual void getPosition(int *x, int *y) const override;
+
+	virtual void setPosition(int x, int y) noexcept override;
+
+	virtual void setSize(int width, int height) noexcept override;
+
+	virtual void getSize(int *width, int *height) const override;
+
+	virtual void resizable(bool resizable) noexcept;
+
+	virtual void vsync(bool state);
+
+	virtual void setFullScreen(bool fullscreen);
+
+	virtual bool isFullScreen() const override;
+
+	virtual void setBordered(bool boarded);
+
+	virtual float getGamma() const override;
+
+	virtual void setGamma(float gamma) override;
+
+	virtual void setMinimumSize(int width, int height) override;
+	virtual void getMinimumSize(int *width, int *height) override;
+	virtual void setMaximumSize(int width, int height) override;
+	virtual void getMaximumSize(int *width, int *height) override;
+
+	virtual intptr_t getNativePtr() const override; /*  Get native window reference object. */
 
   private:
 	std::shared_ptr<VKDevice> device;

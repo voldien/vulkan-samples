@@ -542,7 +542,56 @@ finished:
 	this->Release();
 }
 
-std::vector<const char *> VKWindow::getRequiredExtensions() {
+void VKWindow::show() {}
+
+void VKWindow::hide() {}
+
+void VKWindow::close() {}
+
+void VKWindow::focus() {}
+
+void VKWindow::restore() {}
+
+void VKWindow::maximize() {}
+
+void VKWindow::minimize() {}
+
+void VKWindow::setTitle(const std::string &title) {}
+
+std::string VKWindow::getTitle() const {}
+
+int VKWindow::x() const noexcept {}
+int VKWindow::y() const noexcept {}
+
+int VKWindow::width() const noexcept {}
+int VKWindow::height() const noexcept {}
+
+void VKWindow::getPosition(int *x, int *y) const {}
+
+void VKWindow::setPosition(int x, int y) noexcept {}
+
+void VKWindow::setSize(int width, int height) noexcept {}
+
+void VKWindow::getSize(int *width, int *height) const {}
+
+void VKWindow::resizable(bool resizable) noexcept {}
+
+bool VKWindow::isFullScreen() const {}
+
+void VKWindow::setBordered(bool boarded) {}
+
+float VKWindow::getGamma() const {}
+
+void VKWindow::setGamma(float gamma) {}
+
+void VKWindow::setMinimumSize(int width, int height) {}
+void VKWindow::getMinimumSize(int *width, int *height) {}
+void VKWindow::setMaximumSize(int width, int height) {}
+void VKWindow::getMaximumSize(int *width, int *height) {}
+
+intptr_t VKWindow::getNativePtr() const {} /*  Get native window reference object. */
+
+std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
 
 	std::vector<const char *> usedInstanceExtensionNames;
 
