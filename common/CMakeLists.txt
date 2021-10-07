@@ -28,14 +28,6 @@ TARGET_LINK_LIBRARIES(vkcommon-window-backend-sdl2  PUBLIC ${SDL2_LIBRARIES} )
 TARGET_LINK_LIBRARIES(vkcommon-window-backend-glfw3  PUBLIC ${GLFW3_LIBRARIES} )
 
 
-ADD_LIBRARY(vkcommon-core ${VKS_CORE_SOURCE_FILES} ${VKS_CORE_HEADER_FILES})
-TARGET_LINK_LIBRARIES(vkcommon-core PUBLIC ${Vulkan_LIBRARIES} fmt Vulkan-Headers)
-
-
-TARGET_COMPILE_FEATURES(vkcommon-core PUBLIC cxx_constexpr cxx_noexcept cxx_override
-	cxx_sizeof_member cxx_static_assert cxx_decltype cxx_defaulted_functions
-	cxx_default_function_template_args)
-
 ADD_LIBRARY(vkcommon ${SOURCE_FILES} ${HEADER_FILES} )
 TARGET_LINK_LIBRARIES(vkcommon PUBLIC ${Vulkan_LIBRARIES} fmt vkcommon-core vkcommon-window-backend-sdl2 spirv-cross-c Vulkan-Headers )
 ADD_DEPENDENCIES(vkcommon vkcommon-core spirv-cross-c Vulkan-Headers)
