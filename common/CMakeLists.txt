@@ -29,14 +29,9 @@ TARGET_LINK_LIBRARIES(vkcommon-window-backend-glfw3  PUBLIC ${GLFW3_LIBRARIES} )
 
 
 ADD_LIBRARY(vkcommon ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(vkcommon PUBLIC ${Vulkan_LIBRARIES} fmt vkcommon-core vkcommon-window-backend-sdl2 spirv-cross-c Vulkan-Headers )
-ADD_DEPENDENCIES(vkcommon vkcommon-core spirv-cross-c Vulkan-Headers)
+TARGET_LINK_LIBRARIES(vkcommon PUBLIC ${Vulkan_LIBRARIES} fmt vkcommon-core vkcommon-window-backend-sdl2 spirv-cross-c)
+ADD_DEPENDENCIES(vkcommon vkcommon-core spirv-cross-c)
 
-# Vulkan dependencies headers.
-TARGET_INCLUDE_DIRECTORIES(vkcommon-core PUBLIC ${Vulkan_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/Core
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-	$<INSTALL_INTERFACE:vkcommon>
-)
 TARGET_INCLUDE_DIRECTORIES(vkcommon PRIVATE ${Vulkan_INCLUDE_DIRS}
     PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
