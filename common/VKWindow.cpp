@@ -1,8 +1,8 @@
 #define VK_USE_PLATFORM_XLIB_KHR
 #include "VKWindow.h"
-#include "Core/VKDevice.h"
-#include "Core/VKHelper.h"
 #include <SDL2/SDL_vulkan.h>
+#include <VKDevice.h>
+#include <VKHelper.h>
 #include <cassert>
 #include <stdexcept>
 #include <vulkan/vulkan.h>

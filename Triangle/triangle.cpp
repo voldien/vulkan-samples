@@ -260,7 +260,7 @@ class TriangleWindow : public VKWindow {
 int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>();
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_device_extensions);
 		std::vector<std::shared_ptr<PhysicalDevice>> p = core->createPhysicalDevices();
 		printf("%s\n", p[0]->getDeviceName());
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p, required_device_extensions);
