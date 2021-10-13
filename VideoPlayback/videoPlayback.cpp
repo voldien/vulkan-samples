@@ -93,7 +93,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 		this->pformatCtx = avformat_alloc_context();
 		if (!pformatCtx) {
-			throw std::runtime_error("Failed to allocate memory for the 'AVFormatContext'");
+			throw cxxexcept::RuntimeException("Failed to allocate memory for the 'AVFormatContext'");
 		}
 		// Determine the input-format:
 		this->pformatCtx->iformat = av_find_input_format(path);
@@ -102,13 +102,13 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if (result != 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw std::runtime_error(fmt::format("Failed to open input : %s", buf));
+			throw cxxexcept::RuntimeException(fmt::format("Failed to open input : %s", buf));
 		}
 
 		if ((result = avformat_find_stream_info(this->pformatCtx, nullptr)) < 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw std::runtime_error(fmt::format("Failed to retrieve info from stream info : {}", buf));
+			throw cxxexcept::RuntimeException(fmt::format("Failed to retrieve info from stream info : {}", buf));
 		}
 
 		struct AVStream *video_st = nullptr;
@@ -138,7 +138,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 		/*  Get selected codec parameters. */
 		if (!video_st)
-			throw std::runtime_error(fmt::format("Failed to find a video stream in {}.", path));
+			throw cxxexcept::RuntimeException(fmt::format("Failed to find a video stream in {}.", path));
 
 		if (audio_st) {
 			AVCodecParameters *pAudioCodecParam = audio_st->codecpar;
@@ -147,20 +147,20 @@ class AVVideoPlaybackWindow : public VKWindow {
 			AVCodec *audioCodec = avcodec_find_decoder(pAudioCodecParam->codec_id);
 			this->pAudioCtx = avcodec_alloc_context3(audioCodec);
 			if (!this->pAudioCtx)
-				throw std::runtime_error("Failed to create audio decode context");
+				throw cxxexcept::RuntimeException("Failed to create audio decode context");
 
 			result = avcodec_parameters_to_context(this->pAudioCtx, pAudioCodecParam);
 			if (result < 0) {
 				char buf[AV_ERROR_MAX_STRING_SIZE];
 				av_strerror(result, buf, sizeof(buf));
-				throw std::runtime_error(fmt::format("Failed to set codec parameters : {}", buf));
+				throw cxxexcept::RuntimeException(fmt::format("Failed to set codec parameters : {}", buf));
 			}
 
 			result = avcodec_open2(this->pAudioCtx, audioCodec, nullptr);
 			if (result < 0) {
 				char buf[AV_ERROR_MAX_STRING_SIZE];
 				av_strerror(result, buf, sizeof(buf));
-				throw std::runtime_error(fmt::format("Failed to retrieve info from stream info : {}", buf));
+				throw cxxexcept::RuntimeException(fmt::format("Failed to retrieve info from stream info : {}", buf));
 			}
 		}
 
@@ -169,10 +169,10 @@ class AVVideoPlaybackWindow : public VKWindow {
 		/*	*/
 		AVCodec *pVideoCodec = avcodec_find_decoder(pVideoCodecParam->codec_id);
 		if (pVideoCodec == nullptr)
-			throw std::runtime_error("failed to find decoder");
+			throw cxxexcept::RuntimeException("failed to find decoder");
 		this->pVideoCtx = avcodec_alloc_context3(pVideoCodec);
 		if (this->pVideoCtx == nullptr)
-			throw std::runtime_error("Failed to allocate video decoder context");
+			throw cxxexcept::RuntimeException("Failed to allocate video decoder context");
 
 		// AV_PIX_FMT_FLAG_RGB
 		/*  Modify the target pixel format. */
@@ -184,7 +184,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if (result < 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw std::runtime_error(fmt::format("Failed to set codec parameters : {}", buf));
+			throw cxxexcept::RuntimeException(fmt::format("Failed to set codec parameters : {}", buf));
 		}
 		// av_find_best_pix_fmt_of_2
 		// avcodec_default_get_format()
@@ -192,7 +192,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if ((result = avcodec_open2(this->pVideoCtx, pVideoCodec, nullptr)) != 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw std::runtime_error(fmt::format("Failed to retrieve info from stream info : {}", buf));
+			throw cxxexcept::RuntimeException(fmt::format("Failed to retrieve info from stream info : {}", buf));
 		}
 
 		video_width = this->pVideoCtx->width;
@@ -202,7 +202,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		this->frameoutput = av_frame_alloc();
 
 		if (this->frame == nullptr || this->frameoutput == nullptr)
-			throw std::runtime_error(fmt::format("Failed to allocate frame"));
+			throw cxxexcept::RuntimeException(fmt::format("Failed to allocate frame"));
 
 		int m_bufferSize =
 			av_image_get_buffer_size(AV_PIX_FMT_RGBA, this->pVideoCtx->width, this->pVideoCtx->height, 4);
@@ -300,7 +300,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 	virtual void draw(void) override {
 		AVPacket *packet = av_packet_alloc();
 		if (!packet) {
-			throw std::runtime_error("failed to allocated memory for AVPacket");
+			throw cxxexcept::RuntimeException("failed to allocated memory for AVPacket");
 		}
 
 		int res, result;
@@ -313,7 +313,8 @@ class AVVideoPlaybackWindow : public VKWindow {
 				if (result < 0) {
 					char buf[AV_ERROR_MAX_STRING_SIZE];
 					av_strerror(result, buf, sizeof(buf));
-					throw std::runtime_error(fmt::format("Failed to send packet for decoding picture frame : {}", buf));
+					throw cxxexcept::RuntimeException(
+						fmt::format("Failed to send packet for decoding picture frame : {}", buf));
 				}
 
 				while (result >= 0) {
@@ -323,7 +324,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 					if (result < 0) {
 						char buf[AV_ERROR_MAX_STRING_SIZE];
 						av_strerror(result, buf, sizeof(buf));
-						throw std::runtime_error(fmt::format(" : {}", buf));
+						throw cxxexcept::RuntimeException(fmt::format(" : {}", buf));
 					}
 
 					if (this->frame->format == AV_PIX_FMT_YUV420P) {

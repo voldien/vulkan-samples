@@ -287,7 +287,7 @@ class CubeWindow : public VKWindow {
 
 		descriptorSets.resize(swapChainImageCount());
 		if (vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()) != VK_SUCCESS) {
-			throw std::runtime_error("failed to allocate descriptor sets!");
+			throw cxxexcept::RuntimeException("failed to allocate descriptor sets!");
 		}
 
 		for (size_t i = 0; i < swapChainImageCount(); i++) {

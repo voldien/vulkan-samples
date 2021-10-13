@@ -21,7 +21,7 @@ class RayTracing : public VKWindow {
 		getVKDevice()->getPhysicalDevices()[0]->getProperties(
 			VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR, prop);
 		if (!raytracingFeatures.rayTracingPipeline)
-			throw std::runtime_error("RayTracing not supported!");
+			throw cxxexcept::RuntimeException("RayTracing not supported!");
 		//		  vkGetPhysicalDeviceProperties2(getPhyiscalDevices(), )
 
 		onResize(width(), height());

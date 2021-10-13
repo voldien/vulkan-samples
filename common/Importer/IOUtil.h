@@ -1,5 +1,6 @@
 #ifndef _VKCOMMON_IOTUTIL_H_
 #define _VKCOMMON_IOTUTIL_H_ 1
+#include <Exception.hpp>
 #include <fmt/format.h>
 #include <fstream>
 #include <vector>
@@ -10,7 +11,7 @@ class IOUtil {
 		std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
 		if (!file.is_open()) {
-			throw std::runtime_error(fmt::format("failed to open file {}!", filename));
+			throw cxxexcept::RuntimeException("failed to open file {}!", filename);
 		}
 
 		size_t fileSize = (size_t)file.tellg();

@@ -19,12 +19,12 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 	std::vector<char> io = IOUtil::readFile(cfilename);
 
 	if (io.size() <= 0)
-		throw std::invalid_argument("Texture data must be greater than 0.");
+		throw cxxexcept::InvalidArgumentException("Texture data must be greater than 0.");
 
 	/*	1 byte for the size in order, Because it crash otherwise if set to 0.	*/
 	stream = FreeImage_OpenMemory((BYTE *)io.data(), io.size());
 	if (stream == nullptr)
-		throw std::runtime_error(fmt::format("Failed to open freeimage memory stream. \n"));
+		throw cxxexcept::RuntimeException("Failed to open freeimage memory stream. \n");
 
 	/*	Seek to beginning of the memory stream.	*/
 	FreeImage_SeekMemory(stream, 0, SEEK_SET);
@@ -35,7 +35,7 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 	firsbitmap = FreeImage_LoadFromMemory(imgtype, stream, 0);
 	if (firsbitmap == nullptr) {
 		FreeImage_CloseMemory(stream);
-		throw std::runtime_error(fmt::format("Failed to create free-image from memory.\n"));
+		throw cxxexcept::RuntimeException("Failed to create free-image from memory.\n");
 	}
 
 	/*	Reset to beginning of stream.	*/
@@ -99,13 +99,13 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 	if (pixel == nullptr || io.size() == 0) {
 		FreeImage_Unload(firsbitmap);
 		FreeImage_CloseMemory(stream);
-		throw std::runtime_error(fmt::format("Failed getting pixel data from FreeImage.\n"));
+		throw cxxexcept::RuntimeException("Failed getting pixel data from FreeImage.\n");
 	}
 
 	/*	Make a copy of pixel data.	*/
 	void *pixels = malloc(*pixelSize);
 	if (pixels == nullptr)
-		throw std::runtime_error(fmt::format("Failed to allocate %d, %s.\n", io.size(), strerror(errno)));
+		throw cxxexcept::RuntimeException("Failed to allocate %d, %s.\n", io.size(), strerror(errno));
 
 	/*	Copy the buffer.	*/
 	memcpy(pixels, pixel, *pixelSize);
@@ -148,7 +148,7 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
 	if (!pixels)
-		throw std::runtime_error("failed to load texture image!");
+		throw cxxexcept::RuntimeException("failed to load texture image!");
 
 	VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(device, commandPool);
 

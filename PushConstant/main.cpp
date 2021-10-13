@@ -136,7 +136,6 @@ class CubeWindow : public VKWindow {
 		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -209,12 +208,11 @@ class CubeWindow : public VKWindow {
 		VKS_VALIDATE(vkCreateDescriptorSetLayout(getDevice(), &layoutInfo, nullptr, &descriptorSetLayout));
 
 		VkPushConstantRange pushRange = {
-			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-			.offset = 0, .size = sizeof(glm::mat4x4) };
-			
+			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT, .offset = 0, .size = sizeof(glm::mat4x4)};
+
 		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout}, {pushRange});
 
-	//	VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
+		//	VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -231,7 +229,8 @@ class CubeWindow : public VKWindow {
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-		VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+		VKS_VALIDATE(
+			vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
 
 		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -284,7 +283,7 @@ class CubeWindow : public VKWindow {
 
 		descriptorSets.resize(getSwapChainImageCount());
 		if (vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()) != VK_SUCCESS) {
-			throw std::runtime_error("failed to allocate descriptor sets!");
+			throw cxxexcept::RuntimeException("failed to allocate descriptor sets!");
 		}
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
@@ -321,7 +320,8 @@ class CubeWindow : public VKWindow {
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex =
 			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT).value();
+									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+				.value();
 
 		VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
@@ -409,7 +409,8 @@ class CubeWindow : public VKWindow {
 
 	virtual void draw(void) override {
 
-		float elapsedTime = ((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
+		float elapsedTime =
+			((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
 
 		printf("%f\n", elapsedTime);
 		this->mvp.model = glm::mat4(1.0f);
@@ -435,7 +436,6 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{"VK_EXT_tooling_info", false}};
 	std::unordered_map<const char *, bool> required_layers = {{"VK_LAYER_LUNARG_monitor", false}};
 	std::unordered_map<const char *, bool> required_instance_extensions = {{}};
-
 
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);

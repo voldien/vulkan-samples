@@ -36,7 +36,7 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 
 	/*TODO	Relocate to be part of the backend*/
 	if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
-		throw std::runtime_error(fmt::format("Failed to init subsystem {}", SDL_GetError()));
+		throw cxxexcept::RuntimeException("Failed to init subsystem {}", SDL_GetError());
 	}
 
 	SDL_DisplayMode displaymode;
@@ -56,13 +56,13 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 		SDL_CreateWindow("Vulkan Sample", x, y, width, height,
 						 SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 	if (window == NULL) {
-		throw std::runtime_error(fmt::format("failed create window - {}", SDL_GetError()));
+		throw cxxexcept::RuntimeException("failed create window - {}", SDL_GetError());
 	}
 
 	/*  Create surface. */
 	bool surfaceResult = SDL_Vulkan_CreateSurface(this->window, core->getHandle(), &this->surface);
 	if (surfaceResult == SDL_FALSE)
-		throw std::runtime_error("failed create vulkan surface - {}");
+		throw cxxexcept::RuntimeException("failed create vulkan surface - {}", SDL_GetError());
 
 	/*	*/
 	this->device = device;
@@ -206,7 +206,7 @@ void VKWindow::swapBuffer() {
 		// framebufferResized = false;
 		recreateSwapChain();
 	} else if (result != VK_SUCCESS) {
-		throw std::runtime_error("failed to present swap chain image!");
+		throw cxxexcept::RuntimeException("failed to present swap chain image!");
 	}
 
 	/*  Compute current frame.  */
@@ -597,15 +597,15 @@ std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
 
 	SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
 	if (tmpWindow == NULL)
-		throw std::runtime_error(fmt::format("Failed to create Tmp Vulkan window - {}", SDL_GetError()));
+		throw cxxexcept::RuntimeException("Failed to create Tmp Vulkan window - {}", SDL_GetError());
 	/*	*/
 	unsigned int count;
 	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, nullptr))
-		throw std::runtime_error("SDL_Vulkan_GetInstanceExtensions");
+		throw cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions");
 	unsigned int additional_extension_count = (unsigned int)usedInstanceExtensionNames.size();
 	usedInstanceExtensionNames.resize((size_t)(additional_extension_count + count));
 	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, &usedInstanceExtensionNames[additional_extension_count]))
-		throw std::runtime_error("SDL_Vulkan_GetInstanceExtensions");
+		throw cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions");
 	SDL_DestroyWindow(tmpWindow);
 
 	return usedInstanceExtensionNames;

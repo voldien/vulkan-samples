@@ -55,9 +55,9 @@ class StartUpWindow : public VKWindow {
 int main(int argc, const char **argv) {
 
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
-
+	std::unordered_map<const char *, bool> required_instance_layers = {};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_device_extensions);
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		printf("%s\n", devices[0]->getDeviceName());
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices, required_device_extensions);
@@ -65,7 +65,7 @@ int main(int argc, const char **argv) {
 
 		window.run();
 	} catch (std::exception &ex) {
-		// std::cerr << ex.what();
+		std::cerr << ex.what();
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
