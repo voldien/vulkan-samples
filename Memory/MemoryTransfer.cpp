@@ -69,8 +69,9 @@ int main(int argc, const char **argv) {
 	std::vector<VkDeviceMemory> gpu2cpu_dst(memorySizes.size());
 
 	std::unordered_map<const char *, bool> required_device_extensions = {};
+	std::unordered_map<const char *, bool> required_instance_layers = {};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>();
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
 		std::vector<std::shared_ptr<PhysicalDevice>> phyDevices = core->createPhysicalDevices();
 		std::shared_ptr<VKDevice> device = std::make_shared<VKDevice>(phyDevices, required_device_extensions);
 

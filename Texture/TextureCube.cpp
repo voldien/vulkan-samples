@@ -1,6 +1,6 @@
 #include "FPSCounter.h"
 #include "Importer/ImageImport.h"
-#include"Util/Time.hpp"
+#include "Util/Time.hpp"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -42,9 +42,7 @@ class SingleTextureWindow : public VKWindow {
 
   public:
 	SingleTextureWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {
-
-	}
+		: VKWindow(core, device, -1, -1, -1, -1) {}
 	~SingleTextureWindow(void) {}
 
 	virtual void Release(void) override {
@@ -279,8 +277,8 @@ class SingleTextureWindow : public VKWindow {
 	virtual void Initialize(void) override {
 
 		VkCommandBuffer cmd;
-		std::vector<VkCommandBuffer> cmds = this->getVKDevice()->allocateCommandBuffers(
-			getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+		std::vector<VkCommandBuffer> cmds =
+			this->getVKDevice()->allocateCommandBuffers(getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 		VkCommandBufferBeginInfo beginInfo = {};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = 0;
@@ -526,8 +524,9 @@ class SingleTextureWindow : public VKWindow {
 int main(int argc, const char **argv) {
 
 	std::unordered_map<const char *, bool> required_device_extensions = {};
+	std::unordered_map<const char *, bool> required_instance_layers = {};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>();
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		printf("%s\n", devices[0]->getDeviceName());
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);

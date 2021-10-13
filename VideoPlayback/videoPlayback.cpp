@@ -1,5 +1,6 @@
 #include "FPSCounter.h"
 #include "Importer/ImageImport.h"
+#include "VKSampleWindow.h"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -24,7 +25,7 @@ extern "C" {
 #define av_frame_free avcodec_free_frame
 #endif
 
-class AVVideoPlaybackWindow : public VKWindow {
+class AVVideoPlaybackWindow : public VKSampleWindow {
   private:
 	static const int nrVideoFrames = 2;
 	int nthVideoFrame = 0;
@@ -368,8 +369,9 @@ class AVVideoPlaybackWindow : public VKWindow {
 int main(int argc, const char **argv) {
 
 	std::unordered_map<const char *, bool> required_device_extensions = {};
+	std::unordered_map<const char *, bool> required_instance_layers = {};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>();
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		printf("%s\n", devices[0]->getDeviceName());
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);

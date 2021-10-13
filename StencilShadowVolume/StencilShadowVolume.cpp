@@ -453,8 +453,9 @@ class StencilShadowVolumeWindow : public VKWindow {
 int main(int argc, const char **argv) {
 
 	std::unordered_map<const char *, bool> required_device_extensions = {};
+	std::unordered_map<const char *, bool> required_instance_layers = {};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>();
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
 		StencilShadowVolumeWindow window(core, d);

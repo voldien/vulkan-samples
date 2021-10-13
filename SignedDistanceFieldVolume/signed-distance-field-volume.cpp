@@ -12,9 +12,8 @@ class SignedDistanceFieldVolumeWindow : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {}
 
 	virtual void Initialize(void) { /*	*/
-	
 	}
-	
+
 	virtual void onResize(int width, int height) override {
 		for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers(i);
@@ -60,9 +59,9 @@ class SignedDistanceFieldVolumeWindow : public VKWindow {
 };
 
 int main(int argc, const char **argv) {
-
+	std::unordered_map<const char *, bool> required_instance_layers = {};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>();
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
 		SignedDistanceFieldVolumeWindow window(core, d);
