@@ -10,6 +10,9 @@
 #include <vulkan/vulkan.h>
 
 class VKWindow : public IWindow {
+  protected:
+	VKWindow() = default;
+
   public:
 	/**
 	 * @brief Construct a new VKWindow object

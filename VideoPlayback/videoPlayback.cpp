@@ -25,7 +25,7 @@ extern "C" {
 #define av_frame_free avcodec_free_frame
 #endif
 
-class AVVideoPlaybackWindow : public VKSampleWindow {
+class AVVideoPlaybackWindow : public VKWindow {
   private:
 	static const int nrVideoFrames = 2;
 	int nthVideoFrame = 0;
