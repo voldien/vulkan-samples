@@ -2,6 +2,7 @@
 
 [![Linux Build](https://github.com/voldien/vulkan-samples/actions/workflows/linux-build.yml/badge.svg)](https://github.com/voldien/vulkan-samples/actions/workflows/linux-build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/voldien/vulkan-samples.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/voldien/vulkan-samples/context:cpp)
 
 
 ```bash
