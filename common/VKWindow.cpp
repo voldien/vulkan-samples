@@ -34,6 +34,8 @@ VKWindow::~VKWindow() {
 VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
 				   int height) {
 
+	this->proxyWindow = new SDLWindow();
+
 	/*TODO	Relocate to be part of the backend*/
 	if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
 		throw cxxexcept::RuntimeException("Failed to init subsystem {}", SDL_GetError());
@@ -462,9 +464,9 @@ VkFormat VKWindow::findDepthFormat() {
 VkSurfaceKHR VKWindow::createSurface() {
 	VkXlibSurfaceCreateInfoKHR createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-	createInfo.window = _window->getNativePtr();
+	createInfo.window = proxyWindow->getNativePtr();
 	createInfo.pNext = nullptr;
-	// createInfo.dpy = _window->getNativePtr();
+	// createInfo.dpy = proxyWindow->getNativePtr();
 	createInfo.flags = 0;
 
 	VkSurfaceKHR surface;
@@ -542,54 +544,56 @@ finished:
 	this->Release();
 }
 
-void VKWindow::show() {}
+void VKWindow::show() { proxyWindow->show(); }
 
-void VKWindow::hide() {}
+void VKWindow::hide() { proxyWindow->hide(); }
 
-void VKWindow::close() {}
+void VKWindow::close() { proxyWindow->close(); }
 
-void VKWindow::focus() {}
+void VKWindow::focus() { proxyWindow->focus(); }
 
-void VKWindow::restore() {}
+void VKWindow::restore() { proxyWindow->restore(); }
 
-void VKWindow::maximize() {}
+void VKWindow::maximize() { proxyWindow->maximize(); }
 
-void VKWindow::minimize() {}
+void VKWindow::minimize() { proxyWindow->minimize(); }
 
-void VKWindow::setTitle(const std::string &title) {}
+void VKWindow::setTitle(const std::string &title) { proxyWindow->setTitle(title); }
 
-std::string VKWindow::getTitle() const {}
+std::string VKWindow::getTitle() const { return proxyWindow->getTitle(); }
 
-int VKWindow::x() const noexcept {}
-int VKWindow::y() const noexcept {}
+int VKWindow::x() const noexcept { return proxyWindow->x(); }
+int VKWindow::y() const noexcept { return proxyWindow->y(); }
 
-int VKWindow::width() const noexcept {}
-int VKWindow::height() const noexcept {}
+int VKWindow::width() const noexcept { return proxyWindow->width(); }
+int VKWindow::height() const noexcept { return proxyWindow->height(); }
 
-void VKWindow::getPosition(int *x, int *y) const {}
+void VKWindow::getPosition(int *x, int *y) const { proxyWindow->getPosition(x, y); }
 
-void VKWindow::setPosition(int x, int y) noexcept {}
+void VKWindow::setPosition(int x, int y) noexcept { proxyWindow->setPosition(x, y); }
 
-void VKWindow::setSize(int width, int height) noexcept {}
+void VKWindow::setSize(int width, int height) noexcept { proxyWindow->setSize(width, height); }
 
-void VKWindow::getSize(int *width, int *height) const {}
+void VKWindow::getSize(int *width, int *height) const { proxyWindow->getSize(width, height); }
 
-void VKWindow::resizable(bool resizable) noexcept {}
+void VKWindow::resizable(bool resizable) noexcept { proxyWindow->resizable(resizable); }
 
-bool VKWindow::isFullScreen() const {}
+bool VKWindow::isFullScreen() const { return proxyWindow->isFullScreen(); }
 
-void VKWindow::setBordered(bool boarded) {}
+void VKWindow::setBordered(bool boarded) { proxyWindow->setBordered(boarded); }
 
-float VKWindow::getGamma() const {}
+float VKWindow::getGamma() const { return proxyWindow->getGamma(); }
 
-void VKWindow::setGamma(float gamma) {}
+void VKWindow::setGamma(float gamma) { proxyWindow->setGamma(gamma); }
 
-void VKWindow::setMinimumSize(int width, int height) {}
-void VKWindow::getMinimumSize(int *width, int *height) {}
-void VKWindow::setMaximumSize(int width, int height) {}
-void VKWindow::getMaximumSize(int *width, int *height) {}
+void VKWindow::setMinimumSize(int width, int height) { proxyWindow->setMinimumSize(width, height); }
+void VKWindow::getMinimumSize(int *width, int *height) { proxyWindow->getMinimumSize(width, height); }
+void VKWindow::setMaximumSize(int width, int height) { proxyWindow->setMaximumSize(width, height); }
+void VKWindow::getMaximumSize(int *width, int *height) { proxyWindow->getMaximumSize(width, height); }
 
-intptr_t VKWindow::getNativePtr() const {} /*  Get native window reference object. */
+intptr_t VKWindow::getNativePtr() const {
+	return proxyWindow->getNativePtr();
+} /*  Get native window reference object. */
 
 std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
 

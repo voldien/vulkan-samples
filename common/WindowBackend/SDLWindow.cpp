@@ -71,7 +71,7 @@ int SDLWindow::height() const noexcept {
 	return h;
 }
 
-float SDLWindow::getGamma() const {}
+float SDLWindow::getGamma() const { return 1.0f; }
 
 void SDLWindow::setGamma(float gamma) {}
 

@@ -238,7 +238,7 @@ class VKWindow : public IWindow {
 	VkCommandPool compute_pool;
 	VkCommandPool transfer_pool;
 	SDL_Window *window;
-	IWindow *_window;
+	IWindow *proxyWindow;
 };
 
 #endif
