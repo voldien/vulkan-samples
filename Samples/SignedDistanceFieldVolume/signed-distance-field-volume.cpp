@@ -11,7 +11,7 @@ class SignedDistanceFieldVolumeWindow : public VKWindow {
 	SignedDistanceFieldVolumeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
 
-	virtual void Initialize(void) { /*	*/
+	virtual void Initialize() { /*	*/
 	}
 
 	virtual void onResize(int width, int height) override {

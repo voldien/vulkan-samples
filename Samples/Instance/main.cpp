@@ -23,9 +23,9 @@ class InstanceWindow : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(std::string("Triangle"));
 	}
-	~InstanceWindow(void) {}
+	~InstanceWindow() {}
 
-	virtual void Release(void) override {
+	virtual void Release() override {
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
@@ -185,7 +185,7 @@ class InstanceWindow : public VKWindow {
 		return graphicsPipeline;
 	}
 
-	virtual void Initialize(void) override {
+	virtual void Initialize() override {
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
 
@@ -261,7 +261,7 @@ class InstanceWindow : public VKWindow {
 		}
 	}
 
-	virtual void update(void) {}
+	virtual void update() {}
 };
 
 int main(int argc, const char **argv) {

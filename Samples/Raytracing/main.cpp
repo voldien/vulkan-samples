@@ -11,7 +11,7 @@ class RayTracing : public VKWindow {
   public:
 	RayTracing(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
-	virtual void Initialize(void) {
+	virtual void Initialize() {
 		/*	*/
 
 		VkPhysicalDeviceRayTracingPipelineFeaturesKHR raytracingFeatures = {};

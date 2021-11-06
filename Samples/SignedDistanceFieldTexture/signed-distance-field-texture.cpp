@@ -14,7 +14,7 @@ class SignedDistanceFieldTextureWindow : public VKWindow {
 	SignedDistanceFieldTextureWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
 
-	virtual void Initialize(void) { /*	*/
+	virtual void Initialize() { /*	*/
 		// VkCommandBuffer cmd;
 		// std::vector<VkCommandBuffer> cmds =
 		// 	this->getLogicalDevice()->beginSingleTimeCommands(this->getGraphicCommandPool());

@@ -11,29 +11,29 @@
  */
 class GLFWWindow : public IWindow {
   public:
-	virtual void show(void) noexcept;
+	virtual void show() noexcept;
 
-	virtual void hide(void) noexcept;
+	virtual void hide() noexcept;
 
-	virtual void close(void) noexcept;
+	virtual void close() noexcept;
 
-	virtual void focus(void);
+	virtual void focus();
 
-	virtual void restore(void);
+	virtual void restore();
 
-	virtual void maximize(void);
+	virtual void maximize();
 
-	virtual void minimize(void);
+	virtual void minimize();
 
 	virtual void setTitle(const std::string &title);
 
-	virtual std::string getTitle(void);
+	virtual std::string getTitle();
 
-	virtual int x(void) const noexcept;
-	virtual int y(void) const noexcept;
+	virtual int x() const noexcept;
+	virtual int y() const noexcept;
 
-	virtual int width(void) const noexcept;
-	virtual int height(void) const noexcept;
+	virtual int width() const noexcept;
+	virtual int height() const noexcept;
 
 	virtual void getPosition(int *x, int *y) const;
 
@@ -47,7 +47,7 @@ class GLFWWindow : public IWindow {
 
 	virtual void setFullScreen(bool fullscreen);
 
-	virtual bool isFullScreen(void) const;
+	virtual bool isFullScreen() const;
 
 	virtual void setBordered(bool borded);
 

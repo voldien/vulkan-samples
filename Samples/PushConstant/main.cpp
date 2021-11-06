@@ -35,9 +35,9 @@ class CubeWindow : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		prevTimeCounter = SDL_GetPerformanceCounter();
 	}
-	~CubeWindow(void) {}
+	~CubeWindow() {}
 
-	virtual void Release(void) override {
+	virtual void Release() override {
 
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -238,7 +238,7 @@ class CubeWindow : public VKWindow {
 		return graphicsPipeline;
 	}
 
-	virtual void Initialize(void) override {
+	virtual void Initialize() override {
 
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
@@ -407,7 +407,7 @@ class CubeWindow : public VKWindow {
 		}
 	}
 
-	virtual void draw(void) override {
+	virtual void draw() override {
 
 		float elapsedTime =
 			((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
@@ -428,7 +428,7 @@ class CubeWindow : public VKWindow {
 		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
-	virtual void update(void) {}
+	virtual void update() {}
 };
 
 int main(int argc, const char **argv) {

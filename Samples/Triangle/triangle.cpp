@@ -14,13 +14,13 @@ class TriangleWindow : public VKWindow {
   public:
 	TriangleWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
-	~TriangleWindow(void) {}
+	~TriangleWindow() {}
 	typedef struct _vertex_t {
 		float pos[2];
 		float color[3];
 	} Vertex;
 
-	virtual void Release(void) override {
+	virtual void Release() override {
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
@@ -175,7 +175,7 @@ class TriangleWindow : public VKWindow {
 		return graphicsPipeline;
 	}
 
-	virtual void Initialize(void) override {
+	virtual void Initialize() override {
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
 
@@ -254,13 +254,15 @@ class TriangleWindow : public VKWindow {
 		}
 	}
 
-	virtual void update(void) {}
+	virtual void update() {}
 };
 
 int main(int argc, const char **argv) {
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_device_extensions);
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
 		std::vector<std::shared_ptr<PhysicalDevice>> p = core->createPhysicalDevices();
 		printf("%s\n", p[0]->getDeviceName());
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p, required_device_extensions);

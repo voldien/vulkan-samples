@@ -8,7 +8,8 @@ VKSampleWindow::VKSampleWindow(int argc, const char **argv,
 
 	std::unordered_map<const char *, bool> use_required_device_extensions = {};
 	std::unordered_map<const char *, bool> use_required_instance_layers = {};
-	std::unordered_map<const char *, bool> use_required_instance_extensions = {};
+	std::unordered_map<const char *, bool> use_required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																			   {"VK_KHR_xlib_surface", true}};
 
 	// TODO append to device extension.
 	std::vector<const char *> required_extension = VKWindow::getRequiredDeviceExtensions();

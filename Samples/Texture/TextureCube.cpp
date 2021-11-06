@@ -43,9 +43,9 @@ class SingleTextureWindow : public VKWindow {
   public:
 	SingleTextureWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
-	~SingleTextureWindow(void) {}
+	~SingleTextureWindow() {}
 
-	virtual void Release(void) override {
+	virtual void Release() override {
 
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
@@ -274,7 +274,7 @@ class SingleTextureWindow : public VKWindow {
 		return graphicsPipeline;
 	}
 
-	virtual void Initialize(void) override {
+	virtual void Initialize() override {
 
 		VkCommandBuffer cmd;
 		std::vector<VkCommandBuffer> cmds =
@@ -498,7 +498,7 @@ class SingleTextureWindow : public VKWindow {
 		}
 	}
 
-	virtual void draw(void) override {
+	virtual void draw() override {
 
 		float elapsedTime = time.getElapsed();
 
@@ -518,7 +518,7 @@ class SingleTextureWindow : public VKWindow {
 		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
-	virtual void update(void) {}
+	virtual void update() {}
 };
 
 int main(int argc, const char **argv) {

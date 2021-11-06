@@ -6,13 +6,13 @@ namespace vkscommon {
 
 	class Time {
 	  public:
-		Time(void) {
+		Time() {
 			this->_private_level_startup = SDL_GetPerformanceCounter();
 
 			this->timeResolution = SDL_GetPerformanceFrequency();
 		}
 
-		void start(void) { this->ticks = SDL_GetPerformanceCounter(); }
+		void start() { this->ticks = SDL_GetPerformanceCounter(); }
 
 		float getElapsed() const noexcept {
 			return (float)(SDL_GetPerformanceCounter() - this->_private_level_startup) / (float)this->timeResolution;

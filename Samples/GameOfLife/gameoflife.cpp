@@ -45,9 +45,9 @@ class GameOfLifeWindow : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(std::string("ReactionDiffusion Algorithm - Compute"));
 	}
-	~GameOfLifeWindow(void) {}
+	~GameOfLifeWindow() {}
 
-	virtual void Release(void) override {
+	virtual void Release() override {
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 
@@ -116,7 +116,7 @@ class GameOfLifeWindow : public VKWindow {
 		return pipeline;
 	}
 
-	virtual void Initialize(void) override {
+	virtual void Initialize() override {
 
 		paramMemSize =
 			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
@@ -314,7 +314,7 @@ class GameOfLifeWindow : public VKWindow {
 		}
 	}
 
-	virtual void draw(void) override {
+	virtual void draw() override {
 		// Setup the range
 		void *data;
 		VKS_VALIDATE(

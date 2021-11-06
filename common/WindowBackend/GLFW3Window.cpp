@@ -6,7 +6,7 @@ void GLFWWindow::show() noexcept {}
 
 void GLFWWindow::hide() noexcept {}
 
-void GLFWWindow::close(void) noexcept {
+void GLFWWindow::close() noexcept {
 	this->hide();
 	glfwDestroyWindow(window);
 }
@@ -20,14 +20,14 @@ void GLFWWindow::getPosition(int *x, int *y) const {}
 void GLFWWindow::getSize(int *width, int *height) const { glfwGetWindowSize(this->window, width, height); }
 void GLFWWindow::setTitle(const std::string &title) {}
 
-std::string GLFWWindow::getTitle(void) {}
+std::string GLFWWindow::getTitle() { return ""; }
 
-int GLFWWindow::x(void) const noexcept {
+int GLFWWindow::x() const noexcept {
 	int x, y;
 
 	return x;
 }
-int GLFWWindow::y(void) const noexcept {
+int GLFWWindow::y() const noexcept {
 	int x, y;
 
 	return y;
@@ -36,16 +36,16 @@ void GLFWWindow::resizable(bool resizable) noexcept {}
 
 void GLFWWindow::setFullScreen(bool fullscreen) {}
 
-bool GLFWWindow::isFullScreen(void) const { return false; }
+bool GLFWWindow::isFullScreen() const { return false; }
 
 void GLFWWindow::setBordered(bool bordered) {}
 
-int GLFWWindow::width(void) const noexcept {
+int GLFWWindow::width() const noexcept {
 	int w, h;
 	getSize(&w, &h);
 	return w;
 }
-int GLFWWindow::height(void) const noexcept {
+int GLFWWindow::height() const noexcept {
 	int w, h;
 	getSize(&w, &h);
 	return h;
@@ -57,10 +57,10 @@ void GLFWWindow::getMinimumSize(int *width, int *height) {}
 void GLFWWindow::setMaximumSize(int width, int height) {}
 void GLFWWindow::getMaximumSize(int *width, int *height) {}
 
-void GLFWWindow::focus(void) {}
+void GLFWWindow::focus() {}
 
-void GLFWWindow::restore(void) {}
+void GLFWWindow::restore() {}
 
-void GLFWWindow::maximize(void) {}
+void GLFWWindow::maximize() {}
 
-void GLFWWindow::minimize(void) {}
+void GLFWWindow::minimize() {}

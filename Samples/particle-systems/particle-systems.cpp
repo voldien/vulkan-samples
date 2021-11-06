@@ -63,7 +63,7 @@ class ParticleSystemWindow : public VKWindow {
 		setTitle("Particle System");
 	}
 
-	virtual void Release(void) override {
+	virtual void Release() override {
 
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
@@ -291,7 +291,7 @@ class ParticleSystemWindow : public VKWindow {
 		return pipeline;
 	}
 
-	void initDescriptor(void) {
+	void initDescriptor() {
 
 		std::array<VkDescriptorPoolSize, 2> poolSize;
 		poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -396,7 +396,7 @@ class ParticleSystemWindow : public VKWindow {
 		}
 	}
 
-	virtual void Initialize(void) { /*	*/
+	virtual void Initialize() { /*	*/
 		paramMemSize =
 			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
 					 (unsigned int)paramMemSize);
@@ -502,7 +502,7 @@ class ParticleSystemWindow : public VKWindow {
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
-	virtual void draw(void) {
+	virtual void draw() {
 
 		camera.update(0.01f);
 		this->mvp.model = glm::mat4(1.0f);

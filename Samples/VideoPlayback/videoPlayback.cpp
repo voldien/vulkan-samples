@@ -70,7 +70,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		this->setTitle(fmt::format("VideoPlayback {}", path));
 		this->path = path;
 	}
-	~AVVideoPlaybackWindow(void) {
+	~AVVideoPlaybackWindow() {
 		av_frame_free(&frame);
 		avcodec_free_context(&pAudioCtx);
 		avcodec_free_context(&pVideoCtx);
@@ -79,7 +79,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		avformat_free_context(pformatCtx);
 	}
 
-	virtual void Release(void) override {
+	virtual void Release() override {
 
 		for (int i = 0; i < nrVideoFrames; i++) {
 			vkDestroyImage(getDevice(), videoFrames[i], nullptr);
@@ -218,7 +218,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		this->frame_timer = av_gettime() / 1000000.0;
 	}
 
-	virtual void Initialize(void) override {
+	virtual void Initialize() override {
 		loadVideo(path.c_str());
 
 		/*	*/
@@ -298,7 +298,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		nthVideoFrame = 0;
 	}
 
-	virtual void draw(void) override {
+	virtual void draw() override {
 		AVPacket *packet = av_packet_alloc();
 		if (!packet) {
 			throw cxxexcept::RuntimeException("failed to allocated memory for AVPacket");
@@ -363,7 +363,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		av_packet_free(&packet);
 	}
 
-	virtual void update(void) {}
+	virtual void update() {}
 };
 
 int main(int argc, const char **argv) {

@@ -37,9 +37,9 @@ class MandelBrotWindow : public VKWindow {
 		this->setTitle(std::string("MandelBrot"));
 		//	fpsCounter = FPSCounter(100);
 	}
-	~MandelBrotWindow(void) {}
+	~MandelBrotWindow() {}
 
-	virtual void Release(void) override {
+	virtual void Release() override {
 		vkDestroyCommandPool(getDevice(), this->computeCmdPool, nullptr);
 
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -96,7 +96,7 @@ class MandelBrotWindow : public VKWindow {
 		return pipeline;
 	}
 
-	virtual void Initialize(void) override {
+	virtual void Initialize() override {
 
 		paramMemSize =
 			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
@@ -239,7 +239,7 @@ class MandelBrotWindow : public VKWindow {
 		}
 	}
 
-	virtual void draw(void) override {
+	virtual void draw() override {
 		// Setup the range
 		void *data;
 		VKS_VALIDATE(

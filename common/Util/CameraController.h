@@ -6,7 +6,7 @@
 
 class CameraController {
   public:
-	CameraController(void) = default;
+	CameraController() = default;
 
 	void update(float delta) {
 		const Uint8 *state = SDL_GetKeyboardState(NULL);
@@ -20,7 +20,7 @@ class CameraController {
 		flythrough_camera_update(&pos[0], &look[0], &up[0], &view[0][0], delta, 100.0f * 1, 0.5f * activated, fov,
 								 xDiff, yDiff, w, a, s, d, 0, 0, 0);
 	}
-	const glm::mat4 &getViewMatrix(void) const noexcept { return this->view; }
+	const glm::mat4 &getViewMatrix() const noexcept { return this->view; }
 
   private:
 	float fov = 80.0f;

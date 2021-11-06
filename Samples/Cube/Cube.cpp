@@ -1,5 +1,6 @@
 #include "Importer/ImageImport.h"
 #include "Util/Time.hpp"
+#include "VKSampleWindow.h"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -35,11 +36,10 @@ class CubeWindow : public VKWindow {
 
   public:
 	CubeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {
-	}
-	~CubeWindow(void) {}
+		: VKWindow(core, device, -1, -1, -1, -1) {}
+	~CubeWindow() {}
 
-	virtual void Release(void) override {
+	virtual void Release() override {
 
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -254,7 +254,7 @@ class CubeWindow : public VKWindow {
 		return graphicsPipeline;
 	}
 
-	virtual void Initialize(void) override {
+	virtual void Initialize() override {
 
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
@@ -425,11 +425,11 @@ class CubeWindow : public VKWindow {
 		}
 	}
 
-	virtual void draw(void) override {
+	virtual void draw() override {
 
 		time.update();
 		float elapsedTime = time.getElapsed();
-//		((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
+		//		((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
 
 		printf("%f\n", elapsedTime);
 		this->mvp.model = glm::mat4(1.0f);
@@ -448,17 +448,20 @@ class CubeWindow : public VKWindow {
 		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
-	virtual void update(void) {}
+	virtual void update() {}
 };
 
 int main(int argc, const char **argv) {
 
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_device_extensions);
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		printf("%s\n", devices[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices, required_device_extensions);
 		CubeWindow window(core, d);
 
 		window.run();

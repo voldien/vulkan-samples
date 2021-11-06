@@ -8,19 +8,19 @@
  */
 class IWindow {
   public:
-	virtual void show(void) = 0;
+	virtual void show() = 0;
 
-	virtual void hide(void) = 0;
+	virtual void hide() = 0;
 
-	virtual void close(void) = 0;
+	virtual void close() = 0;
 
-	virtual void focus(void) = 0;
+	virtual void focus() = 0;
 
-	virtual void restore(void) = 0;
+	virtual void restore() = 0;
 
-	virtual void maximize(void) = 0;
+	virtual void maximize() = 0;
 
-	virtual void minimize(void) = 0;
+	virtual void minimize() = 0;
 
 	virtual void setTitle(const std::string &title) = 0;
 
@@ -39,7 +39,7 @@ class IWindow {
 	virtual int width() const noexcept = 0;
 	virtual int height() const noexcept = 0;
 
-	virtual float getGamma(void) const = 0;
+	virtual float getGamma() const = 0;
 
 	virtual void setGamma(float gamma) = 0;
 
@@ -47,7 +47,7 @@ class IWindow {
 
 	virtual void setFullScreen(bool fullscreen) = 0;
 
-	virtual bool isFullScreen(void) const = 0;
+	virtual bool isFullScreen() const = 0;
 
 	virtual void setBordered(bool borded) = 0;
 
@@ -58,9 +58,9 @@ class IWindow {
 
 	void setUserData(void *userData) noexcept { this->userData = userData; }
 
-	virtual void *getUserData(void) const noexcept { return this->userData; }
+	virtual void *getUserData() const noexcept { return this->userData; }
 
-	virtual intptr_t getNativePtr(void) const = 0; /*  Get native window reference object. */
+	virtual intptr_t getNativePtr() const = 0; /*  Get native window reference object. */
 
   protected:
 	void *userData = nullptr;
