@@ -185,6 +185,7 @@ class VKWindow : public IWindow {
 	virtual void getMaximumSize(int *width, int *height) override;
 
 	virtual intptr_t getNativePtr() const override; /*  Get native window reference object. */
+	virtual VkSurfaceKHR createSurface(std::shared_ptr<VulkanCore> &instance) override;
 
   private:
 	std::shared_ptr<VKDevice> device;

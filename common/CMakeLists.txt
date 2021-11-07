@@ -24,8 +24,8 @@ ENDIF()
 
 ADD_LIBRARY(vkcommon-window-backend-sdl2 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/SDLWindow.cpp)
 ADD_LIBRARY(vkcommon-window-backend-glfw3 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/GLFW3Window.cpp)
-TARGET_LINK_LIBRARIES(vkcommon-window-backend-sdl2  PUBLIC ${SDL2_LIBRARIES} )
-TARGET_LINK_LIBRARIES(vkcommon-window-backend-glfw3  PUBLIC ${GLFW3_LIBRARIES} )
+TARGET_LINK_LIBRARIES(vkcommon-window-backend-sdl2  PUBLIC vkcommon-core ${SDL2_LIBRARIES} )
+TARGET_LINK_LIBRARIES(vkcommon-window-backend-glfw3  PUBLIC vkcommon-core ${GLFW3_LIBRARIES} )
 
 
 ADD_LIBRARY(vkcommon ${SOURCE_FILES} ${HEADER_FILES} )

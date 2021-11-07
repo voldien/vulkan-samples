@@ -64,3 +64,5 @@ void GLFWWindow::restore() {}
 void GLFWWindow::maximize() {}
 
 void GLFWWindow::minimize() {}
+
+VkSurfaceKHR GLFWWindow::createSurface(std::shared_ptr<VulkanCore> &instance) {}

@@ -1,5 +1,6 @@
 #ifndef _VKSCOMMON_IWINDOW_H_
 #define _VKSCOMMON_IWINDOW_H_ 1
+#include <VulkanCore.h>
 #include <stdint.h>
 #include <string>
 /**
@@ -61,6 +62,9 @@ class IWindow {
 	virtual void *getUserData() const noexcept { return this->userData; }
 
 	virtual intptr_t getNativePtr() const = 0; /*  Get native window reference object. */
+
+
+	virtual VkSurfaceKHR createSurface(std::shared_ptr<VulkanCore> &instance) = 0;
 
   protected:
 	void *userData = nullptr;

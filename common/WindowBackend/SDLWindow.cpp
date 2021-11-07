@@ -1,15 +1,21 @@
 #include "../SDLWindow.h"
+#include <SDL2/SDL_vulkan.h>
 
 SDLWindow::SDLWindow() {
 
-	SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER);
+	if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
+		throw cxxexcept::RuntimeException("Failed to init subsystem {}", SDL_GetError());
+	}
 
 	int width = 800;
 	int height = 600;
 
-	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE |
+	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_HIDDEN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE |
 													 SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_INPUT_FOCUS);
 	this->window = SDL_CreateWindow("", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, window_flags);
+	if (window == NULL) {
+		throw cxxexcept::RuntimeException("failed create window - {}", SDL_GetError());
+	}
 }
 SDLWindow::~SDLWindow() {
 	SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER);
@@ -73,7 +79,9 @@ int SDLWindow::height() const noexcept {
 
 float SDLWindow::getGamma() const { return 1.0f; }
 
-void SDLWindow::setGamma(float gamma) {}
+void SDLWindow::setGamma(float gamma) {
+	// TODO set
+}
 
 void SDLWindow::setMinimumSize(int width, int height) { SDL_SetWindowMinimumSize(this->window, width, height); }
 void SDLWindow::getMinimumSize(int *width, int *height) { SDL_GetWindowMinimumSize(this->window, width, height); }
@@ -88,6 +96,14 @@ void SDLWindow::restore() { SDL_RestoreWindow(this->window); }
 void SDLWindow::maximize() { SDL_MaximizeWindow(this->window); }
 
 void SDLWindow::minimize() { SDL_MinimizeWindow(this->window); }
+
+VkSurfaceKHR SDLWindow::createSurface(std::shared_ptr<VulkanCore> &instance) {
+	VkSurfaceKHR surface;
+	bool surfaceResult = SDL_Vulkan_CreateSurface(this->window, instance->getHandle(), &surface);
+	if (surfaceResult == SDL_FALSE)
+		throw cxxexcept::RuntimeException("failed create vulkan surface - {}", SDL_GetError());
+	return surface;
+}
 
 intptr_t SDLWindow::getNativePtr() const {
 	return (intptr_t)this->window;

@@ -69,6 +69,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(fmt::format("VideoPlayback {}", path));
 		this->path = path;
+		this->show();
 	}
 	~AVVideoPlaybackWindow() {
 		av_frame_free(&frame);
@@ -205,7 +206,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if (this->frame == nullptr || this->frameoutput == nullptr)
 			throw cxxexcept::RuntimeException(fmt::format("Failed to allocate frame"));
 
-		int m_bufferSize =
+		size_t m_bufferSize =
 			av_image_get_buffer_size(AV_PIX_FMT_RGBA, this->pVideoCtx->width, this->pVideoCtx->height, 4);
 		av_image_alloc(this->frameoutput->data, this->frameoutput->linesize, this->pVideoCtx->width,
 					   this->pVideoCtx->height, AV_PIX_FMT_RGBA, 4);
@@ -366,13 +367,14 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_device_extensions = {};
-	std::unordered_map<const char *, bool> required_instance_layers = {};
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		printf("%s\n", devices[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
+		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices, required_device_extensions);
 		AVVideoPlaybackWindow window(argv[1], core, d);
 
 		window.run();

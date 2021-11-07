@@ -1,6 +1,5 @@
 #define VK_USE_PLATFORM_XLIB_KHR
 #include "VKWindow.h"
-#include <SDL2/SDL_vulkan.h>
 #include <VKDevice.h>
 #include <VKHelper.h>
 #include <cassert>
@@ -36,11 +35,6 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 
 	this->proxyWindow = new SDLWindow();
 
-	// /*TODO	Relocate to be part of the backend*/
-	// if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
-	// 	throw cxxexcept::RuntimeException("Failed to init subsystem {}", SDL_GetError());
-	// }
-
 	SDL_DisplayMode displaymode;
 	SDL_GetCurrentDisplayMode(0, &displaymode);
 	if (x == -1 && y == -1) {
@@ -53,18 +47,11 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 		height = displaymode.h / 2;
 	}
 
-	/*  Create Vulkan window.   */
-	this->window =
-		SDL_CreateWindow("Vulkan Sample", x, y, width, height,
-						 SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-	if (window == NULL) {
-		throw cxxexcept::RuntimeException("failed create window - {}", SDL_GetError());
-	}
+	this->setSize(width, height);
+	this->setPosition(x, y);
 
 	/*  Create surface. */
-	bool surfaceResult = SDL_Vulkan_CreateSurface(this->window, core->getHandle(), &this->surface);
-	if (surfaceResult == SDL_FALSE)
-		throw cxxexcept::RuntimeException("failed create vulkan surface - {}", SDL_GetError());
+	this->surface = this->createSurface(core);
 
 	/*	*/
 	this->device = device;
@@ -593,8 +580,10 @@ void VKWindow::getMinimumSize(int *width, int *height) { proxyWindow->getMinimum
 void VKWindow::setMaximumSize(int width, int height) { proxyWindow->setMaximumSize(width, height); }
 void VKWindow::getMaximumSize(int *width, int *height) { proxyWindow->getMaximumSize(width, height); }
 
-intptr_t VKWindow::getNativePtr() const {
-	return proxyWindow->getNativePtr();
+intptr_t VKWindow::getNativePtr() const { return proxyWindow->getNativePtr(); }
+
+VkSurfaceKHR VKWindow::createSurface(std::shared_ptr<VulkanCore> &instance) {
+	return proxyWindow->createSurface(instance);
 }
 
 std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
@@ -602,18 +591,18 @@ std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
 	std::vector<const char *> usedInstanceExtensionNames;
 
 	// TODO be replace with own code!
-	SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
-	if (tmpWindow == NULL)
-		throw cxxexcept::RuntimeException("Failed to create Tmp Vulkan window - {}", SDL_GetError());
-	/*	*/
-	unsigned int count;
-	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, nullptr))
-		throw cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions");
-	unsigned int additional_extension_count = (unsigned int)usedInstanceExtensionNames.size();
-	usedInstanceExtensionNames.resize((size_t)(additional_extension_count + count));
-	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, &usedInstanceExtensionNames[additional_extension_count]))
-		throw cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions");
-	SDL_DestroyWindow(tmpWindow);
+	// SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
+	// if (tmpWindow == NULL)
+	// 	throw cxxexcept::RuntimeException("Failed to create Tmp Vulkan window - {}", SDL_GetError());
+	// /*	*/
+	// unsigned int count;
+	// if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, nullptr))
+	// 	throw cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions");
+	// unsigned int additional_extension_count = (unsigned int)usedInstanceExtensionNames.size();
+	// usedInstanceExtensionNames.resize((size_t)(additional_extension_count + count));
+	// if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count,
+	// &usedInstanceExtensionNames[additional_extension_count])) 	throw
+	// cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions"); SDL_DestroyWindow(tmpWindow);
 
 	return usedInstanceExtensionNames;
 }
