@@ -49,8 +49,8 @@ class AVVideoPlaybackWindow : public VKWindow {
 	/*  */
 	int videoStream;
 	int audioStream;
-	unsigned int video_width;
-	unsigned int video_height;
+	size_t video_width;
+	size_t video_height;
 	/*  */
 	struct AVFrame *frame;
 	struct AVFrame *frameoutput;
@@ -222,9 +222,9 @@ class AVVideoPlaybackWindow : public VKWindow {
 		loadVideo(path.c_str());
 
 		/*	*/
-		for (unsigned int i = 0; i < videoFrames.size(); i++) {
+		for (size_t i = 0; i < videoFrames.size(); i++) {
 
-			VKHelper::createBuffer(getDevice(), video_width * video_height * 4,
+			VKHelper::createBuffer(getDevice(), (size_t)video_width * (size_t)video_height * (size_t)4,
 								   getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
 								   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -357,6 +357,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 				}
 			}
 			if (packet->stream_index == this->audioStream) {
+				continue; /*	Ignore audio packages.*/
 			}
 		}
 		av_packet_unref(packet);

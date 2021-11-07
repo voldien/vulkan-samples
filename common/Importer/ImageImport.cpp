@@ -87,7 +87,10 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 	/*	Compute the size in bytes.	*/
 	if (pixelSize) {
 		/*	Round up,	*/
-		*pixelSize = FreeImage_GetWidth(firsbitmap) * FreeImage_GetHeight(firsbitmap) * FreeImage_GetBPP(firsbitmap);
+		*pixelSize = (unsigned long int)FreeImage_GetWidth(firsbitmap) *
+					 (unsigned long int)FreeImage_GetHeight(firsbitmap) *
+					 (unsigned long int)FreeImage_GetBPP(firsbitmap);
+		//Multiple of 8.
 		*pixelSize += *pixelSize % 8;
 		*pixelSize /= 8;
 	}

@@ -36,10 +36,10 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 
 	this->proxyWindow = new SDLWindow();
 
-	/*TODO	Relocate to be part of the backend*/
-	if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
-		throw cxxexcept::RuntimeException("Failed to init subsystem {}", SDL_GetError());
-	}
+	// /*TODO	Relocate to be part of the backend*/
+	// if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
+	// 	throw cxxexcept::RuntimeException("Failed to init subsystem {}", SDL_GetError());
+	// }
 
 	SDL_DisplayMode displaymode;
 	SDL_GetCurrentDisplayMode(0, &displaymode);
@@ -133,7 +133,9 @@ const std::vector<VkImageView> &VKWindow::getSwapChainImageViews() const noexcep
 }
 
 const std::shared_ptr<VKDevice> &VKWindow::getVKDevice() const noexcept { return this->device; }
-const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice() const noexcept {}
+const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice() const noexcept {
+	// return this->device->getPhysicalDevice();
+}
 
 VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
 
@@ -593,7 +595,7 @@ void VKWindow::getMaximumSize(int *width, int *height) { proxyWindow->getMaximum
 
 intptr_t VKWindow::getNativePtr() const {
 	return proxyWindow->getNativePtr();
-} /*  Get native window reference object. */
+}
 
 std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
 

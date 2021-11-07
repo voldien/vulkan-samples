@@ -29,7 +29,7 @@ class MandelBrotWindow : public VKWindow {
 	} params = {};
 
 	FPSCounter<float> fpsCounter;
-	unsigned int paramMemSize = sizeof(params);
+	size_t paramMemSize = sizeof(params);
 
   public:
 	MandelBrotWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -99,8 +99,8 @@ class MandelBrotWindow : public VKWindow {
 	virtual void Initialize() override {
 
 		paramMemSize =
-			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
-					 (unsigned int)paramMemSize);
+			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
+					 paramMemSize);
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
 

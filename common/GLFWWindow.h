@@ -1,9 +1,9 @@
 
 #ifndef _VKCOMMON_GLFW_WINDOW_H_
 #define _VKCOMMON_GLFW_WINDOW_H_ 1
+#include "IWindow.h"
 #include <GLFW/glfw3.h>
 #include <string>
-#include"IWindow.h"
 
 /**
  * @brief

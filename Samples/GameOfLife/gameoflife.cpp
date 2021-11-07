@@ -38,7 +38,7 @@ class GameOfLifeWindow : public VKWindow {
 		float c;	/*  */
 	} params = {};
 
-	unsigned int paramMemSize = sizeof(params);
+	size_t paramMemSize = sizeof(params);
 
   public:
 	GameOfLifeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -119,8 +119,7 @@ class GameOfLifeWindow : public VKWindow {
 	virtual void Initialize() override {
 
 		paramMemSize =
-			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
-					 (unsigned int)paramMemSize);
+			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment, paramMemSize);
 
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
@@ -176,7 +175,8 @@ class GameOfLifeWindow : public VKWindow {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		const VkDeviceSize cellBufferSize = width * height * sizeof(float) * nrChemicalComponents;
+		const VkDeviceSize cellBufferSize =
+			(unsigned int)width * (unsigned int)height * sizeof(float) * nrChemicalComponents;
 
 		cellsBuffers.resize(getSwapChainImageCount() * 2);
 		cellsMemory.resize(getSwapChainImageCount() * 2);
@@ -211,7 +211,7 @@ class GameOfLifeWindow : public VKWindow {
 		descriptorSets.resize(getSwapChainImageCount());
 		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
 
-		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
+		for (size_t i = 0; i < descriptorSets.size(); i++) {
 
 			VkDescriptorBufferInfo currentCellBufferInfo{};
 			currentCellBufferInfo.buffer = cellsBuffers[i * nrChemicalComponents + 0];
@@ -273,7 +273,7 @@ class GameOfLifeWindow : public VKWindow {
 			vkUpdateDescriptorSets(getDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 		}
 
-		for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
+		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			void *data;
 			VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
 			memcpy(data, &params, paramMemSize);

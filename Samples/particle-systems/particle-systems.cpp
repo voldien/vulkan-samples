@@ -46,7 +46,7 @@ class ParticleSystemWindow : public VKWindow {
 	std::vector<VkDescriptorSet> particleComputeDescriptorSets;
 	std::vector<VkDescriptorSet> particleDescriptorSets;
 
-	unsigned int paramMemSize = sizeof(mvp);
+	size_t paramMemSize = sizeof(mvp);
 
 	CameraController camera;
 	vkscommon::Time time;
@@ -398,8 +398,8 @@ class ParticleSystemWindow : public VKWindow {
 
 	virtual void Initialize() { /*	*/
 		paramMemSize =
-			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
-					 (unsigned int)paramMemSize);
+			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
+					 paramMemSize);
 		const VkDeviceSize particleGraphicBufferSize = paramMemSize * getSwapChainImageCount();
 		const VkDeviceSize particleSimBufferSize = sizeof(Particle) * nrParticles * getSwapChainImageCount();
 
