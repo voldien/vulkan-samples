@@ -356,9 +356,6 @@ class AVVideoPlaybackWindow : public VKWindow {
 					}
 				}
 			}
-			if (packet->stream_index == this->audioStream) {
-				continue; /*	Ignore audio packages.*/
-			}
 		}
 		av_packet_unref(packet);
 		av_packet_free(&packet);
