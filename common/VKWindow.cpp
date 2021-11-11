@@ -26,8 +26,7 @@ VKWindow::~VKWindow() {
 	vkDestroySurfaceKHR(core->getHandle(), this->surface, nullptr);
 
 	this->close();
-
-	SDL_QuitSubSystem(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
+	delete proxyWindow;
 }
 
 VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,

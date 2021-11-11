@@ -1,5 +1,6 @@
 #include "Importer/IOUtil.h"
 #include <SDL2/SDL.h>
+#include <VKSampleWindow.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 #include <iostream>
@@ -13,7 +14,10 @@ class TriangleWindow : public VKWindow {
 
   public:
 	TriangleWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {}
+		: VKWindow(core, device, -1, -1, -1, -1) {
+		this->show();
+		this->setTitle("Triangle");
+	}
 	~TriangleWindow() {}
 	typedef struct _vertex_t {
 		float pos[2];

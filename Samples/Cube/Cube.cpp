@@ -36,7 +36,10 @@ class CubeWindow : public VKWindow {
 
   public:
 	CubeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {}
+		: VKWindow(core, device, -1, -1, -1, -1) {
+		this->setTitle("Cube");
+		this->show();
+	}
 	~CubeWindow() {}
 
 	virtual void Release() override {
@@ -429,13 +432,12 @@ class CubeWindow : public VKWindow {
 
 		time.update();
 		float elapsedTime = time.getElapsed();
-		//		((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
 
-		printf("%f\n", elapsedTime);
+		std::cout << elapsedTime << std::endl;
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45), glm::vec3(0.0f, 1.0f, 0.0f));
+		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
 		// Setup the range

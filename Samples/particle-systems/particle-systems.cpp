@@ -48,7 +48,7 @@ class ParticleSystemWindow : public VKWindow {
 
 	size_t paramMemSize = sizeof(mvp);
 
-	CameraController camera;
+	CameraController cameraController;
 	vkscommon::Time time;
 	const unsigned int nrParticles = 1024;
 	typedef struct particle_t {
@@ -398,8 +398,7 @@ class ParticleSystemWindow : public VKWindow {
 
 	virtual void Initialize() { /*	*/
 		paramMemSize =
-			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
-					 paramMemSize);
+			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment, paramMemSize);
 		const VkDeviceSize particleGraphicBufferSize = paramMemSize * getSwapChainImageCount();
 		const VkDeviceSize particleSimBufferSize = sizeof(Particle) * nrParticles * getSwapChainImageCount();
 
@@ -503,8 +502,9 @@ class ParticleSystemWindow : public VKWindow {
 		}
 	}
 	virtual void draw() {
+		this->time.update();
 
-		camera.update(0.01f);
+		cameraController.update(this->time.deltaTime());
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));

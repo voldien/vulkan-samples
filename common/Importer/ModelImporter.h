@@ -16,9 +16,10 @@
 
 using namespace Assimp;
 class ModelImporter {
-	void loadContent(const char *path, unsigned long int supportFlag) {
+
+	void loadContent(const std::string &path, unsigned long int supportFlag) {
 		Importer importer;
-		const aiScene *pScene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals
+		const aiScene *pScene = importer.ReadFile(path.c_str(), aiProcess_Triangulate | aiProcess_GenSmoothNormals
 												  //| aiProcess_SplitLargeMeshes
 		);
 

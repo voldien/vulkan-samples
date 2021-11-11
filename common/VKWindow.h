@@ -2,7 +2,6 @@
 #define _STARTUP_WINDOW_SAMPLE_H_ 1
 #include "IWindow.h"
 #include "SDLWindow.h"
-#include <SDL2/SDL.h>
 #include <VKDevice.h>
 #include <iostream>
 #include <memory>
@@ -238,7 +237,6 @@ class VKWindow : public IWindow {
 	VkCommandPool cmd_pool;
 	VkCommandPool compute_pool;
 	VkCommandPool transfer_pool;
-	SDL_Window *window;
 	IWindow *proxyWindow;
 };
 
