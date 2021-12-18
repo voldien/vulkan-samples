@@ -35,3 +35,5 @@ make Shaders
 | Triangle | Render a single triangle |
 | | |
 | Memory Transfer     | Benchmark the transfer rate of memory.    |
+| Particle Simulation | |
+| Font Render    | |
