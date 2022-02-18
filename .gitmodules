@@ -10,3 +10,6 @@
 [submodule "extern/fvkcore"]
 	path = extern/fvkcore
 	url = https://github.com/voldien/fvkcore.git
+[submodule "extern/mimi-imgui"]
+	path = extern/mimi-imgui
+	url = https://github.com/voldien/mimi-imgui.git

@@ -24,13 +24,13 @@ ENDIF()
 
 ADD_LIBRARY(vkcommon-window-backend-sdl2 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/SDLWindow.cpp)
 ADD_LIBRARY(vkcommon-window-backend-glfw3 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/GLFW3Window.cpp)
-TARGET_LINK_LIBRARIES(vkcommon-window-backend-sdl2  PUBLIC vkcommon-core ${SDL2_LIBRARIES} )
-TARGET_LINK_LIBRARIES(vkcommon-window-backend-glfw3  PUBLIC vkcommon-core ${GLFW3_LIBRARIES} )
+TARGET_LINK_LIBRARIES(vkcommon-window-backend-sdl2  PUBLIC fvkcore ${SDL2_LIBRARIES} )
+TARGET_LINK_LIBRARIES(vkcommon-window-backend-glfw3  PUBLIC fvkcore ${GLFW3_LIBRARIES} )
 
 
 ADD_LIBRARY(vkcommon ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(vkcommon PUBLIC fmt vkcommon-core cxxexcept vkcommon-window-backend-sdl2 spirv-cross-c)
-ADD_DEPENDENCIES(vkcommon vkcommon-core spirv-cross-c Shaders)
+TARGET_LINK_LIBRARIES(vkcommon PUBLIC fmt fvkcore cxxexcept vkcommon-window-backend-sdl2 spirv-cross-c)
+ADD_DEPENDENCIES(vkcommon spirv-cross-c Shaders)
 
 TARGET_INCLUDE_DIRECTORIES(vkcommon PRIVATE ${Vulkan_INCLUDE_DIRS}
     PUBLIC
@@ -38,4 +38,4 @@ TARGET_INCLUDE_DIRECTORIES(vkcommon PRIVATE ${Vulkan_INCLUDE_DIRS}
 	$<INSTALL_INTERFACE:vkcommon>
 )
 
-INSTALL(TARGETS vkcommon-core vkcommon DESTINATION lib)
+INSTALL(TARGETS vkcommon fvkcore DESTINATION lib)
