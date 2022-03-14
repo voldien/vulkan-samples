@@ -340,8 +340,6 @@ class CubeWindow : public VKWindow {
 
 	virtual void onResize(int width, int height) override {
 
-		prevTimeCounter = SDL_GetPerformanceCounter();
-
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
 		this->mvp.model = glm::mat4(1.0f);

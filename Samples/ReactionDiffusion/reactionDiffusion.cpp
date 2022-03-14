@@ -1,4 +1,4 @@
-#include "Importer/Math.h"
+
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -10,6 +10,9 @@ class ReactionDiffusionWindow : public VKWindow {
 	VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
 	VkPipeline computePipeline = VK_NULL_HANDLE;
 	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+
+	std::vector<VkImage> reactionDiffuseImage;
+	std::vector<VkDeviceMemory> reactionDiffuseImageMemory;
 
 	std::vector<VkImageView> computeImageViews;
 	std::vector<VkBuffer> cellsBuffers;
@@ -119,10 +122,11 @@ class ReactionDiffusionWindow : public VKWindow {
 	}
 
 	virtual void Initialize() override {
-
-		paramMemSize =
-			std::max((unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
-					 (unsigned int)paramMemSize);
+		// TODO fix get correct physical device.
+		// TODO fix alignment size.
+		paramMemSize = std::max(
+			(unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment,
+			(unsigned int)paramMemSize);
 
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
@@ -177,23 +181,38 @@ class ReactionDiffusionWindow : public VKWindow {
 		cellsBuffers.resize(getSwapChainImageCount() * 2);
 		cellsMemory.resize(getSwapChainImageCount() * 2);
 		for (unsigned int i = 0; i < cellsBuffers.size(); i++) {
+			// TODO fix get correct physical device.
 			VKHelper::createBuffer(getDevice(), cellBufferSize,
 								   getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
-								   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+								   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 									   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 								   cellsBuffers[i], cellsMemory[i]);
+
+			/*	Write noise to buffer data.	*/
 			float *cellData;
 			VKS_VALIDATE(vkMapMemory(getDevice(), cellsMemory[i], 0, cellBufferSize, 0, (void **)&cellData));
-			for (unsigned int h = 0; h < height; h++) {
-				for (unsigned int w = 0; w < width; w++) {
-					for (unsigned int c = 0; c < nrChemicalComponents; c++) {
+			for (int h = 0; h < height; h++) {
+				for (int w = 0; w < width; w++) {
+					for (int c = 0; c < nrChemicalComponents; c++) {
 						cellData[h * height * nrChemicalComponents + w * nrChemicalComponents + c] =
-							Math::perlinNoise<float>((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
+							fragcore::Math::PerlinNoise((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
 					}
 				}
 			}
 			vkUnmapMemory(getDevice(), cellsMemory[i]);
+		}
+
+		/*	Create reaction diffusion image and buffer.	*/
+		reactionDiffuseImage.resize(getSwapChainImageCount());
+		reactionDiffuseImageMemory.resize(getSwapChainImageCount());
+		for (unsigned int i = 0; i < reactionDiffuseImageMemory.size(); i++) {
+
+			VKHelper::createImage(
+				getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+				reactionDiffuseImage[i], reactionDiffuseImageMemory[i]);
 		}
 
 		/*	*/
@@ -202,7 +221,7 @@ class ReactionDiffusionWindow : public VKWindow {
 			if (computeImageViews[i] != nullptr)
 				vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
 			computeImageViews[i] =
-				VKHelper::createImageView(getDevice(), getSwapChainImages()[i], VK_IMAGE_VIEW_TYPE_2D,
+				VKHelper::createImageView(getDevice(), reactionDiffuseImage[i], VK_IMAGE_VIEW_TYPE_2D,
 										  getDefaultImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		}
 
@@ -216,7 +235,7 @@ class ReactionDiffusionWindow : public VKWindow {
 		descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
 		descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
-		// allocate descriptor set.
+		/* allocate descriptor set.	*/
 		descriptorSets.resize(getSwapChainImageCount());
 		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
 
@@ -311,13 +330,39 @@ class ReactionDiffusionWindow : public VKWindow {
 			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			imageMemoryBarrier.image = getSwapChainImages()[i];
+			imageMemoryBarrier.image = reactionDiffuseImage[i];
 			imageMemoryBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 			imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 			imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
 			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
 								 nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+			VkImageBlit blitRegion{};
+			blitRegion.srcOffsets[1].x = this->width();
+			blitRegion.srcOffsets[1].y = this->height();
+			blitRegion.srcOffsets[1].z = 1;
+			blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blitRegion.srcSubresource.layerCount = 1;
+			blitRegion.srcSubresource.mipLevel = 0;
+			blitRegion.dstOffsets[1].x = this->width();
+			blitRegion.dstOffsets[1].y = this->height();
+			blitRegion.dstOffsets[1].z = 1;
+			blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blitRegion.dstSubresource.layerCount = 1;
+			blitRegion.dstSubresource.mipLevel = 0;
+
+			// TOOD fix the layout transition, based on the errors.
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_GENERAL,
+											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+			vkCmdBlitImage(cmd, reactionDiffuseImage[i], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, getSwapChainImages()[i],
+						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion, VK_FILTER_NEAREST);
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
@@ -333,27 +378,24 @@ class ReactionDiffusionWindow : public VKWindow {
 
 		int x, y;
 		SDL_GetMouseState(&x, &y);
-		// params.mousePosX = x;
-		// params.mousePosY = y;
-		// params.posX = 0;
-		// params.posY = 0;
-		// params.zoom = 1.0f;
-		// params.nrSamples = 128;
+		params.mousePosX = x;
+		params.mousePosY = y;
+		params.posX = 0;
+		params.posY = 0;
+		params.zoom = 1.0f;
 	}
 };
 
 int main(int argc, const char **argv) {
 
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_device_extensions);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
+		VKSampleWindow<ReactionDiffusionWindow> mandel(argc, argv, required_device_extensions, {},
+													   required_instance_extensions);
+		mandel.run();
 
-		std::shared_ptr<VKDevice> ldevice = std::make_shared<VKDevice>(devices, required_device_extensions);
-
-		ReactionDiffusionWindow window(core, ldevice);
-
-		window.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

@@ -1,0 +1,107 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// Contains the cells information.
+layout(set = 0, binding = 0, std430) buffer img_current_cells { vec2 AB[]; }
+CurrentAB;
+
+layout(set = 0, binding = 1, std430) readonly buffer img_previous_cells { vec2 AB[]; }
+PreviousAB;
+
+layout(rgba32f, set = 0, binding = 2) uniform image2D img_output;
+
+layout(set = 0, binding = 3) uniform UniformBufferObject {
+	mat4 kernelA;
+	mat4 kernelB;
+	float feedRate;
+	float killRate;
+	float diffuseRateA;
+	float diffuseRateB;
+	float delta;
+}
+ubo;
+
+// template <typename T> constexpr static T dotGridGradient(T ix, T iy, T x, T y) noexcept {
+
+// 	T gradient[] = {0, 0};
+// 	randomGradient<T>(ix, iy, gradient);
+
+// 	// Compute the distance vector
+// 	T dx = x - (T)ix;
+// 	T dy = y - (T)iy;
+
+// 	// Compute the dot-product
+// 	return (dx * gradient[0] + dy * gradient[1]);
+// }
+
+// template <typename T> constexpr static void randomGradient(int ix, int iy, T *gradient) noexcept {
+// 	// Random float. No precomputed gradients mean this works for any number of grid coordinates
+// 	if constexpr (std::is_same<T, float>::value) {
+// 		T random = 2920.f * sinf(ix * 21942.f + iy * 171324.f + 8912.f) * cosf(ix * 23157.f * iy * 217832.f + 9758.f);
+// 		gradient[0] = cosf(random);
+// 		gradient[1] = sinf(random);
+// 	} else {
+// 		T random = 2920.f * sin(ix * 21942.f + iy * 171324.f + 8912.f) * cos(ix * 23157.f * iy * 217832.f + 9758.f);
+// 		gradient[0] = cos(random);
+// 		gradient[1] = sin(random);
+// 	}
+// }
+
+// template <typename T> constexpr static T perlinNoise(T x, T y, int octave) noexcept {
+
+// 	T result = 0;
+// 	T totalAmplitude = 0.0f;
+// 	T amplitude = 2.0f;
+// 	T persistance = 0.50f;
+// 	const uint32_t wrap = 255;
+
+// 	// Determine grid cell coordinates
+// 	const int32_t x0 = (int32_t)std::floor(x) % wrap;
+// 	const int32_t x1 = x0 + 1;
+// 	const int32_t y0 = (int32_t)std::floor(y) % wrap;
+// 	const int32_t y1 = y0 + 1;
+
+// 	T sx = x - (T)x0;
+// 	T sy = y - (T)y0;
+
+// 	for (int z = 0; z < octave; z++) {
+// 		// Interpolate between grid point gradients
+// 		T n0, n1, ix0, ix1, value;
+
+// 		// x0 *= 1.0f;
+// 		// x1 *= 1.0f;
+// 		// y0 *= 1.0f;
+// 		// y1 *= 1.0f;
+
+// 		n0 = dotGridGradient<T>(x0, y0, x, y);
+// 		n1 = dotGridGradient<T>(x1, y0, x, y);
+// 		ix0 = lerp<T>(n0, n1, sx);
+
+// 		n0 = dotGridGradient<T>(x0, y1, x, y);
+// 		n1 = dotGridGradient<T>(x1, y1, x, y);
+// 		ix1 = lerp<T>(n0, n1, sx);
+
+// 		value = lerp<T>(ix0, ix1, sy);
+
+// 		// amplitude *= persistance;
+// 		// totalAmplitude += amplitude;
+
+// 		// /*	*/
+// 		// const unsigned int samplePeriod = (1 << z);
+// 		// const float sampleFrquency = 1.0f / (float)samplePeriod;
+
+// 		// /*	*/
+// 		// const float xpos = ((float)x / (float)samplePeriod) * sampleFrquency;
+// 		// const float ypos = ((float)y / (float)samplePeriod) * sampleFrquency;
+// 		result += value;
+// 	}
+// 	return result * 0.5 + 0.5;
+// }
+
+void main() {
+
+	
+
+}

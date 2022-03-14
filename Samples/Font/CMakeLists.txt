@@ -2,8 +2,8 @@ FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 ADD_EXECUTABLE(SignedDistanceFont ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(SignedDistanceFont ${Vulkan_LIBRARIES} vkcommon )
-ADD_DEPENDENCIES(SignedDistanceFont vkcommon)
+TARGET_LINK_LIBRARIES(SignedDistanceFont ${Vulkan_LIBRARIES} vk-sample-common )
+ADD_DEPENDENCIES(SignedDistanceFont vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(SignedDistanceFont PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

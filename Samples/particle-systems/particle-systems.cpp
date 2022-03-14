@@ -9,18 +9,35 @@
 
 class ParticleSystemWindow : public VKWindow {
   private:
+	const std::string vertexShader = "";
+	const std::string fragmentShader = "";
+	const std::string particleCompute = "";
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
+		alignas(16) glm::mat4 modelView;
+		alignas(16) glm::mat4 modelViewProjection;
+		glm::vec4 diffuseColor;
+
+		/*	particle */
+		float delta;
 	} mvp;
 
 	struct ParticleSimulatorVariables {
 	} particleSimUniforms;
 
-	/*	Graphic pipelines.	*/
+	typedef struct particle_t {
+		glm::vec3 position; /*	Position.	*/
+		glm::vec3 velocity; /*	Velocity.	*/
+		float t;			/*	Time.	*/
+	} Particle;
+
+	/*	Compute pipeline.	*/
 	VkPipeline particleSim = VK_NULL_HANDLE;
 	VkPipelineLayout particleSimLayout = VK_NULL_HANDLE;
+
+	/*	Graphic pipelines.	*/
 	VkPipeline particleGraphicPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout particleGraphicLayout = VK_NULL_HANDLE;
 
@@ -28,59 +45,76 @@ class ParticleSystemWindow : public VKWindow {
 	std::vector<VkBuffer> particleBuffers;
 	std::vector<VkDeviceMemory> particleBufferMemory;
 
+	/*	*/
 	std::vector<VkBuffer> particleSimUniformBuffers;
 	std::vector<VkDeviceMemory> particleSimBufferMemories;
 
+	/*	*/
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemories;
 	std::vector<void *> mapMemory;
+
+	/*	*/
+	VkSampler sampler = VK_NULL_HANDLE;
+	VkImage texture = VK_NULL_HANDLE;
+	VkImageView textureView = VK_NULL_HANDLE;
+	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
 	/*	*/
 	VkBuffer vectorFieldBuffer;
 	VkDeviceMemory vectorFieldMemory;
 
 	/*	*/
-	VkDescriptorSetLayout particleDescriptorSetLayout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout particleComputeDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout particleGraphicDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 	std::vector<VkDescriptorSet> particleComputeDescriptorSets;
-	std::vector<VkDescriptorSet> particleDescriptorSets;
+	std::vector<VkDescriptorSet> particleGraphicDescriptorSets;
 
 	size_t paramMemSize = sizeof(mvp);
 
 	CameraController cameraController;
 	vkscommon::Time time;
+	// TODO add ass configurable param.
 	const unsigned int nrParticles = 1024;
-	typedef struct particle_t {
-		float t;
-		float x, y;		  /*	Position.	*/
-		float xdir, ydir; /*	Velocity.	*/
-	} Particle;
 
   public:
 	ParticleSystemWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		setTitle("Particle System");
+		this->setTitle("Particle System");
+		this->show();
 	}
 
 	virtual void Release() override {
 
+		/*	*/
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
+		vkDestroySampler(getDevice(), sampler, nullptr);
+
+		vkDestroyImageView(getDevice(), textureView, nullptr);
+		vkDestroyImage(getDevice(), texture, nullptr);
+		vkFreeMemory(getDevice(), textureMemory, nullptr);
+
+		/*	*/
 		for (unsigned int i = 0; i < particleBuffers.size(); i++) {
 			vkDestroyBuffer(getDevice(), particleBuffers[i], nullptr);
 			vkFreeMemory(getDevice(), particleBufferMemory[i], nullptr);
 		}
+
+		/*	*/
 		for (unsigned int i = 0; i < uniformBuffers.size(); i++) {
 			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
 			vkUnmapMemory(getDevice(), uniformBuffersMemories[i]);
 			vkFreeMemory(getDevice(), uniformBuffersMemories[i], nullptr);
 		}
 
+		/*	*/
 		vkDestroyDescriptorSetLayout(getDevice(), particleGraphicDescriptorSetLayout, nullptr);
 		vkDestroyPipeline(getDevice(), particleGraphicPipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), particleGraphicLayout, nullptr);
-		vkDestroyDescriptorSetLayout(getDevice(), particleDescriptorSetLayout, nullptr);
+		/*	*/
+		vkDestroyDescriptorSetLayout(getDevice(), particleComputeDescriptorSetLayout, nullptr);
 		vkDestroyPipeline(getDevice(), particleSim, nullptr);
 		vkDestroyPipelineLayout(getDevice(), particleSimLayout, nullptr);
 	}
@@ -89,8 +123,8 @@ class ParticleSystemWindow : public VKWindow {
 
 		VkPipeline graphicsPipeline;
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
+		auto vertShaderCode = IOUtil::readFile("shaders/particle.vert.spv");
+		auto fragShaderCode = IOUtil::readFile("shaders/particle.frag.spv");
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -114,20 +148,15 @@ class ParticleSystemWindow : public VKWindow {
 
 		VkVertexInputBindingDescription bindingDescription = {};
 		bindingDescription.binding = 0;
-		bindingDescription.stride = 0;
+		bindingDescription.stride = sizeof(Particle);
 		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
+		std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions;
 
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
 		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[0].offset = 0;
-
-		attributeDescriptions[1].binding = 0;
-		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[1].offset = 12;
 
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -208,7 +237,7 @@ class ParticleSystemWindow : public VKWindow {
 		depthStencil.depthBoundsTestEnable = VK_FALSE;
 		depthStencil.stencilTestEnable = VK_FALSE;
 
-		VKHelper::createPipelineLayout(getDevice(), *layout, {particleDescriptorSetLayout});
+		VKHelper::createPipelineLayout(getDevice(), *layout, {particleComputeDescriptorSetLayout});
 
 		VkDynamicState dynamicStateEnables[1];
 		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
@@ -258,7 +287,7 @@ class ParticleSystemWindow : public VKWindow {
 		compShaderStageInfo.pName = "main";
 
 		/*	Set descriptior layout of pipeline.	*/
-		std::array<VkDescriptorSetLayoutBinding, 3> uboLayoutBindings;
+		std::array<VkDescriptorSetLayoutBinding, 2> uboLayoutBindings;
 		/*	*/
 		uboLayoutBindings[0].binding = 0;
 		uboLayoutBindings[0].descriptorCount = 1;
@@ -268,21 +297,15 @@ class ParticleSystemWindow : public VKWindow {
 
 		uboLayoutBindings[1].binding = 1;
 		uboLayoutBindings[1].descriptorCount = 1;
-		uboLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		uboLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		uboLayoutBindings[1].pImmutableSamplers = nullptr;
 		uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		uboLayoutBindings[2].binding = 2;
-		uboLayoutBindings[2].descriptorCount = 1;
-		uboLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBindings[2].pImmutableSamplers = nullptr;
-		uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		/*	*/
+		VKHelper::createDescriptorSetLayout(getDevice(), particleComputeDescriptorSetLayout, uboLayoutBindings);
 
 		/*	*/
-		VKHelper::createDescriptorSetLayout(getDevice(), particleDescriptorSetLayout, uboLayoutBindings);
-
-		/*	*/
-		VKHelper::createPipelineLayout(getDevice(), *layout, {particleDescriptorSetLayout});
+		VKHelper::createPipelineLayout(getDevice(), *layout, {particleComputeDescriptorSetLayout});
 
 		pipeline = VKHelper::createComputePipeline(getDevice(), *layout, compShaderStageInfo);
 
@@ -295,9 +318,9 @@ class ParticleSystemWindow : public VKWindow {
 
 		std::array<VkDescriptorPoolSize, 2> poolSize;
 		poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize[0].descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
+		poolSize[0].descriptorCount = static_cast<uint32_t>(getSwapChainImageCount() * 2);
 		poolSize[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		poolSize[1].descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
+		poolSize[1].descriptorCount = static_cast<uint32_t>(getSwapChainImageCount() * 2);
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -307,17 +330,27 @@ class ParticleSystemWindow : public VKWindow {
 
 		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
-		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), particleDescriptorSetLayout);
+		// TODO fix descriptor set allocation.
+		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), particleComputeDescriptorSetLayout);
+		for (int i = 0; i < getSwapChainImageCount(); i++)
+			layouts.push_back(particleGraphicDescriptorSetLayout);
+
 		VkDescriptorSetAllocateInfo allocdescInfo{};
 		allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocdescInfo.descriptorPool = descpool;
-		allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
+		allocdescInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
 		allocdescInfo.pSetLayouts = layouts.data();
 
-		particleComputeDescriptorSets.resize(getSwapChainImageCount());
-		particleDescriptorSets.resize(getSwapChainImageCount());
-		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, particleComputeDescriptorSets.data()));
-		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, particleDescriptorSets.data()));
+		std::vector<VkDescriptorSet> descSet(allocdescInfo.descriptorSetCount, VK_NULL_HANDLE);
+
+		/*	Allocate descriptor set for both compute and graphic pipeline.	*/
+		VKS_VALIDATE(vkAllocateDescriptorSets(this->getDevice(), &allocdescInfo, descSet.data()));
+
+		particleComputeDescriptorSets.assign(descSet.begin(), descSet.begin() + 2);
+		particleGraphicDescriptorSets.assign(descSet.begin() + 3, descSet.end());
+
+		assert(particleComputeDescriptorSets.size() == 3);
+		assert(particleGraphicDescriptorSets.size() == 3);
 
 		for (size_t i = 0; i < particleComputeDescriptorSets.size(); i++) {
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
@@ -340,24 +373,16 @@ class ParticleSystemWindow : public VKWindow {
 			descriptorWrites[1].dstSet = particleComputeDescriptorSets[i];
 			descriptorWrites[1].dstBinding = 1;
 			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			descriptorWrites[1].descriptorCount = 1;
 			descriptorWrites[1].pImageInfo = nullptr;
 			descriptorWrites[1].pBufferInfo = &bufferInfo;
 
-			VkWriteDescriptorSet descriptorWrite{};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = particleComputeDescriptorSets[i];
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &bufferInfo;
-
-			vkUpdateDescriptorSets(getDevice(), 1, &descriptorWrite, 0, nullptr);
+			vkUpdateDescriptorSets(this->getDevice(), static_cast<uint32_t>(descriptorWrites.size()),
+								   descriptorWrites.data(), 0, nullptr);
 		}
 
-		for (size_t i = 0; i < particleDescriptorSets.size(); i++) {
+		for (size_t i = 0; i < particleGraphicDescriptorSets.size(); i++) {
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
 			VkDescriptorBufferInfo bufferInfo{};
@@ -365,17 +390,8 @@ class ParticleSystemWindow : public VKWindow {
 			bufferInfo.offset = 0;
 			bufferInfo.range = sizeof(UniformBufferObject);
 
-			VkWriteDescriptorSet descriptorWrite{};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = particleDescriptorSets[i];
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &bufferInfo;
-
 			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = particleDescriptorSets[i];
+			descriptorWrites[0].dstSet = particleGraphicDescriptorSets[i];
 			descriptorWrites[0].dstBinding = 0;
 			descriptorWrites[0].dstArrayElement = 0;
 			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -384,7 +400,7 @@ class ParticleSystemWindow : public VKWindow {
 			descriptorWrites[0].pImageInfo = nullptr;
 
 			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = particleDescriptorSets[i];
+			descriptorWrites[1].dstSet = particleGraphicDescriptorSets[i];
 			descriptorWrites[1].dstBinding = 1;
 			descriptorWrites[1].dstArrayElement = 0;
 			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -396,7 +412,9 @@ class ParticleSystemWindow : public VKWindow {
 		}
 	}
 
-	virtual void Initialize() { /*	*/
+	virtual void Initialize() {
+
+		// TODO improve memory to align with the required by the driver
 		paramMemSize =
 			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment, paramMemSize);
 		const VkDeviceSize particleGraphicBufferSize = paramMemSize * getSwapChainImageCount();
@@ -415,6 +433,7 @@ class ParticleSystemWindow : public VKWindow {
 		this->particleSimUniformBuffers.resize(getSwapChainImageCount());
 		this->particleSimBufferMemories.resize(getSwapChainImageCount());
 
+		/*	Allocate memory.	*/
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			/*	Create uniform buffer.	*/
 			VKHelper::createBuffer(getDevice(), particleGraphicBufferSize, memProperties,
@@ -423,7 +442,7 @@ class ParticleSystemWindow : public VKWindow {
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   uniformBuffers[i], uniformBuffersMemories[i]);
 
-			/*	Create particle buffer.	*/
+			/*	Create particle uniform buffer.	*/
 			VKHelper::createBuffer(getDevice(), particleSimBufferSize, memProperties,
 								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
@@ -434,6 +453,15 @@ class ParticleSystemWindow : public VKWindow {
 			mapMemory.push_back(_data);
 		}
 
+		particleBuffers.resize(1);
+		particleBufferMemory.resize(1);
+		const size_t particle_buffer_size = sizeof(Particle) * nrParticles;
+		/*	Create particle buffer, on local device memory only.	*/
+		VKHelper::createBuffer(getDevice(), particle_buffer_size, memProperties,
+							   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+							   particleBuffers[0], particleBufferMemory[0]);
+
 		initDescriptor();
 
 		onResize(width(), height());
@@ -442,6 +470,10 @@ class ParticleSystemWindow : public VKWindow {
 	}
 
 	virtual void onResize(int width, int height) override {
+
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		/*	*/
+
 		for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers(i);
 
@@ -466,18 +498,20 @@ class ParticleSystemWindow : public VKWindow {
 			renderPassInfo.pClearValues = clearValues.data();
 
 			/*	Update particles.	*/
+			// TODO validate memory barrier, being not read for rendering.
 			VKHelper::memoryBarrier(cmd, 0, 0, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
 									VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, particleSim);
 			// Bind descriptor
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, this->particleSimLayout, 0, 1,
-									&this->particleDescriptorSets[i], 0, nullptr);
-
+									&this->particleComputeDescriptorSets[i], 0, nullptr);
 			const int localInvokation = 32;
-
+			/*	Update particle simulation.	*/
 			vkCmdDispatch(cmd, nrParticles / localInvokation, 1, 1);
 
 			// Barrier between compute and vertex
+			// TODO validate memory barrier. make sure that the particles has been updated before being read.
 			VKHelper::memoryBarrier(cmd, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
 									VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
 
@@ -492,7 +526,7 @@ class ParticleSystemWindow : public VKWindow {
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(cmd, 0, 1, &particleBuffers[i], offsets);
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, particleGraphicLayout, 0, 1,
-									&particleComputeDescriptorSets[i], 0, nullptr);
+									&particleGraphicDescriptorSets[i], 0, nullptr);
 			// Draw particles
 			vkCmdDraw(cmd, nrParticles, 1, 0, 0);
 
@@ -504,15 +538,16 @@ class ParticleSystemWindow : public VKWindow {
 	virtual void draw() {
 		this->time.update();
 
+		std::cout << time.getElapsed() << std::endl;
 		cameraController.update(this->time.deltaTime());
 		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = glm::mat4(1.0f);
-		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-		// this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45), glm::vec3(0.0f, 1.0f, 0.0f));
+		this->mvp.view = cameraController.getViewMatrix();
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
-		// Setup the range
+		/*	Copy uniform memory.	*/
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
+
+		/* Setup the range	*/
 		VkMappedMemoryRange stagingRange{};
 		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 		stagingRange.memory = uniformBuffersMemories[getCurrentFrameIndex()];
@@ -523,16 +558,18 @@ class ParticleSystemWindow : public VKWindow {
 };
 
 int main(int argc, const char **argv) {
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
-	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_device_extensions);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
-		ParticleSystemWindow window(core, d);
 
-		window.run();
+	// TODO add custom argument options for adding path of the texture and what type.
+	try {
+		VKSampleWindow<ParticleSystemWindow> particleSystem(argc, argv, required_device_extensions, {},
+															required_instance_extensions);
+		particleSystem.run();
+
 	} catch (std::exception &ex) {
-		// std::cerr << ex.what();
+		std::cerr << ex.what();
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

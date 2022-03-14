@@ -7,9 +7,9 @@
 [submodule "extern/SPIRV-Cross"]
 	path = extern/SPIRV-Cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross.git
-[submodule "extern/fvkcore"]
-	path = extern/fvkcore
-	url = https://github.com/voldien/fvkcore.git
 [submodule "extern/mimi-imgui"]
 	path = extern/mimi-imgui
 	url = https://github.com/voldien/mimi-imgui.git
+[submodule "extern/cxxopts"]
+	path = extern/cxxopts
+	url = https://github.com/jarro2783/cxxopts

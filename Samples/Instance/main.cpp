@@ -21,7 +21,7 @@ class InstanceWindow : public VKWindow {
   public:
 	InstanceWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		this->setTitle(std::string("Triangle"));
+		this->setTitle(std::string("Instance"));
 	}
 	~InstanceWindow() {}
 
@@ -266,16 +266,12 @@ class InstanceWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
-
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_device_extensions);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
-
-		InstanceWindow window(core, d);
-
-		window.run();
+		VKSampleWindow<InstanceWindow> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		mandel.run();
 	} catch (std::exception &ex) {
 		// std::cerr << ex.what();
 		return EXIT_FAILURE;

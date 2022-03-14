@@ -89,22 +89,33 @@ IF(Vulkan_FOUND)
     MESSAGE(STATUS "Vulkan: ${Vulkan_LIBRARY}")
 ENDIF()
 
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fvkcore EXCLUDE_FROM_ALL)
+############################################
+# Backend libraries
+############################################
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/SPIRV-Cross EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/cxxopts EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/mimi-imgui EXCLUDE_FROM_ALL)
 
 
-#INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/common)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/extern/flythough_camera)
 
-#SET(Vulkan_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/extern/Vulkan-Headers/include)
 
+###################################################
+# Backend common logic for all vulkan Samples
+####################################################
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/common)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/common/Importer)
 
+####################################
+#	Vulkan Samples
+####################################
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/VulkanComplete)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/StartupWindow)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/RenderHeadless)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/computeheadless)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Triangle)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Cube)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/SkyBox)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/PushConstant)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Instance)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/particle-systems)
@@ -118,10 +129,12 @@ ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/GameOfLife)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/SignedDistanceFieldVolume)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/SignedDistanceFieldTexture)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/VideoPlayback)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Tessellation)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/StencilShadowVolume)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/SilhouetteDetection)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/ShadowMap)
 
+# All shader files.
 FILE(GLOB_RECURSE GLSL_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert
@@ -146,6 +159,7 @@ add_custom_target(
     Shaders
     DEPENDS ${SPIRV_BINARY_FILES}
     )
+#TODO add dep shaders and all.
 
 IF(BUILD_WTIH_TEST)
 	ENABLE_TESTING()

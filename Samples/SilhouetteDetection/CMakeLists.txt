@@ -2,8 +2,8 @@ FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 ADD_EXECUTABLE(SilhouetteDetection ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(SilhouetteDetection ${Vulkan_LIBRARIES} vkcommon)
-ADD_DEPENDENCIES(SilhouetteDetection vkcommon)
+TARGET_LINK_LIBRARIES(SilhouetteDetection ${Vulkan_LIBRARIES} vk-sample-common)
+ADD_DEPENDENCIES(SilhouetteDetection vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(SilhouetteDetection PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

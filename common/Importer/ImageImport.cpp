@@ -57,10 +57,7 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 			*pformat = (Format)TextureFormat::BGRA32; // eBGR;
 		if (pinternalformat)
 			*pinternalformat = (Format)GraphicFormat::R8G8B8A8_SRGB; // eRGB;
-		/*			if (pformat)
-						*pformat = eBGRA;
-					if (pinternalformat)
-						*pinternalformat = eRGBA;*/
+
 		bpp = 4;
 		break;
 	case FIC_MINISWHITE:
@@ -90,7 +87,7 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 		*pixelSize = (unsigned long int)FreeImage_GetWidth(firsbitmap) *
 					 (unsigned long int)FreeImage_GetHeight(firsbitmap) *
 					 (unsigned long int)FreeImage_GetBPP(firsbitmap);
-		//Multiple of 8.
+		// Multiple of 8.
 		*pixelSize += *pixelSize % 8;
 		*pixelSize /= 8;
 	}
@@ -166,8 +163,16 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 	memcpy(stageData, pixels, static_cast<size_t>(imageSize));
 	vkUnmapMemory(device, stagingBufferMemory);
 
+	VkFormat vk_format = VK_FORMAT_R8G8B8A8_SRGB;
+	if (internal == GraphicFormat::R8G8B8A8_SRGB) {
+		vk_format = VK_FORMAT_R8G8B8A8_SRGB;
+	} else if (internal == GraphicFormat::R8G8B8_SRGB) {
+		vk_format = VK_FORMAT_B8G8R8_SRGB;
+	}
+	vk_format = VK_FORMAT_R8G8B8A8_SRGB;
+	
 	/*	Create staging buffer.	*/
-	VKHelper::createImage(device, texWidth, texHeight, 1, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+	VKHelper::createImage(device, texWidth, texHeight, 1, vk_format, VK_IMAGE_TILING_OPTIMAL,
 						  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, textureImage, textureImageMemory);
 	/*	*/

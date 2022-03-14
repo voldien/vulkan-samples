@@ -1,6 +1,6 @@
 
-#include <VKWindow.h>
-#include <stdexcept>
+#include <VksCommon.h>
+
 /**
  *
  */
@@ -20,8 +20,10 @@ class RayTracing : public VKWindow {
 			VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR, raytracingFeatures);
 		getVKDevice()->getPhysicalDevices()[0]->getProperties(
 			VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR, prop);
-		if (!raytracingFeatures.rayTracingPipeline)
+		if (!raytracingFeatures.rayTracingPipeline) {
 			throw cxxexcept::RuntimeException("RayTracing not supported!");
+		}
+
 		//		  vkGetPhysicalDeviceProperties2(getPhyiscalDevices(), )
 
 		onResize(width(), height());
@@ -40,9 +42,6 @@ class RayTracing : public VKWindow {
 
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
-			/*	Transfer the new data 	*/
-			// vkCmdTran
-
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
@@ -55,19 +54,26 @@ class RayTracing : public VKWindow {
 			renderPassInfo.clearValueCount = 1;
 			renderPassInfo.pClearValues = &clearColor;
 
-			// /*	*/
-			// vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+			VkViewport viewport = {
+				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
+			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-			// VkBuffer vertexBuffers[] = {vertexBuffer};
-			// VkDeviceSize offsets[] = {0};
-			// vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
+			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i],
-			// 0, 						nullptr);
+			// vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipeline);
+			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipelineLayout, 0,
+			// 						(uint32_t)descSets.size(), descSets.data(), 0, nullptr);
+			// vkCmdPushConstants(cmd, m_rtPipelineLayout,
+			// 				   VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
+			// 					   VK_SHADER_STAGE_MISS_BIT_KHR,
+			// 				   0, sizeof(PushConstantRay), &m_pcRay);
+
+			// vkCmdTraceRaysKHR(cmd, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, m_size.width,
+			// 				  m_size.height, 1);
 
 			// vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
 
-			// vkCmdEndRenderPass(cmd);
+			vkCmdEndRenderPass(cmd);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
@@ -76,17 +82,14 @@ class RayTracing : public VKWindow {
 
 int main(int argc, const char **argv) {
 
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{"VK_KHR_ray_tracing_pipeline", true},
 																		 {"VK_KHR_acceleration_structure", true}};
-	std::unordered_map<const char *, bool> required_instance_layers = {};
-	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
-		std::vector<std::shared_ptr<PhysicalDevice>> p = core->createPhysicalDevices();
-		printf("%s\n", p[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p, required_device_extensions);
-		RayTracing window(core, d);
 
-		window.run();
+	try {
+		VKSampleWindow<RayTracing> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		sample.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

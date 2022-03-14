@@ -1,49 +1,60 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+
 layout(local_size_x = 32, local_size_y = 1) in;
 
+//TODO refractor.
 struct particle_t {
-	vec2 pos;
-	vec2 velocity;
+	vec3 pos;
+	vec4 velocity;
 	float t;
-	// float x, y;		  /*	Position.	*/
-	// float xdir, ydir; /*	Velocity.	*/
 };
 
-layout(std430, set = 0, binding = 0) buffer Positions
-{
-	particle_t pos[];
-} positions;
+layout(std430, set = 0, binding = 0) buffer Positions { particle_t pos[]; }
+positions;
 
-/**
- *
- */
 struct particle_param_t {
 	float deltaTime;
-	int nrSamples;
+	// Particle configurable 
 };
 
 layout(set = 0, binding = 1) uniform params { particle_param_t _params; }
 u_pushConstants;
 
-// layout(set = 0, binding = 1, std430) readonly buffer Velocity
-// {
-// 	vec2 vel[];
-// } velocities;
+float rand(vec2 co) {
+	highp float a = 12.9898;
+	highp float b = 78.233;
+	highp float c = 43758.5453;
+	highp float dt = dot(co.xy, vec2(a, b));
+	highp float sn = mod(dt, 3.14);
+	return fract(sin(sn) * c);
+}
 
+void main() {
+	uint index = gl_GlobalInvocationID.x;
 
-void main()
-{
-	vec2 current_pos = positions.pos[gl_GlobalInvocationID.x].pos;
-	//vec2 velocity = velocities.vel[gl_GlobalInvocationID.x];
+	vec3 force_impulse = vec3(0);
 
-	// current_pos += velocity;
-	// if (current_pos.x > 0.95 ||
-	// 	current_pos.x < -0.95 ||
-	// 	current_pos.y > 0.95 ||
-	// 	current_pos.y < -0.95)
-	// {
-	// 	current_pos = -2.0 * velocity + current_pos * 0.05;
-	// }
-	// positions.pos[gl_GlobalInvocationID.x] = current_pos;
+	for (int i = 0; i < 32; i++) {
+		//forcePoint += attractors[i].xyz;
+	}
+
+	vec4 vel = positions.pos[index].velocity;
+	vec3 pos = positions.pos[index].pos;
+	float newW = positions.pos[index].t;
+
+	float newDT;
+	vec3 s;
+	newW -= 0.0001 * newDT;
+
+	if (newW <= 0) {
+		s = -s + rand(s.xy) * 20.0 - rand(s.yz) * 20.0;
+		// v.xyz *= 0.01f;
+		newW = 0.99;
+	}
+	vec3 v;
+
+	positions.pos[index].t = newW;
+	positions.pos[index].pos = s;
+	positions.pos[index].velocity = vec4(v, vel.w);
 }

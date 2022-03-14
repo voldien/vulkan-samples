@@ -1,4 +1,5 @@
 #include "FPSCounter.h"
+#include "VKSampleWindow.h"
 #include "VksCommon.h"
 #include <VKWindow.h>
 #include <glm/glm.hpp>
@@ -9,6 +10,9 @@ class MandelBrotWindow : public VKWindow {
 	VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
 	VkPipeline computePipeline = VK_NULL_HANDLE;
 	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+
+	std::vector<VkImage> mandelBrotImage;
+	std::vector<VkDeviceMemory> mandelBrotImageMemory;
 
 	std::vector<VkImageView> computeImageViews;
 
@@ -35,6 +39,7 @@ class MandelBrotWindow : public VKWindow {
 	MandelBrotWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(std::string("MandelBrot"));
+		this->show();
 		//	fpsCounter = FPSCounter(100);
 	}
 	~MandelBrotWindow() {}
@@ -99,8 +104,7 @@ class MandelBrotWindow : public VKWindow {
 	virtual void Initialize() override {
 
 		paramMemSize =
-			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment,
-					 paramMemSize);
+			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment, paramMemSize);
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
 
@@ -139,6 +143,18 @@ class MandelBrotWindow : public VKWindow {
 	virtual void onResize(int width, int height) override {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
+
+		/*	Create reaction diffusion image and buffer.	*/
+		mandelBrotImage.resize(getSwapChainImageCount());
+		mandelBrotImageMemory.resize(getSwapChainImageCount());
+		for (unsigned int i = 0; i < mandelBrotImageMemory.size(); i++) {
+
+			VKHelper::createImage(
+				getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+				mandelBrotImage[i], mandelBrotImageMemory[i]);
+		}
 
 		/*	*/
 		computeImageViews.resize(getSwapChainImageCount());
@@ -264,16 +280,15 @@ class MandelBrotWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_device_extensions = {};
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_device_extensions);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
+		VKSampleWindow<MandelBrotWindow> mandel(argc, argv, required_device_extensions, {},
+												required_instance_extensions);
+		mandel.run();
 
-		std::shared_ptr<VKDevice> ldevice = std::make_shared<VKDevice>(devices, required_device_extensions);
-
-		MandelBrotWindow window(core, ldevice);
-
-		window.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

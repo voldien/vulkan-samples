@@ -266,13 +266,8 @@ int main(int argc, const char **argv) {
 																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
-		std::vector<std::shared_ptr<PhysicalDevice>> p = core->createPhysicalDevices();
-		printf("%s\n", p[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p, required_device_extensions);
-		TriangleWindow window(core, d);
-
-		window.run();
+		VKSampleWindow<TriangleWindow> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		mandel.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

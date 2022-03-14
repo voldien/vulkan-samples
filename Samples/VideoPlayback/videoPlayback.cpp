@@ -2,6 +2,7 @@
 #include "Importer/ImageImport.h"
 #include "VKSampleWindow.h"
 #include "VksCommon.h"
+#include <OpenALAudioInterface.h>
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 
@@ -40,21 +41,27 @@ class AVVideoPlaybackWindow : public VKWindow {
 	std::array<VkDeviceMemory, nrVideoFrames> videoStagingFrameMemory;
 	std::array<void *, nrVideoFrames> mapMemory;
 	FPSCounter<float> fpsCounter;
+	std::shared_ptr<fragcore::OpenALAudioInterface> audioInterface;
 
 	/*  */
-	struct AVFormatContext *pformatCtx;
-	struct AVCodecContext *pVideoCtx;
-	struct AVCodecContext *pAudioCtx;
+	struct AVFormatContext *pformatCtx = nullptr;
+	struct AVCodecContext *pVideoCtx = nullptr;
+	struct AVCodecContext *pAudioCtx = nullptr;
 
 	/*  */
 	int videoStream;
 	int audioStream;
 	size_t video_width;
 	size_t video_height;
+
+	size_t audio_sample_rate;
+	size_t audio_bit_rate;
+	size_t audio_channel;
+
 	/*  */
-	struct AVFrame *frame;
-	struct AVFrame *frameoutput;
-	struct SwsContext *sws_ctx;
+	struct AVFrame *frame = nullptr;
+	struct AVFrame *frameoutput = nullptr;
+	struct SwsContext *sws_ctx = nullptr;
 
 	unsigned int flag;
 	double video_clock;
@@ -72,21 +79,22 @@ class AVVideoPlaybackWindow : public VKWindow {
 		this->show();
 	}
 	~AVVideoPlaybackWindow() {
-		av_frame_free(&frame);
-		avcodec_free_context(&pAudioCtx);
-		avcodec_free_context(&pVideoCtx);
+		if (this->frame)
+			av_frame_free(&this->frame);
+		avcodec_free_context(&this->pAudioCtx);
+		avcodec_free_context(&this->pVideoCtx);
 
-		avformat_close_input(&pformatCtx);
-		avformat_free_context(pformatCtx);
+		avformat_close_input(&this->pformatCtx);
+		avformat_free_context(this->pformatCtx);
 	}
 
 	virtual void Release() override {
 
 		for (int i = 0; i < nrVideoFrames; i++) {
-			vkDestroyImage(getDevice(), videoFrames[i], nullptr);
-			vkFreeMemory(getDevice(), videoFrameMemory[i], nullptr);
-			vkFreeMemory(getDevice(), videoStagingFrameMemory[i], nullptr);
-			vkDestroyBuffer(getDevice(), videoStagingFrames[i], nullptr);
+			vkDestroyImage(this->getDevice(), videoFrames[i], nullptr);
+			vkFreeMemory(this->getDevice(), videoFrameMemory[i], nullptr);
+			vkFreeMemory(this->getDevice(), videoStagingFrameMemory[i], nullptr);
+			vkDestroyBuffer(this->getDevice(), videoStagingFrames[i], nullptr);
 		}
 	}
 
@@ -104,13 +112,13 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if (result != 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw cxxexcept::RuntimeException(fmt::format("Failed to open input : %s", buf));
+			throw cxxexcept::RuntimeException("Failed to open input : %s", buf);
 		}
 
 		if ((result = avformat_find_stream_info(this->pformatCtx, nullptr)) < 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw cxxexcept::RuntimeException(fmt::format("Failed to retrieve info from stream info : {}", buf));
+			throw cxxexcept::RuntimeException("Failed to retrieve info from stream info : {}", buf);
 		}
 
 		struct AVStream *video_st = nullptr;
@@ -140,7 +148,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 		/*  Get selected codec parameters. */
 		if (!video_st)
-			throw cxxexcept::RuntimeException(fmt::format("Failed to find a video stream in {}.", path));
+			throw cxxexcept::RuntimeException("Failed to find a video stream in {}.", path);
 
 		if (audio_st) {
 			AVCodecParameters *pAudioCodecParam = audio_st->codecpar;
@@ -155,15 +163,19 @@ class AVVideoPlaybackWindow : public VKWindow {
 			if (result < 0) {
 				char buf[AV_ERROR_MAX_STRING_SIZE];
 				av_strerror(result, buf, sizeof(buf));
-				throw cxxexcept::RuntimeException(fmt::format("Failed to set codec parameters : {}", buf));
+				throw cxxexcept::RuntimeException("Failed to set codec parameters : {}", buf);
 			}
 
 			result = avcodec_open2(this->pAudioCtx, audioCodec, nullptr);
 			if (result < 0) {
 				char buf[AV_ERROR_MAX_STRING_SIZE];
 				av_strerror(result, buf, sizeof(buf));
-				throw cxxexcept::RuntimeException(fmt::format("Failed to retrieve info from stream info : {}", buf));
+				throw cxxexcept::RuntimeException("Failed to retrieve info from stream info : {}", buf);
 			}
+
+			this->audio_bit_rate = pAudioCodecParam->bit_rate;
+			this->audio_sample_rate = pAudioCodecParam->sample_rate;
+			this->audio_channel = pAudioCodecParam->channels;
 		}
 
 		AVCodecParameters *pVideoCodecParam = video_st->codecpar;
@@ -186,7 +198,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if (result < 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw cxxexcept::RuntimeException(fmt::format("Failed to set codec parameters : {}", buf));
+			throw cxxexcept::RuntimeException("Failed to set codec parameters : {}", buf);
 		}
 		// av_find_best_pix_fmt_of_2
 		// avcodec_default_get_format()
@@ -194,7 +206,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		if ((result = avcodec_open2(this->pVideoCtx, pVideoCodec, nullptr)) != 0) {
 			char buf[AV_ERROR_MAX_STRING_SIZE];
 			av_strerror(result, buf, sizeof(buf));
-			throw cxxexcept::RuntimeException(fmt::format("Failed to retrieve info from stream info : {}", buf));
+			throw cxxexcept::RuntimeException("Failed to retrieve info from stream info : {}", buf);
 		}
 
 		video_width = this->pVideoCtx->width;
@@ -204,7 +216,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		this->frameoutput = av_frame_alloc();
 
 		if (this->frame == nullptr || this->frameoutput == nullptr)
-			throw cxxexcept::RuntimeException(fmt::format("Failed to allocate frame"));
+			throw cxxexcept::RuntimeException("Failed to allocate frame");
 
 		size_t m_bufferSize =
 			av_image_get_buffer_size(AV_PIX_FMT_RGBA, this->pVideoCtx->width, this->pVideoCtx->height, 4);
@@ -218,8 +230,32 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 		this->frame_timer = av_gettime() / 1000000.0;
 	}
+	fragcore::AudioClip *clip;
+	fragcore::AudioListener *listener;
+	fragcore::AudioSource *audioSource;
 
 	virtual void Initialize() override {
+
+		this->audioInterface = std::make_shared<fragcore::OpenALAudioInterface>(nullptr);
+
+		fragcore::AudioListenerDesc list_desc = {.position = fragcore::Vector3(0, 0, 0),
+												 .rotation = fragcore::Quaternion::Identity()};
+		list_desc.position = fragcore::Vector3::Zero();
+		listener = audioInterface->createAudioListener(&list_desc);
+		listener->setVolume(1.0f);
+		fragcore::AudioSourceDesc source_desc = {};
+		source_desc.position = fragcore::Vector3::Zero();
+		audioSource = audioInterface->createAudioSource(&source_desc);
+
+		fragcore::AudioClipDesc clip_desc = {};
+		clip_desc.decoder = nullptr;
+		clip_desc.samples = audio_sample_rate;
+		clip_desc.sampleRate = audio_bit_rate;
+		clip_desc.format = fragcore::AudioFormat::eStero;
+		clip_desc.datamode = fragcore::AudioDataMode::Streaming;
+
+		this->clip = audioInterface->createAudioClip(&clip_desc);
+
 		loadVideo(path.c_str());
 
 		/*	*/
@@ -315,8 +351,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 				if (result < 0) {
 					char buf[AV_ERROR_MAX_STRING_SIZE];
 					av_strerror(result, buf, sizeof(buf));
-					throw cxxexcept::RuntimeException(
-						fmt::format("Failed to send packet for decoding picture frame : {}", buf));
+					throw cxxexcept::RuntimeException("Failed to send packet for decoding picture frame : {}", buf);
 				}
 
 				while (result >= 0) {
@@ -326,7 +361,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 					if (result < 0) {
 						char buf[AV_ERROR_MAX_STRING_SIZE];
 						av_strerror(result, buf, sizeof(buf));
-						throw cxxexcept::RuntimeException(fmt::format(" : {}", buf));
+						throw cxxexcept::RuntimeException(" : {}", buf);
 					}
 
 					if (this->frame->format == AV_PIX_FMT_YUV420P) {
@@ -371,6 +406,9 @@ int main(int argc, const char **argv) {
 																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
+		// VKSampleWindow<AVVideoPlaybackWindow> mandel(argc, argv, required_device_extensions, {},
+		// 											 required_instance_extensions);
+		// mandel.run();
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		printf("%s\n", devices[0]->getDeviceName());

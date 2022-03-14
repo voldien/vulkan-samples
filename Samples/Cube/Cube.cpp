@@ -8,6 +8,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
+// TODO fix UV of the cube!
 class CubeWindow : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
@@ -64,9 +65,9 @@ class CubeWindow : public VKWindow {
 	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 0, 0}, // triangle 1 : begin
 										  {-1.0f, -1.0f, 1.0f, 0, 1},
 										  {-1.0f, 1.0f, 1.0f, 1, 1}, // triangle 1 : end
-										  {1.0f, 1.0f, -1.0f, 0, 0}, // triangle 2 : begin
-										  {-1.0f, -1.0f, -1.0f, 1, 1},
-										  {-1.0f, 1.0f, -1.0f, 1, 0}, // triangle 2 : end
+										  {1.0f, 1.0f, -1.0f, 1, 1}, // triangle 2 : begin
+										  {-1.0f, -1.0f, -1.0f, 1, 0},
+										  {-1.0f, 1.0f, -1.0f, 0, 0}, // triangle 2 : end
 										  {1.0f, -1.0f, 1.0f, 0, 0},
 										  {-1.0f, -1.0f, -1.0f, 0, 1},
 										  {1.0f, -1.0f, -1.0f, 1, 1},
@@ -460,13 +461,9 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-		printf("%s\n", devices[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices, required_device_extensions);
-		CubeWindow window(core, d);
+		VKSampleWindow<CubeWindow> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		mandel.run();
 
-		window.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

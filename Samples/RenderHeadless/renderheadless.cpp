@@ -54,19 +54,15 @@ class StartUpWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_device_extensions = {};
-	std::unordered_map<const char *, bool> required_instance_layers = {};
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, false},
+																		   {"VK_KHR_xlib_surface", false}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, false}};
 
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-		printf("%s\n", devices[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices, required_device_extensions);
-		StartUpWindow window(core, d);
-
-		window.run();
+		VKSampleWindow<StartUpWindow> skybox(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		skybox.run();
 	} catch (std::exception &ex) {
-		// std::cerr << ex.what();
+		std::cerr << ex.what();
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

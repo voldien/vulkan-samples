@@ -2,8 +2,8 @@ FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 ADD_EXECUTABLE(ReactionDiffusion ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(ReactionDiffusion ${Vulkan_LIBRARIES} vkcommon )
-ADD_DEPENDENCIES(ReactionDiffusion vkcommon)
+TARGET_LINK_LIBRARIES(ReactionDiffusion ${Vulkan_LIBRARIES} vk-sample-common )
+ADD_DEPENDENCIES(ReactionDiffusion vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(ReactionDiffusion PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

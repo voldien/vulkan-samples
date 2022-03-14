@@ -49,8 +49,10 @@ class SingleTextureWindow : public VKWindow {
 
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
+		/*	*/
 		vkDestroySampler(getDevice(), sampler, nullptr);
 
+		/*	*/
 		vkDestroyImageView(getDevice(), textureView, nullptr);
 		vkDestroyImage(getDevice(), texture, nullptr);
 		vkFreeMemory(getDevice(), textureMemory, nullptr);
@@ -285,8 +287,8 @@ class SingleTextureWindow : public VKWindow {
 
 		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
-		ImageImporter::createImage("/home/voldie/test.png", getDevice(), getGraphicCommandPool(),
-								   getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
+		ImageImporter::createImage("uv-texture.png", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
+								   physicalDevice(), texture, textureMemory);
 
 		vkEndCommandBuffer(cmds[0]);
 		this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
@@ -296,8 +298,6 @@ class SingleTextureWindow : public VKWindow {
 
 		textureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8A8_SRGB,
 												VK_IMAGE_ASPECT_COLOR_BIT, 1);
-
-		// VKHelper::createImageView();
 
 		VKHelper::createSampler(getDevice(), sampler);
 
@@ -331,18 +331,6 @@ class SingleTextureWindow : public VKWindow {
 															}};
 
 		descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
-
-		// VkDescriptorPoolSize poolSize{};
-		// poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		// poolSize.descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
-
-		// VkDescriptorPoolCreateInfo poolInfo{};
-		// poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		// poolInfo.poolSizeCount = 1;
-		// poolInfo.pPoolSizes = &poolSize;
-		// poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
-
-		// vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
@@ -440,9 +428,6 @@ class SingleTextureWindow : public VKWindow {
 
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
-			/*	Transfer the new data 	*/
-			// vkCmdTran
-
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
@@ -458,22 +443,6 @@ class SingleTextureWindow : public VKWindow {
 			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 			renderPassInfo.pClearValues = clearValues.data();
 
-			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
-
-			VkBufferMemoryBarrier ub_barrier = {
-				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-				.pNext = nullptr,
-				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-				.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-				.buffer = uniformBuffers[i],
-				.offset = 0,
-				.size = sizeof(mvp),
-			};
-			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
-
-			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
-			// 1, 					 &ub_barrier, 0, NULL);
 			VkViewport viewport = {
 				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
@@ -523,16 +492,14 @@ class SingleTextureWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_device_extensions = {};
-	std::unordered_map<const char *, bool> required_instance_layers = {};
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-		printf("%s\n", devices[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
-		SingleTextureWindow window(core, d);
-
-		window.run();
+		VKSampleWindow<SingleTextureWindow> skybox(argc, argv, required_device_extensions, {},
+												   required_instance_extensions);
+		skybox.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

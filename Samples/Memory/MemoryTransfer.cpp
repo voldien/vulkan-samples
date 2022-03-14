@@ -1,6 +1,7 @@
 #include "Importer/ImageImport.h"
 #include "VKUtil.h"
 #include "VksCommon.h"
+#include <cxxopts.hpp>
 #include <fmt/format.h>
 
 static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue transfer, VkCommandBuffer cmd,
@@ -45,9 +46,151 @@ static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue tran
 	std::cout << resultMsg << std::endl;
 }
 
+class MemoryTransfer : public VKSampleSession {
+  public:
+	MemoryTransfer(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device) {}
+
+	virtual void run() override {
+		const int nrTransferSamples = 100;
+		/*	1KB, 1MB, 128MB, 512MB.	*/
+		const std::array<VkDeviceSize, 4> memorySizes = {1024, 1024 * 1024, 1024 * 1024 * 128, 1024 * 1024 * 512};
+
+		std::vector<int64_t> timeSample(nrTransferSamples);
+
+		std::vector<VkBuffer> stagingBuffer(memorySizes.size());
+		std::vector<VkBuffer> cpu2gpuBuffer(memorySizes.size());
+		std::vector<VkBuffer> gpu2gpuBufferSrc(memorySizes.size());
+		std::vector<VkBuffer> gpu2gpuBufferDst(memorySizes.size());
+		std::vector<VkBuffer> gpu2cpuBufferSrc(memorySizes.size());
+		std::vector<VkBuffer> gpu2cpuBufferDst(memorySizes.size());
+
+		std::vector<VkDeviceMemory> staging(memorySizes.size());
+		std::vector<VkDeviceMemory> cpu2gpu(memorySizes.size());
+		std::vector<VkDeviceMemory> gpu2gpu_src(memorySizes.size());
+		std::vector<VkDeviceMemory> gpu2gpu_dst(memorySizes.size());
+		std::vector<VkDeviceMemory> gpu2cpu_src(memorySizes.size());
+		std::vector<VkDeviceMemory> gpu2cpu_dst(memorySizes.size());
+
+		try {
+			VkQueue transfer = getVKDevice()->getDefaultTransfer();
+
+			const VkPhysicalDeviceMemoryProperties &memProp = device->getPhysicalDevices()[0]->getMemoryProperties();
+
+			VkCommandPool commandPool = device->createCommandPool(device->getDefaultTransferQueueIndex());
+			std::vector<VkCommandBuffer> cmds =
+				device->allocateCommandBuffers(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+
+			/*	CPU->GPU	*/
+			/*	Allocate all buffers.	*/
+			for (size_t i = 0; i < memorySizes.size(); i++) {
+				VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+									   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, stagingBuffer[i], staging[i]);
+
+				VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp,
+									   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
+									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, cpu2gpuBuffer[i], cpu2gpu[i]);
+			}
+			std::cout << "\nCPU to GPU Buffer Memory Transfer Speed" << std::endl;
+			for (size_t i = 0; i < memorySizes.size(); i++) {
+				bufferMemoryTransfer(device, transfer, cmds[0], timeSample, stagingBuffer[i], cpu2gpuBuffer[i],
+									 memorySizes[i]);
+			}
+
+			for (size_t i = 0; i < memorySizes.size(); i++) {
+				vkDestroyBuffer(device->getHandle(), stagingBuffer[i], nullptr);
+				vkFreeMemory(device->getHandle(), staging[i], nullptr);
+				vkDestroyBuffer(device->getHandle(), cpu2gpuBuffer[i], nullptr);
+				vkFreeMemory(device->getHandle(), cpu2gpu[i], nullptr);
+			}
+
+			/*	Allocate all buffers.	*/
+			for (size_t i = 0; i < memorySizes.size(); i++) {
+
+				/*	*/
+				VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, gpu2gpuBufferSrc[i], gpu2gpu_src[i]);
+				VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, gpu2gpuBufferDst[i], gpu2gpu_dst[i]);
+			}
+
+			/*	GPU->GPU	*/
+			std::cout << "\nGPU to GPU Buffer Memory Transfer Speed" << std::endl;
+			for (size_t i = 0; i < memorySizes.size(); i++) {
+				bufferMemoryTransfer(device, transfer, cmds[0], timeSample, gpu2gpuBufferSrc[i], gpu2gpuBufferDst[i],
+									 memorySizes[i]);
+			}
+
+			for (size_t i = 0; i < memorySizes.size(); i++) {
+				vkDestroyBuffer(device->getHandle(), gpu2gpuBufferSrc[i], nullptr);
+				vkFreeMemory(device->getHandle(), gpu2gpu_src[i], nullptr);
+				vkDestroyBuffer(device->getHandle(), gpu2gpuBufferDst[i], nullptr);
+				vkFreeMemory(device->getHandle(), gpu2gpu_dst[i], nullptr);
+			}
+
+			/*	Allocate all buffers.	*/
+			for (size_t i = 0; i < memorySizes.size(); i++) {
+				VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, gpu2cpuBufferSrc[i], gpu2cpu_src[i]);
+				VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+									   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, gpu2cpuBufferDst[i], gpu2cpu_dst[i]);
+			}
+
+			/*	GPU->CPU	*/
+			std::cout << "\nGPU to CPU Buffer Memory Transfer Speed" << std::endl;
+			for (size_t i = 0; i < memorySizes.size(); i++) {
+				bufferMemoryTransfer(device, transfer, cmds[0], timeSample, gpu2cpuBufferSrc[i], gpu2cpuBufferDst[i],
+									 memorySizes[i]);
+			}
+
+			vkFreeCommandBuffers(device->getHandle(), commandPool, cmds.size(), cmds.data());
+			vkDestroyCommandPool(device->getHandle(), commandPool, nullptr);
+
+			/*	Release buffers.	*/
+			for (size_t i = 0; i < memorySizes.size(); i++) {
+				vkDestroyBuffer(device->getHandle(), gpu2cpuBufferSrc[i], nullptr);
+				vkFreeMemory(device->getHandle(), gpu2cpu_src[i], nullptr);
+				vkDestroyBuffer(device->getHandle(), gpu2cpuBufferDst[i], nullptr);
+				vkFreeMemory(device->getHandle(), gpu2cpu_dst[i], nullptr);
+			}
+		} catch (std::exception &ex) {
+			std::cerr << ex.what();
+		}
+	}
+};
+
 int main(int argc, const char **argv) {
 
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, false},
+																		   {"VK_KHR_xlib_surface", false}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, false}};
+
+	try {
+		VKSampleWindow<MemoryTransfer> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		mandel.run();
+
+	} catch (std::exception &ex) {
+		std::cerr << ex.what();
+		return EXIT_FAILURE;
+	}
+
 	const int nrTransferSamples = 100;
+	/*	Parse argument.	*/
+	const std::string helperInfo = "Memory Transfer Benchmark\n"
+								   "A simple analysis tool for compare memory performance between heaps."
+								   "";
+
+	cxxopts::Options options("Memory Transfer Benchmark", helperInfo);
+	options.add_options()("v,version", "Version information")("h,help", "helper information.")(
+		"d,debug", "Enable Debug View.", cxxopts::value<bool>()->default_value("false"))(
+		"g,gpu-device", "GPU Device Select", cxxopts::value<int32_t>()->default_value("-1"));
+	auto result = options.parse(argc, (char **&)argv);
+	/*	If mention help, Display help and exit!	*/
+	if (result.count("help") > 0) {
+		std::cout << options.help();
+		exit(EXIT_SUCCESS);
+		// TODO exit
+	}
+	int gpu_index = result["gpu-device"].as<int>();
 
 	/*	1KB, 1MB, 128MB, 512MB.	*/
 	const std::array<VkDeviceSize, 4> memorySizes = {1024, 1024 * 1024, 1024 * 1024 * 128, 1024 * 1024 * 512};
@@ -68,10 +211,12 @@ int main(int argc, const char **argv) {
 	std::vector<VkDeviceMemory> gpu2cpu_src(memorySizes.size());
 	std::vector<VkDeviceMemory> gpu2cpu_dst(memorySizes.size());
 
-	std::unordered_map<const char *, bool> required_device_extensions = {};
-	std::unordered_map<const char *, bool> required_instance_layers = {};
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
+		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
+		if (gpu_index >= 0) {
+
+		} else {
+		}
 		std::vector<std::shared_ptr<PhysicalDevice>> phyDevices = core->createPhysicalDevices();
 		std::shared_ptr<VKDevice> device = std::make_shared<VKDevice>(phyDevices, required_device_extensions);
 
@@ -155,7 +300,6 @@ int main(int argc, const char **argv) {
 			vkDestroyBuffer(device->getHandle(), gpu2cpuBufferDst[i], nullptr);
 			vkFreeMemory(device->getHandle(), gpu2cpu_dst[i], nullptr);
 		}
-
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;
