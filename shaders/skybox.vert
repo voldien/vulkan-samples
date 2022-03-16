@@ -7,22 +7,19 @@ layout(location = 0) out vec3 vVertex;
 /**
  *
  */
-struct skybox_param_t {
+
+
+layout(set = 0, binding = 0) uniform params {
 	mat4 model;
 	mat4 view;
 	mat4 proj;
 	mat4 modelView;
 	mat4 ModelViewProjection;
 	vec4 DiffuseColor;
-};
-
-layout(set = 0, binding = 0) uniform params { skybox_param_t _params; }
-
-u_pushConstants;
-
+} params_;
 
 void main() {
-	vec4 MVPPos = u_pushConstants._params.ModelViewProjection * vec4(vertex, 1.0);
+	vec4 MVPPos = params_.ModelViewProjection * vec4(vertex, 1.0);
 	gl_Position = MVPPos.xyww;
 	vVertex = vertex;
 }

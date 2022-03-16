@@ -97,7 +97,7 @@ void SDLWindow::maximize() { SDL_MaximizeWindow(this->window); }
 
 void SDLWindow::minimize() { SDL_MinimizeWindow(this->window); }
 
-VkSurfaceKHR SDLWindow::createSurface(std::shared_ptr<VulkanCore> &instance) {
+VkSurfaceKHR SDLWindow::createSurface(const std::shared_ptr<VulkanCore> &instance) {
 	VkSurfaceKHR surface;
 	bool surfaceResult = SDL_Vulkan_CreateSurface(this->window, instance->getHandle(), &surface);
 	if (surfaceResult == SDL_FALSE)

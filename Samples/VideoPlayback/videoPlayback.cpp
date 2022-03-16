@@ -255,6 +255,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		clip_desc.datamode = fragcore::AudioDataMode::Streaming;
 
 		this->clip = audioInterface->createAudioClip(&clip_desc);
+		this->audioSource->setClip(this->clip);
 
 		loadVideo(path.c_str());
 
@@ -276,6 +277,8 @@ class AVVideoPlaybackWindow : public VKWindow {
 				getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(), videoFrames[i], videoFrameMemory[i]);
 		}
 		onResize(width(), height());
+
+		this->audioSource->play();
 	}
 
 	virtual void onResize(int width, int height) override {
@@ -391,6 +394,36 @@ class AVVideoPlaybackWindow : public VKWindow {
 						nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
 					}
 				}
+			} else if (packet->stream_index == this->audioStream) {
+				result = avcodec_send_packet(this->pAudioCtx, packet);
+				if (result < 0) {
+					char buf[AV_ERROR_MAX_STRING_SIZE];
+					av_strerror(result, buf, sizeof(buf));
+					throw cxxexcept::RuntimeException("Failed to send packet for decoding audio frame : {}", buf);
+				}
+
+				while (result >= 0) {
+					result = avcodec_receive_frame(this->pAudioCtx, this->frame);
+					if (result == AVERROR(EAGAIN) || result == AVERROR_EOF)
+						break;
+					if (result < 0) {
+						char buf[AV_ERROR_MAX_STRING_SIZE];
+						av_strerror(result, buf, sizeof(buf));
+						throw cxxexcept::RuntimeException(" : {}", buf);
+					}
+					int data_size = av_get_bytes_per_sample(pAudioCtx->sample_fmt);
+
+					av_get_channel_layout_nb_channels(this->frame->channel_layout);
+					this->frame->format != AV_SAMPLE_FMT_S16P;
+					this->frame->channel_layout;
+
+					/*	Assign new audio data.	*/
+					for (int i = 0; i < frame->nb_samples; i++)
+						for (int ch = 0; ch < pAudioCtx->channels; ch++)
+							continue;
+					clip->setData(this->frame->data[0], data_size, 0);
+				}
+				// this->audioSource->play();
 			}
 		}
 		av_packet_unref(packet);

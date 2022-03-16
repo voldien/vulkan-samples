@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.h>
-
+// TODO use Window based on either fragcore or MIMI.
 class VKWindow : public IWindow {
   protected:
 	VKWindow() = default;
@@ -34,7 +34,7 @@ class VKWindow : public IWindow {
 	 * @param width
 	 * @param height
 	 */
-	VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width, int height);
+	VKWindow(std::shared_ptr<VulkanCore>& core, std::shared_ptr<VKDevice>& device, int x, int y, int width, int height);
 	VKWindow(const VKWindow &other) = delete;
 	~VKWindow();
 
@@ -184,11 +184,11 @@ class VKWindow : public IWindow {
 	virtual void getMaximumSize(int *width, int *height) override;
 
 	virtual intptr_t getNativePtr() const override; /*  Get native window reference object. */
-	virtual VkSurfaceKHR createSurface(std::shared_ptr<VulkanCore> &instance) override;
+	virtual VkSurfaceKHR createSurface(const std::shared_ptr<VulkanCore> &instance) override;
 
   private:
-	std::shared_ptr<VKDevice> device;
-	std::shared_ptr<VulkanCore> core;
+	std::shared_ptr<VKDevice>& device;
+	std::shared_ptr<VulkanCore>& core;
 	typedef struct _SwapchainBuffers {
 		struct SwapChainSupportDetails {
 			VkSurfaceCapabilitiesKHR capabilities;

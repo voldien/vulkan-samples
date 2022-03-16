@@ -135,10 +135,15 @@ ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/SilhouetteDetection)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/ShadowMap)
 
 # All shader files.
-FILE(GLOB_RECURSE GLSL_SOURCE_FILES
+FILE(GLOB GLSL_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.comp
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.rgen
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.rmiss
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.geo
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.tese
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.tesc
     )
 
 # INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules/SPIRV)
@@ -146,6 +151,7 @@ FILE(GLOB_RECURSE GLSL_SOURCE_FILES
 
 FOREACH(GLSL ${GLSL_SOURCE_FILES})
   get_filename_component(FILE_NAME ${GLSL} NAME)
+ # file(RELATIVE_PATH variable directory file)
   set(SPIRV "${EXECUTABLE_OUTPUT_PATH}/shaders/${FILE_NAME}.spv")
   add_custom_command(
     OUTPUT ${SPIRV}

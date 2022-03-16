@@ -22,6 +22,8 @@ class MultiThreading : public VKWindow {
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
+
+	std::vector<VkCommandBuffer> secondaryCommandBuffer;
 	vkscommon::Time time;
 	CameraController cameraController;
 
@@ -261,6 +263,9 @@ class MultiThreading : public VKWindow {
 
 	virtual void Initialize() override {
 
+		this->secondaryCommandBuffer = this->getVKDevice()->allocateCommandBuffers(
+			this->getGraphicDefault(), VK_COMMAND_BUFFER_LEVEL_SECONDARY, 3);
+
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
 		uniformBuffers.resize(getSwapChainImageCount());
@@ -404,25 +409,27 @@ class MultiThreading : public VKWindow {
 			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
 
-			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
-			// 1, 					 &ub_barrier, 0, NULL);
+			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0,
+			// NULL, 1, 					 &ub_barrier, 0, NULL);
 			VkViewport viewport = {
 				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdExecuteCommands();
 
-			/*	*/
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+			// vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			VkBuffer vertexBuffers[] = {vertexBuffer};
-			VkDeviceSize offsets[] = {0};
-			vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
+			// /*	*/
+			// vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0,
-									nullptr);
+			// VkBuffer vertexBuffers[] = {vertexBuffer};
+			// VkDeviceSize offsets[] = {0};
+			// vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
 
-			vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
+			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i],
+			// 0, 						nullptr);
+
+			// vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
 
 			vkCmdEndRenderPass(cmd);
 

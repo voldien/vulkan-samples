@@ -7,6 +7,8 @@
 
 class VKSampleSession {
   public:
+	VKSampleSession(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+		: core(core), device(device) {}
 	virtual void run() {}
 	virtual void commandline(cxxopts::Options &options) {}
 
@@ -60,7 +62,7 @@ template <class T> class VKSampleWindow {
 		/*	*/
 		cxxopts::Options options("Vulkan Sample", helperInfo);
 		options.add_options()("v,version", "Version information")("h,help", "helper information.")(
-			"d,debug", "Enable Debug View.", cxxopts::value<bool>()->default_value("false"))(
+			"d,debug", "Enable Debug View.", cxxopts::value<bool>()->default_value("true"))(
 			"t,time", "How long to run sample", cxxopts::value<float>()->default_value("0"))(
 			"i,instance-extensions", "Size of each messages in bytes.", cxxopts::value<uint32_t>()->default_value("5"))(
 			"l,instance-layers", "Size of each messages in bytes.", cxxopts::value<uint32_t>()->default_value("5"))(
@@ -104,8 +106,7 @@ template <class T> class VKSampleWindow {
 		}
 
 		/*	Vulkan core.	*/
-		std::shared_ptr<VulkanCore> core =
-			std::make_shared<VulkanCore>(required_instance_extensions, required_instance_layers);
+		this->core = std::make_shared<VulkanCore>(required_instance_extensions, required_instance_layers);
 
 		/*	All physical devices.	*/
 		std::vector<std::shared_ptr<PhysicalDevice>> physical_devices;
@@ -120,19 +121,23 @@ template <class T> class VKSampleWindow {
 			physical_devices = core->createPhysicalDevices();
 		}
 
+		// TODO print all selected devices!
 		std::cout << physical_devices[0]->getDeviceName() << std::endl;
-		std::shared_ptr<VKDevice> ldevice = std::make_shared<VKDevice>(physical_devices);
+		this->ldevice = std::make_shared<VKDevice>(physical_devices);
 
-		this->ref = std::make_shared<T>(core, ldevice);
-		//	this->ref->show();
+		this->ref = new T(core, ldevice);
 	}
 
 	void run() { this->ref->run(); }
 
 	void screenshot(float scale) {}
 
+	~VKSampleWindow() { delete ref; }
+
   private:
-	std::shared_ptr<T> ref;
+	T *ref;
+	std::shared_ptr<VulkanCore> core;
+	std::shared_ptr<VKDevice> ldevice;
 };
 
 #endif

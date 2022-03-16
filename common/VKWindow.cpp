@@ -30,7 +30,8 @@ VKWindow::~VKWindow() {
 }
 
 VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
-				   int height) {
+				   int height)
+	: core(core), device(device) {
 
 	this->proxyWindow = new SDLWindow();
 
@@ -49,13 +50,13 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	this->setSize(width, height);
 	this->setPosition(x, y);
 
-	/*  Create surface. */
-	this->surface = this->createSurface(core);
-
 	/*	*/
-	this->device = device;
-	this->core = core;
+	// this->device = device;
+	// this->core = core;
 	this->swapChain = new SwapchainBuffers();
+
+		/*  Create surface. */
+	this->surface = this->createSurface(this->core);
 
 	/*  Create command pool.    */
 	VkCommandPoolCreateInfo cmdPoolCreateInfo = {};
@@ -581,7 +582,7 @@ void VKWindow::getMaximumSize(int *width, int *height) { proxyWindow->getMaximum
 
 intptr_t VKWindow::getNativePtr() const { return proxyWindow->getNativePtr(); }
 
-VkSurfaceKHR VKWindow::createSurface(std::shared_ptr<VulkanCore> &instance) {
+VkSurfaceKHR VKWindow::createSurface(const std::shared_ptr<VulkanCore> &instance) {
 	return proxyWindow->createSurface(instance);
 }
 

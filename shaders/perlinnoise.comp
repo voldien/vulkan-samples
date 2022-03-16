@@ -102,6 +102,6 @@ ubo;
 
 void main() {
 
-	
+	ivec3 cell = ivec3(gl_GlobalInvocationID.xyz);
 
 }

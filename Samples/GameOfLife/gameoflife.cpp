@@ -4,24 +4,28 @@
 
 class GameOfLifeWindow : public VKWindow {
   private:
-	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-	VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
 	VkPipeline computePipeline = VK_NULL_HANDLE;
 	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
 
+	/*	*/
+	std::vector<VkImage> gameOfLifeImage;
+	std::vector<VkDeviceMemory> mandelBrotImageMemory;
+
+	/*	*/
 	std::vector<VkImageView> computeImageViews;
 	std::vector<VkBuffer> cellsBuffers;
 	std::vector<VkDeviceMemory> cellsMemory;
 
+	/*	*/
 	std::vector<VkDeviceMemory> paramMemory;
-	VkBuffer paramBuffer;
+	VkBuffer paramBuffer = VK_NULL_HANDLE;
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
 
-	const int nrChemicalComponents = 2;
+
 	struct reaction_diffusion_param_t {
 		float kernelA[4][4];
 		float kernelB[4][4];
@@ -43,7 +47,7 @@ class GameOfLifeWindow : public VKWindow {
   public:
 	GameOfLifeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		this->setTitle(std::string("ReactionDiffusion Algorithm - Compute"));
+		this->setTitle(std::string("Game of Life - Compute"));
 	}
 	~GameOfLifeWindow() {}
 
@@ -118,8 +122,9 @@ class GameOfLifeWindow : public VKWindow {
 
 	virtual void Initialize() override {
 
-		paramMemSize =
-			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment, paramMemSize);
+		// TODO fix memory aligment and physical device.
+		paramMemSize = std::max(
+			getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment, paramMemSize);
 
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
@@ -142,7 +147,7 @@ class GameOfLifeWindow : public VKWindow {
 		std::vector<VkDescriptorPoolSize> poolSize = {
 			{
 				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				static_cast<uint32_t>(getSwapChainImageCount() * nrChemicalComponents),
+				static_cast<uint32_t>(getSwapChainImageCount() * 1),
 			},
 
 			{
@@ -176,7 +181,7 @@ class GameOfLifeWindow : public VKWindow {
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
 		const VkDeviceSize cellBufferSize =
-			(unsigned int)width * (unsigned int)height * sizeof(float) * nrChemicalComponents;
+			(unsigned int)width * (unsigned int)height * sizeof(float) * 1;
 
 		cellsBuffers.resize(getSwapChainImageCount() * 2);
 		cellsMemory.resize(getSwapChainImageCount() * 2);
@@ -214,12 +219,12 @@ class GameOfLifeWindow : public VKWindow {
 		for (size_t i = 0; i < descriptorSets.size(); i++) {
 
 			VkDescriptorBufferInfo currentCellBufferInfo{};
-			currentCellBufferInfo.buffer = cellsBuffers[i * nrChemicalComponents + 0];
+			currentCellBufferInfo.buffer = cellsBuffers[i * 1 + 0];
 			currentCellBufferInfo.offset = 0;
 			currentCellBufferInfo.range = cellBufferSize;
 
 			VkDescriptorBufferInfo previousCellBufferInfo{};
-			previousCellBufferInfo.buffer = cellsBuffers[i * nrChemicalComponents + 1];
+			previousCellBufferInfo.buffer = cellsBuffers[i * 1 + 1];
 			previousCellBufferInfo.offset = 0;
 			previousCellBufferInfo.range = cellBufferSize;
 
@@ -307,8 +312,30 @@ class GameOfLifeWindow : public VKWindow {
 			imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 			imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
-			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
+			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
 								 nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+			VKHelper::transitionImageLayout(cmd, gameOfLifeImage[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+			VkImageBlit blitRegion{};
+			blitRegion.srcOffsets[1].x = width;
+			blitRegion.srcOffsets[1].y = height;
+			blitRegion.srcOffsets[1].z = 1;
+			blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blitRegion.srcSubresource.layerCount = 1;
+			blitRegion.srcSubresource.mipLevel = 0;
+			blitRegion.dstOffsets[1].x = width;
+			blitRegion.dstOffsets[1].y = height;
+			blitRegion.dstOffsets[1].z = 1;
+			blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blitRegion.dstSubresource.layerCount = 1;
+			blitRegion.dstSubresource.mipLevel = 0;
+
+			vkCmdBlitImage(cmd, gameOfLifeImage[i], VK_IMAGE_LAYOUT_GENERAL, getSwapChainImages()[i],
+						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion, VK_FILTER_NEAREST);
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
@@ -335,17 +362,15 @@ class GameOfLifeWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_device_extensions = {};
-	std::unordered_map<const char *, bool> required_instance_layers = {};
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
+		VKSampleWindow<GameOfLifeWindow> mandel(argc, argv, required_device_extensions, {},
+												required_instance_extensions);
 
-		std::shared_ptr<VKDevice> ldevice = std::make_shared<VKDevice>(devices, required_device_extensions);
-
-		GameOfLifeWindow window(core, ldevice);
-
-		window.run();
+		mandel.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

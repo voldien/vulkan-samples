@@ -6,8 +6,6 @@
 
 class MandelBrotWindow : public VKWindow {
   private:
-	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-	VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
 	VkPipeline computePipeline = VK_NULL_HANDLE;
 	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
 
@@ -103,8 +101,9 @@ class MandelBrotWindow : public VKWindow {
 
 	virtual void Initialize() override {
 
-		paramMemSize =
-			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment, paramMemSize);
+		// TODO fix physical device.
+		paramMemSize = std::max(
+			getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment, paramMemSize);
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
 
@@ -154,6 +153,9 @@ class MandelBrotWindow : public VKWindow {
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
 				mandelBrotImage[i], mandelBrotImageMemory[i]);
+
+			// VKHelper::transitionImageLayout(cmd, mandelBrotImage[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			// 								VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		}
 
 		/*	*/
@@ -161,9 +163,8 @@ class MandelBrotWindow : public VKWindow {
 		for (unsigned int i = 0; i < computeImageViews.size(); i++) {
 			if (computeImageViews[i] != nullptr)
 				vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
-			computeImageViews[i] =
-				VKHelper::createImageView(getDevice(), getSwapChainImages()[i], VK_IMAGE_VIEW_TYPE_2D,
-										  getDefaultImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
+			computeImageViews[i] = VKHelper::createImageView(getDevice(), mandelBrotImage[i], VK_IMAGE_VIEW_TYPE_2D,
+															 getDefaultImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		}
 
 		/*	*/
@@ -183,7 +184,7 @@ class MandelBrotWindow : public VKWindow {
 		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageView = computeImageViews[i];
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = paramBuffer;
@@ -248,8 +249,36 @@ class MandelBrotWindow : public VKWindow {
 			imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 			imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
-			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
+			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
 								 nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+			VKHelper::transitionImageLayout(cmd, mandelBrotImage[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+			VkImageBlit blitRegion{};
+			blitRegion.srcOffsets[1].x = width;
+			blitRegion.srcOffsets[1].y = height;
+			blitRegion.srcOffsets[1].z = 1;
+			blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blitRegion.srcSubresource.layerCount = 1;
+			blitRegion.srcSubresource.mipLevel = 0;
+			blitRegion.dstOffsets[1].x = width;
+			blitRegion.dstOffsets[1].y = height;
+			blitRegion.dstOffsets[1].z = 1;
+			blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blitRegion.dstSubresource.layerCount = 1;
+			blitRegion.dstSubresource.mipLevel = 0;
+
+			vkCmdBlitImage(cmd, mandelBrotImage[i], VK_IMAGE_LAYOUT_GENERAL, getSwapChainImages()[i],
+						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion, VK_FILTER_NEAREST);
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+			VKHelper::transitionImageLayout(cmd, mandelBrotImage[i], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+											VK_IMAGE_LAYOUT_GENERAL);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
@@ -260,7 +289,7 @@ class MandelBrotWindow : public VKWindow {
 		void *data;
 		VKS_VALIDATE(
 			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
-		memcpy(data, &params, paramMemSize);
+		memcpy(data, &params, sizeof(params));
 		vkUnmapMemory(getDevice(), paramMemory[0]);
 
 		/*	Update.	*/

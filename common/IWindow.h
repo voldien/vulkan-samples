@@ -63,8 +63,7 @@ class IWindow {
 
 	virtual intptr_t getNativePtr() const = 0; /*  Get native window reference object. */
 
-
-	virtual VkSurfaceKHR createSurface(std::shared_ptr<VulkanCore> &instance) = 0;
+	virtual VkSurfaceKHR createSurface(const std::shared_ptr<VulkanCore> &instance) = 0;
 
   protected:
 	void *userData = nullptr;
