@@ -88,7 +88,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 		avformat_free_context(this->pformatCtx);
 	}
 
-	virtual void Release() override {
+	virtual void release() override {
 
 		for (int i = 0; i < nrVideoFrames; i++) {
 			vkDestroyImage(this->getDevice(), videoFrames[i], nullptr);

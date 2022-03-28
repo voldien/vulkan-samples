@@ -1,25 +1,21 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(local_size_x = 16, local_size_y = 16) in;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
-// Contains the cells information.
-layout(set = 0, binding = 0, std430) buffer img_current_cells { vec2 AB[]; }
-CurrentAB;
+layout(rgba32f, set = 0, binding = 0) uniform image2D img_output;
 
-layout(set = 0, binding = 1, std430) readonly buffer img_previous_cells { vec2 AB[]; }
-PreviousAB;
-
-layout(rgba32f, set = 0, binding = 2) uniform image2D img_output;
+struct gradients {
+	float a;
+} ;
 
 layout(set = 0, binding = 3) uniform UniformBufferObject {
-	mat4 kernelA;
-	mat4 kernelB;
-	float feedRate;
-	float killRate;
-	float diffuseRateA;
-	float diffuseRateB;
-	float delta;
+	gradients grads;
+	float res;
+	float t;
+	int octave;
+	float totalAmplitude;
+	float persistance;
 }
 ubo;
 
@@ -100,8 +96,20 @@ ubo;
 // 	return result * 0.5 + 0.5;
 // }
 
+float noise3D(vec3 position){
+	return 0;
+}
+
 void main() {
 
 	ivec3 cell = ivec3(gl_GlobalInvocationID.xyz);
+	vec3 position = cell * ubo.res;
+	float amplitude = 1.0;
 
+	float h = 0;
+	for (int i = 0; i < ubo.octave; i++) {
+		h += noise3D(position) * amplitude;
+		position *= vec3(2.0);
+		amplitude *= ubo.persistance;
+	}
 }

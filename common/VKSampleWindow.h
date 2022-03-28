@@ -1,5 +1,6 @@
 #ifndef _VK_SAMPLE_WINDOW_H_
 #define _VK_SAMPLE_WINDOW_H_ 1
+#include "Util/Time.hpp"
 #include "VKWindow.h"
 #include <cxxopts.hpp>
 #include <iostream>
@@ -10,6 +11,7 @@ class VKSampleSession {
 	VKSampleSession(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: core(core), device(device) {}
 	virtual void run() {}
+	virtual void release() {}
 	virtual void commandline(cxxopts::Options &options) {}
 
 	/*	*/
@@ -20,12 +22,16 @@ class VKSampleSession {
 	VkQueue getDefaultComputeQueue() const;
 
 	const std::shared_ptr<VKDevice> &getVKDevice() const noexcept { return this->device; }
-	const std::shared_ptr<PhysicalDevice> getPhysicalDevice() const noexcept;
+	const std::shared_ptr<PhysicalDevice> getPhysicalDevice() const noexcept {
+		this->getVKDevice()->getPhysicalDevice(0);
+	}
 
-	VkPhysicalDevice physicalDevice() const;
+	VkPhysicalDevice physicalDevice() const { return this->getPhysicalDevice()->getHandle(); }
 	void setPhysicalDevice(VkPhysicalDevice device);
 	std::vector<VkQueue> getQueues() const noexcept;
 	const std::vector<VkPhysicalDevice> &availablePhysicalDevices() const;
+
+	VkInstance getInstance() const noexcept { return this->core->getHandle(); }
 
   protected:
 	std::shared_ptr<VKDevice> device;
@@ -40,6 +46,9 @@ class VKSampleSession {
 	VkCommandPool cmd_pool;
 	VkCommandPool compute_pool;
 	VkCommandPool transfer_pool;
+
+  protected:
+	vkscommon::Time time;
 };
 class TmpVKSampleWindow : public VKWindow, public VKSampleSession {
   public:
@@ -57,37 +66,36 @@ template <class T> class VKSampleWindow {
 
 		/*	Parse argument.	*/
 		const std::string helperInfo = "Vulkan Sample\n"
-									   "A simple program for checking error detection"
+									   ""
 									   "";
 		/*	*/
 		cxxopts::Options options("Vulkan Sample", helperInfo);
-		options.add_options()("v,version", "Version information")("h,help", "helper information.")(
-			"d,debug", "Enable Debug View.", cxxopts::value<bool>()->default_value("true"))(
+		options.add_options()("h,help", "helper information.")("d,debug", "Enable Debug View.",
+															   cxxopts::value<bool>()->default_value("true"))(
 			"t,time", "How long to run sample", cxxopts::value<float>()->default_value("0"))(
 			"i,instance-extensions", "Size of each messages in bytes.", cxxopts::value<uint32_t>()->default_value("5"))(
 			"l,instance-layers", "Size of each messages in bytes.", cxxopts::value<uint32_t>()->default_value("5"))(
 			"D,device-extensions", "Perform Error Correction.", cxxopts::value<bool>()->default_value("false"))(
 			"g,gpu-device", "GPU Device Select", cxxopts::value<int32_t>()->default_value("-1"))(
-			"p,present-mode", "Present Mode", cxxopts::value<int32_t>()->default_value("-1"));
+			"p,present-mode", "Present Mode", cxxopts::value<int32_t>()->default_value("-1"))(
+			"f,fullscreen", "FullScreen", cxxopts::value<bool>()->default_value("false"));
 
 		auto result = options.parse(argc, (char **&)argv);
 		/*	If mention help, Display help and exit!	*/
 		if (result.count("help") > 0) {
 			std::cout << options.help();
 			exit(EXIT_SUCCESS);
-			// TODO exit
 		}
-		// if (result.count("version") > 0) {
-		// 	std::cout << "Version: " << CRC_ANALYSIS_STR << " hash: " << CRC_ANALYSIS_GITCOMMIT_STR
-		// 			  << " branch: " << CRC_ANALYSIS_GITBRANCH_TR << std::endl;
-		// 	return EXIT_SUCCESS;
-		// }
+
 		bool debug = result["debug"].as<bool>();
 		if (result.count("time") > 0) {
 		}
 		if (result.count("gpu-device") > 0) {
 		}
-		result["gpu-device"].count();
+
+		int nr_instance_extensions = result["instance-extensions"].count();
+		int nr_instance_layers = result["instance-layers"].count();
+		int nr_device_extensions = result["device-extensions"].count();
 		int device_index = result["gpu-device"].as<int32_t>();
 
 		std::unordered_map<const char *, bool> use_required_device_extensions = {};
@@ -132,7 +140,7 @@ template <class T> class VKSampleWindow {
 
 	void screenshot(float scale) {}
 
-	~VKSampleWindow() { delete ref; }
+	virtual ~VKSampleWindow() { delete ref; }
 
   private:
 	T *ref;

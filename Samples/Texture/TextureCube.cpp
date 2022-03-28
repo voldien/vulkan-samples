@@ -45,8 +45,9 @@ class SingleTextureWindow : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {}
 	~SingleTextureWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
+		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		/*	*/
@@ -57,15 +58,18 @@ class SingleTextureWindow : public VKWindow {
 		vkDestroyImage(getDevice(), texture, nullptr);
 		vkFreeMemory(getDevice(), textureMemory, nullptr);
 
+		/*	*/
 		for (int i = 0; i < uniformBuffers.size(); i++) {
 			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
 			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
 			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
 		}
 
+		/*	*/
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
+		/*	*/
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);

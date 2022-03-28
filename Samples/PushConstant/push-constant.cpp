@@ -1,3 +1,5 @@
+#include "FPSCounter.h"
+#include "Util/Time.hpp"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -5,7 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
-class CubeWindow : public VKWindow {
+class PushConstantWindow : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
@@ -18,7 +20,9 @@ class CubeWindow : public VKWindow {
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
-	long prevTimeCounter;
+	vkscommon::Time time;
+
+	FPSCounter<float> fpsCounter;
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
@@ -31,13 +35,14 @@ class CubeWindow : public VKWindow {
 	} Vertex;
 
   public:
-	CubeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	PushConstantWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		prevTimeCounter = SDL_GetPerformanceCounter();
+		this->setTitle("Push Constant");
+		this->show();
 	}
-	~CubeWindow() {}
+	~PushConstantWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -192,6 +197,14 @@ class CubeWindow : public VKWindow {
 		colorBlending.blendConstants[2] = 0.0f;
 		colorBlending.blendConstants[3] = 0.0f;
 
+		VkPipelineDepthStencilStateCreateInfo depthStencil{};
+		depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depthStencil.depthTestEnable = VK_TRUE;
+		depthStencil.depthWriteEnable = VK_TRUE;
+		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+		depthStencil.depthBoundsTestEnable = VK_FALSE;
+		depthStencil.stencilTestEnable = VK_FALSE;
+
 		/*	*/
 		VkDescriptorSetLayoutBinding uboLayoutBinding{};
 		uboLayoutBinding.binding = 0;
@@ -212,8 +225,6 @@ class CubeWindow : public VKWindow {
 
 		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout}, {pushRange});
 
-		//	VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
-
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipelineInfo.stageCount = 2;
@@ -223,6 +234,7 @@ class CubeWindow : public VKWindow {
 		pipelineInfo.pViewportState = &viewportState;
 		pipelineInfo.pRasterizationState = &rasterizer;
 		pipelineInfo.pMultisampleState = &multisampling;
+		pipelineInfo.pDepthStencilState = &depthStencil;
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.layout = pipelineLayout;
 		pipelineInfo.renderPass = getDefaultRenderPass();
@@ -282,9 +294,7 @@ class CubeWindow : public VKWindow {
 		allocdescInfo.pSetLayouts = layouts.data();
 
 		descriptorSets.resize(getSwapChainImageCount());
-		if (vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()) != VK_SUCCESS) {
-			throw cxxexcept::RuntimeException("failed to allocate descriptor sets!");
-		}
+		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()));
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
@@ -333,118 +343,84 @@ class CubeWindow : public VKWindow {
 		vkUnmapMemory(getDevice(), vertexMemory);
 
 		onResize(width(), height());
+
+		time.start();
 	}
 
 	virtual void onResize(int width, int height) override {
-
-		prevTimeCounter = SDL_GetPerformanceCounter();
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-
-		for (int i = 0; i < getNrCommandBuffers(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers(i);
-
-			VkCommandBufferBeginInfo beginInfo = {};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = 0;
-
-			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
-
-			/*	Transfer the new data 	*/
-			// vkCmdTran
-
-			VkRenderPassBeginInfo renderPassInfo{};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = getDefaultRenderPass();
-			renderPassInfo.framebuffer = getFrameBuffer(i);
-			renderPassInfo.renderArea.offset = {0, 0};
-			renderPassInfo.renderArea.extent.width = width;
-			renderPassInfo.renderArea.extent.height = height;
-
-			VkClearValue clearColor = {0.1f, 0.1f, 0.1f, 1.0f};
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
-
-			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
-
-			VkBufferMemoryBarrier ub_barrier = {
-				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-				.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-				.buffer = uniformBuffers[i],
-				.offset = 0,
-				.size = sizeof(mvp),
-			};
-			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
-
-			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
-			// 1, 					 &ub_barrier, 0, NULL);
-
-			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			/*	*/
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-			VkBuffer vertexBuffers[] = {vertexBuffer};
-			VkDeviceSize offsets[] = {0};
-			vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
-
-			vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4x4), &mvp.model);
-
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0,
-									nullptr);
-
-			vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
-
-			vkCmdEndRenderPass(cmd);
-
-			VKS_VALIDATE(vkEndCommandBuffer(cmd));
-		}
 	}
 
 	virtual void draw() override {
+		time.update();
 
-		float elapsedTime =
-			((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
-
-		printf("%f\n", elapsedTime);
+		printf("%f\n", time.getElapsed());
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45), glm::vec3(0.0f, 1.0f, 0.0f));
+		this->mvp.model =
+			glm::rotate(this->mvp.model, glm::radians(time.getElapsed() * 45), glm::vec3(0.0f, 1.0f, 0.0f));
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
-		// Setup the range
-		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
-		VkMappedMemoryRange stagingRange = {.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-											.memory = uniformBuffersMemory[getCurrentFrameIndex()],
-											.offset = 0,
-											.size = (size_t)sizeof(this->mvp)};
-		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
-	}
+		VkCommandBuffer cmd = getCommandBuffers(getCurrentFrameIndex());
 
-	virtual void update() {}
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
+
+		VkRenderPassBeginInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = getDefaultRenderPass();
+		renderPassInfo.framebuffer = getFrameBuffer(getCurrentFrameIndex());
+		renderPassInfo.renderArea.offset = {0, 0};
+		renderPassInfo.renderArea.extent.width = width();
+		renderPassInfo.renderArea.extent.height = height();
+
+		std::array<VkClearValue, 2> clearValues{};
+		clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
+		clearValues[1].depthStencil = {1.0f, 0};
+		renderPassInfo.clearValueCount = clearValues.size();
+		renderPassInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+		VkBuffer vertexBuffers[] = {vertexBuffer};
+		VkDeviceSize offsets[] = {0};
+		vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
+
+		vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4x4), &mvp.model);
+		vkCmdUpdateBuffer(cmd, uniformBuffers[getCurrentFrameIndex()], 0, sizeof(this->mvp), &this->mvp);
+
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
+								&descriptorSets[getCurrentFrameIndex()], 0, nullptr);
+
+		vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
+
+		vkCmdEndRenderPass(cmd);
+
+		VKS_VALIDATE(vkEndCommandBuffer(cmd));
+	}
 };
 
 int main(int argc, const char **argv) {
-
-	std::unordered_map<const char *, bool> required_device_extensions = {{"VK_EXT_tooling_info", false}};
-	std::unordered_map<const char *, bool> required_layers = {{"VK_LAYER_LUNARG_monitor", false}};
-	std::unordered_map<const char *, bool> required_instance_extensions = {{}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-		printf("%s\n", devices[0]->getDeviceName());
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
-		CubeWindow window(core, d);
+		VKSampleWindow<PushConstantWindow> skybox(argc, argv, required_device_extensions, {},
+												  required_instance_extensions);
+		skybox.run();
 
-		window.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

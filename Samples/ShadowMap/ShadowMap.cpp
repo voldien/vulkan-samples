@@ -39,7 +39,7 @@ class ShadowMapWindow : public VKWindow {
 	}
 	~ShadowMapWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -47,7 +47,7 @@ class ShadowMapWindow : public VKWindow {
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
-		for (int i = 0; i < uniformBuffers.size(); i++) {
+		for (size_t i = 0; i < uniformBuffers.size(); i++) {
 			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
 			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
 			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);

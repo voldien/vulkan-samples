@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include <iostream>
 
-class TriangleWindow : public VKWindow {
+class Triangle : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
@@ -13,22 +13,24 @@ class TriangleWindow : public VKWindow {
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 
   public:
-	TriangleWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	Triangle(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->show();
 		this->setTitle("Triangle");
 	}
-	~TriangleWindow() {}
+	~Triangle() {}
 	typedef struct _vertex_t {
 		float pos[2];
 		float color[3];
 	} Vertex;
 
-	virtual void Release() override {
+	virtual void release() override {
 
+		/*	*/
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
+		/*	*/
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
@@ -183,6 +185,7 @@ class TriangleWindow : public VKWindow {
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
 
+		/*	Allocate buffer for the triangle.	*/
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferInfo.size = sizeof(vertices[0]) * vertices.size();
@@ -203,8 +206,10 @@ class TriangleWindow : public VKWindow {
 								 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
 				.value();
 
+		/*	Allocate memory that will be used for the buffer.	*/
 		VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
+		/*	Bind the vertex buffer with the memory that contains the triangle vertices data.	*/
 		VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
 		void *data;
@@ -236,6 +241,7 @@ class TriangleWindow : public VKWindow {
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;
 
+			/*	*/
 			std::array<VkClearValue, 2> clearValues{};
 			clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
 			clearValues[1].depthStencil = {1.0f, 0};
@@ -243,6 +249,7 @@ class TriangleWindow : public VKWindow {
 			renderPassInfo.pClearValues = clearValues.data();
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			
 			/*	*/
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
@@ -266,8 +273,8 @@ int main(int argc, const char **argv) {
 																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
-		VKSampleWindow<TriangleWindow> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		mandel.run();
+		VKSampleWindow<Triangle> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		sample.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

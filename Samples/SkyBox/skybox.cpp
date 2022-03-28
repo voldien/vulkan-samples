@@ -31,11 +31,11 @@ class Skybox : public VKWindow {
 	CameraController cameraController;
 
 	struct UniformBufferObject {
-		alignas(16) glm::mat4 model;
-		alignas(16) glm::mat4 view;
-		alignas(16) glm::mat4 proj;
-		alignas(16) glm::mat4 modelView;
-		alignas(16) glm::mat4 modelViewProjection;
+		glm::mat4 model;
+		glm::mat4 view;
+		glm::mat4 proj;
+		glm::mat4 modelView;
+		glm::mat4 modelViewProjection;
 		glm::vec4 diffuseColor;
 	} mvp;
 
@@ -50,9 +50,9 @@ class Skybox : public VKWindow {
 		this->setTitle("Skybox");
 		this->show();
 	}
-	~Skybox() {}
+	virtual ~Skybox() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
 		vkDestroySampler(getDevice(), sampler, nullptr);
 
@@ -152,8 +152,6 @@ class Skybox : public VKWindow {
 		attributeDescriptions[0].location = 0;
 		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[0].offset = 0;
-
-
 
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());

@@ -9,7 +9,7 @@
 VKWindow::~VKWindow() {
 
 	/*	Relase*/
-	this->Release();
+	this->release();
 
 	cleanSwapChain();
 
@@ -475,7 +475,7 @@ void VKWindow::setFullScreen(bool fullscreen) { this->setFullScreen(fullscreen);
 
 void VKWindow::Initialize() {}
 
-void VKWindow::Release() {}
+void VKWindow::release() {}
 
 void VKWindow::draw() {}
 
@@ -530,7 +530,7 @@ finished:
 	vkDeviceWaitIdle(getDevice());
 
 	/*	Release all the resources associated with the window application.	*/
-	this->Release();
+	this->release();
 }
 
 void VKWindow::show() { proxyWindow->show(); }

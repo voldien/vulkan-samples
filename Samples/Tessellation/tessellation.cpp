@@ -11,25 +11,31 @@
 class BasicTessellation : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
-	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
+
+	struct {
+		VkPipeline basic_tessellation;
+		VkPipeline wireframe_tessellation;
+	} pipelines = {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-	VkPipeline computePipeline = VK_NULL_HANDLE;
-	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
-	VkSampler sampler = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
+	/*	*/
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
 
-	VkImage texture;
-	VkImageView textureView;
-	VkDeviceMemory textureMemory;
+	/*	Height map.	*/
+	VkSampler sampler = VK_NULL_HANDLE;
+	VkImage texture = VK_NULL_HANDLE;
+	VkImageView textureView = VK_NULL_HANDLE;
+	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
+
 	vkscommon::Time time;
+	bool split;
 
 	FPSCounter<float> fpsCounter;
 	struct UniformBufferObject {
@@ -45,11 +51,15 @@ class BasicTessellation : public VKWindow {
 
   public:
 	BasicTessellation(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {}
+		: VKWindow(core, device, -1, -1, -1, -1) {
+		this->setTitle("Basic Tessellation");
+		this->show();
+	}
 	~BasicTessellation() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
+		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroySampler(getDevice(), sampler, nullptr);
@@ -68,7 +78,8 @@ class BasicTessellation : public VKWindow {
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
-		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
+		vkDestroyPipeline(getDevice(), pipelines.basic_tessellation, nullptr);
+		vkDestroyPipeline(getDevice(), pipelines.wireframe_tessellation, nullptr);
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
 
@@ -113,11 +124,15 @@ class BasicTessellation : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp-texture.frag.spv");
+		auto vertShaderCode = IOUtil::readFile("shaders/tessellation/base.vert.spv");
+		auto fragShaderCode = IOUtil::readFile("shaders/tessellation/base.frag.spv");
+		auto teseShaderCode = IOUtil::readFile("shaders/tessellation/pntriangle.tese.spv");
+		auto tescShaderCode = IOUtil::readFile("shaders/tessellation/pntriangle.tesc.spv");
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
+		VkShaderModule teseShaderModule = VKHelper::createShaderModule(getDevice(), teseShaderCode);
+		VkShaderModule tescShaderModule = VKHelper::createShaderModule(getDevice(), tescShaderCode);
 
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -131,7 +146,20 @@ class BasicTessellation : public VKWindow {
 		fragShaderStageInfo.module = fragShaderModule;
 		fragShaderStageInfo.pName = "main";
 
-		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+		VkPipelineShaderStageCreateInfo teseShaderStageInfo{};
+		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		fragShaderStageInfo.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+		fragShaderStageInfo.module = teseShaderModule;
+		fragShaderStageInfo.pName = "main";
+
+		VkPipelineShaderStageCreateInfo tescShaderStageInfo{};
+		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		fragShaderStageInfo.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+		fragShaderStageInfo.module = tescShaderModule;
+		fragShaderStageInfo.pName = "main";
+
+		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo, teseShaderStageInfo,
+														  tescShaderStageInfo};
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -241,8 +269,6 @@ class BasicTessellation : public VKWindow {
 
 		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
 
-		// VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
-
 		VkDynamicState dynamicStateEnables[1];
 		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 		VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
@@ -268,13 +294,19 @@ class BasicTessellation : public VKWindow {
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineInfo.pDynamicState = &dynamicStateInfo;
 
-		VKS_VALIDATE(
-			vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+		VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+											   &pipelines.basic_tessellation));
+
+		rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+		VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+											   &pipelines.wireframe_tessellation));
 
 		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
+		vkDestroyShaderModule(getDevice(), teseShaderModule, nullptr);
+		vkDestroyShaderModule(getDevice(), tescShaderModule, nullptr);
 
-		return graphicsPipeline;
+		return nullptr;
 	}
 
 	virtual void Initialize() override {
@@ -294,9 +326,9 @@ class BasicTessellation : public VKWindow {
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
+		/*	Create random noise texture.	*/
 		textureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8A8_SRGB,
 												VK_IMAGE_ASPECT_COLOR_BIT, 1);
-
 		VKHelper::createSampler(getDevice(), sampler);
 
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -330,20 +362,8 @@ class BasicTessellation : public VKWindow {
 
 		descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
 
-		// VkDescriptorPoolSize poolSize{};
-		// poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		// poolSize.descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
-
-		// VkDescriptorPoolCreateInfo poolInfo{};
-		// poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		// poolInfo.poolSizeCount = 1;
-		// poolInfo.pPoolSizes = &poolSize;
-		// poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
-
-		// vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
-
 		/*	Create pipeline.	*/
-		graphicsPipeline = createGraphicPipeline();
+		createGraphicPipeline();
 
 		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 		VkDescriptorSetAllocateInfo allocdescInfo{};
@@ -438,20 +458,6 @@ class BasicTessellation : public VKWindow {
 
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
-			/*	Update Mesh.	*/
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
-									&descriptorSets[i], 0, NULL);
-
-			const int localInvokation = 16;
-
-			vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
-
-			VKHelper::memoryBarrier(cmd, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR,
-									VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR, VK_ACCESS_2_SHADER_WRITE_BIT_KHR,
-									VK_ACCESS_2_SHADER_READ_BIT_KHR);
-
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
@@ -471,10 +477,12 @@ class BasicTessellation : public VKWindow {
 				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
+			vkCmdSetLineWidth(cmd, 1.0f);
+
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			/*	*/
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.basic_tessellation);
 
 			VkBuffer vertexBuffers[] = {vertexBuffer};
 			VkDeviceSize offsets[] = {0};

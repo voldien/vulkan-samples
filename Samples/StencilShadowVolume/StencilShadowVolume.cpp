@@ -39,7 +39,7 @@ class StencilShadowVolumeWindow : public VKWindow {
 	}
 	~StencilShadowVolumeWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);

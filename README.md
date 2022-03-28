@@ -22,9 +22,13 @@ make # Build samples
 make Shaders # Build Shaders
 ```
 
-## Startup Window
+# Window Based Samples
 
-## Triangle
+## Startup Window - 
+The simplest form of a vulkan window
+
+## Triangle - 
+Render a single triangle
 
 ## Triangle - Vertex Interpolation
 
@@ -34,6 +38,8 @@ make Shaders # Build Shaders
 ## Textured Cube
 
 ## SkyBox
+
+## Push Constant - VK_KHR_push_descriptor
 
 ## Direction Light
 
@@ -62,14 +68,8 @@ make Shaders # Build Shaders
 
 ## Video Playback
 
-## Memory Benchmark
+# Headless Samples
 
+## Memory Benchmark - Benchmarking the performance of transfering 
 
-| Name - Headless | Description |
-| --- | --- |
-| StartUp Window | The simplest form of a vulkan window |
-| Triangle | Render a single triangle |
-| | |
-| Memory Transfer     | Benchmark the transfer rate of memory.    |
-| Particle Simulation | |
-| Font Render    | |
+memory on the device between various heap.

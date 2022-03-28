@@ -29,7 +29,7 @@ class ParticleSystemWindow : public VKWindow {
 
 	typedef struct particle_t {
 		glm::vec3 position; /*	Position.	*/
-		glm::vec3 velocity; /*	Velocity.	*/
+		glm::vec4 velocity; /*	Velocity.	*/
 		float t;			/*	Time.	*/
 	} Particle;
 
@@ -44,10 +44,6 @@ class ParticleSystemWindow : public VKWindow {
 	/*	*/
 	std::vector<VkBuffer> particleBuffers;
 	std::vector<VkDeviceMemory> particleBufferMemory;
-
-	/*	*/
-	std::vector<VkBuffer> particleSimUniformBuffers;
-	std::vector<VkDeviceMemory> particleSimBufferMemories;
 
 	/*	*/
 	std::vector<VkBuffer> uniformBuffers;
@@ -86,7 +82,7 @@ class ParticleSystemWindow : public VKWindow {
 		this->show();
 	}
 
-	virtual void Release() override {
+	virtual void release() override {
 
 		/*	*/
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -161,7 +157,7 @@ class ParticleSystemWindow : public VKWindow {
 
 		attributeDescriptions[1].binding = 0;
 		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
 		attributeDescriptions[1].offset = 12;
 
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
@@ -175,7 +171,7 @@ class ParticleSystemWindow : public VKWindow {
 		uboLayoutBinding.descriptorCount = 1;
 		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		uboLayoutBinding.pImmutableSamplers = nullptr;
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 		samplerLayoutBinding.binding = 1;
@@ -364,6 +360,7 @@ class ParticleSystemWindow : public VKWindow {
 
 		particleComputeDescriptorSets.resize(getSwapChainImageCount());
 		particleGraphicDescriptorSets.resize(getSwapChainImageCount());
+		/*	*/
 		for (int i = 0; i < getSwapChainImageCount(); i++)
 			particleComputeDescriptorSets[i] = descSet[i];
 		for (int i = 0; i < getSwapChainImageCount(); i++)
@@ -378,7 +375,7 @@ class ParticleSystemWindow : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = particleBuffers[0];
 			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.range = sizeof(Particle) * nrParticles;
 
 			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites[0].dstSet = particleComputeDescriptorSets[i];
@@ -408,7 +405,7 @@ class ParticleSystemWindow : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.range = paramMemSize;
 
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -455,8 +452,6 @@ class ParticleSystemWindow : public VKWindow {
 		/*	Generate uniform buffers. */
 		this->uniformBuffers.resize(getSwapChainImageCount());
 		this->uniformBuffersMemories.resize(getSwapChainImageCount());
-		this->particleSimUniformBuffers.resize(getSwapChainImageCount());
-		this->particleSimBufferMemories.resize(getSwapChainImageCount());
 
 		/*	Allocate memory.	*/
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
@@ -467,12 +462,6 @@ class ParticleSystemWindow : public VKWindow {
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   uniformBuffers[i], uniformBuffersMemories[i]);
 
-			/*	Create particle uniform buffer.	*/
-			VKHelper::createBuffer(getDevice(), particleSimBufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   particleSimUniformBuffers[i], particleSimBufferMemories[i]);
 			void *_data;
 			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemories[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
 			mapMemory.push_back(_data);
@@ -483,9 +472,8 @@ class ParticleSystemWindow : public VKWindow {
 		const size_t particle_buffer_size = sizeof(Particle) * nrParticles;
 		/*	Create particle buffer, on local device memory only.	*/
 		VKHelper::createBuffer(getDevice(), particle_buffer_size, memProperties,
-							   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-							   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-							   particleBuffers[0], particleBufferMemory[0]);
+							   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+							   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, particleBuffers[0], particleBufferMemory[0]);
 
 		initDescriptor();
 
@@ -497,6 +485,9 @@ class ParticleSystemWindow : public VKWindow {
 	virtual void onResize(int width, int height) override {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
+		this->mvp.model = glm::mat4(1.0f);
+		this->mvp.view = glm::mat4(1.0f);
 		/*	*/
 
 		for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
@@ -524,21 +515,23 @@ class ParticleSystemWindow : public VKWindow {
 
 			/*	Update particles.	*/
 			// TODO validate memory barrier, being not read for rendering.
-			VKHelper::memoryBarrier(cmd, 0, 0, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
-									VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+			// VKHelper::bufferBarrier(cmd, 0, VK_ACCESS_SHADER_WRITE_BIT, particleBuffers[0],
+			// 						sizeof(Particle) * nrParticles, 0, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+			// 						VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, particleSim);
+			// vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, particleSim);
 			// Bind descriptor
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, this->particleSimLayout, 0, 1,
-									&this->particleComputeDescriptorSets[i], 0, nullptr);
+			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, this->particleSimLayout, 0, 1,
+			// 						&this->particleComputeDescriptorSets[i], 0, nullptr);
 
 			/*	Update particle simulation.	*/
-			vkCmdDispatch(cmd, nrParticles / localInvokation, 1, 1);
+			// vkCmdDispatch(cmd, nrParticles / localInvokation, 1, 1);
 
 			// Barrier between compute and vertex
 			// TODO validate memory barrier. make sure that the particles has been updated before being read.
-			VKHelper::memoryBarrier(cmd, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-									VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
+			// VKHelper::bufferBarrier(cmd, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, particleBuffers[0],
+			// 						sizeof(Particle) * nrParticles, 0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			// 						VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -556,6 +549,10 @@ class ParticleSystemWindow : public VKWindow {
 			vkCmdDraw(cmd, nrParticles, 1, 0, 0);
 
 			vkCmdEndRenderPass(cmd);
+
+			// VKHelper::bufferBarrier(cmd, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, 0, particleBuffers[0],
+			// 						sizeof(Particle) * nrParticles, 0, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+			// 						VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}

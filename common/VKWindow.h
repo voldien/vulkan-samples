@@ -48,7 +48,7 @@ class VKWindow : public IWindow {
 	 * @brief
 	 *
 	 */
-	virtual void Release();
+	virtual void release();
 	/**
 	 * @brief
 	 *

@@ -38,7 +38,7 @@ class FontWindow : public VKWindow {
 	}
 	~FontWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);

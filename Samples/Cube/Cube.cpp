@@ -43,9 +43,9 @@ class CubeWindow : public VKWindow {
 	}
 	~CubeWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
-		// vkFreeDescriptorSets
+		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);

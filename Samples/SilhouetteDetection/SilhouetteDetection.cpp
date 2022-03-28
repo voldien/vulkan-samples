@@ -39,7 +39,7 @@ class SilhouetteDetectionWindow : public VKWindow {
 	}
 	~SilhouetteDetectionWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);

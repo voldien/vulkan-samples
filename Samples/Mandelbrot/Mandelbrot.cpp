@@ -40,11 +40,12 @@ class MandelBrotWindow : public VKWindow {
 		this->show();
 		//	fpsCounter = FPSCounter(100);
 	}
-	~MandelBrotWindow() {}
+	virtual ~MandelBrotWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 		vkDestroyCommandPool(getDevice(), this->computeCmdPool, nullptr);
 
+		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 
@@ -240,17 +241,10 @@ class MandelBrotWindow : public VKWindow {
 
 			vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
 
-			VkImageMemoryBarrier imageMemoryBarrier = {};
-			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			imageMemoryBarrier.image = getSwapChainImages()[i];
-			imageMemoryBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-			imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-			imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-
-			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
-								 nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+			VKHelper::imageBarrier(cmd, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT, getSwapChainImages()[i],
+								   VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+								   {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+								   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
 			VKHelper::transitionImageLayout(cmd, mandelBrotImage[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 											VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);

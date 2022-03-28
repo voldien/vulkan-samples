@@ -52,7 +52,7 @@ class ReactionDiffusionWindow : public VKWindow {
 	}
 	~ReactionDiffusionWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 

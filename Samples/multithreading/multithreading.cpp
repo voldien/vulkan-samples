@@ -27,6 +27,8 @@ class MultiThreading : public VKWindow {
 	vkscommon::Time time;
 	CameraController cameraController;
 
+	fragcore::TaskScheduler* tashSch;
+
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
@@ -46,7 +48,7 @@ class MultiThreading : public VKWindow {
 	}
 	~MarchingCubes() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 
 		// vkFreeDescriptorSets
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -448,6 +450,12 @@ class MultiThreading : public VKWindow {
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
+
+		/*	Invoked tasks.	*/
+
+		/*	Wait to finish task*/
+
+		/*	Migrate tasks.	*/
 
 		// Setup the range
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));

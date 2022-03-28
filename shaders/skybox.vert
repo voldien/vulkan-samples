@@ -7,8 +7,6 @@ layout(location = 0) out vec3 vVertex;
 /**
  *
  */
-
-
 layout(set = 0, binding = 0) uniform params {
 	mat4 model;
 	mat4 view;
@@ -21,5 +19,5 @@ layout(set = 0, binding = 0) uniform params {
 void main() {
 	vec4 MVPPos = params_.ModelViewProjection * vec4(vertex, 1.0);
 	gl_Position = MVPPos.xyww;
-	vVertex = vertex;
+	vVertex = normalize(vertex);
 }

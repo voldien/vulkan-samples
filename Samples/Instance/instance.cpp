@@ -25,7 +25,7 @@ class InstanceWindow : public VKWindow {
 	}
 	~InstanceWindow() {}
 
-	virtual void Release() override {
+	virtual void release() override {
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
