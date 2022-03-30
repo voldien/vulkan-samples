@@ -23,9 +23,9 @@ class SingleTextureWindow : public VKWindow {
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
 
-	VkImage texture;
-	VkImageView textureView;
-	VkDeviceMemory textureMemory;
+	VkImage texture = VK_NULL_HANDLE;
+	VkImageView textureView = VK_NULL_HANDLE;
+	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 	vkscommon::Time time;
 
 	FPSCounter<float> fpsCounter;

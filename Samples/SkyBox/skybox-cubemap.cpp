@@ -1,30 +1,43 @@
 #include "Importer/ImageImport.h"
+#include "Util/Time.hpp"
+#include "VKSampleWindow.h"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
+#include <Util/CameraController.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
-class BasicShadowMap : public VKWindow {
+class SkyboxCubeMap : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
-	VkDescriptorPool descpool;
+	VkDescriptorPool descpool = VK_NULL_HANDLE;
+
+	VkSampler sampler = VK_NULL_HANDLE;
+	VkImage texture = VK_NULL_HANDLE;
+	VkImageView skyboxTextureView = VK_NULL_HANDLE;
+	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
-	long prevTimeCounter;
+
+	vkscommon::Time time;
+	CameraController cameraController;
 
 	struct UniformBufferObject {
-		alignas(16) glm::mat4 model;
-		alignas(16) glm::mat4 view;
-		alignas(16) glm::mat4 proj;
+		glm::mat4 model;
+		glm::mat4 view;
+		glm::mat4 proj;
+		glm::mat4 modelView;
+		glm::mat4 modelViewProjection;
+		glm::vec4 diffuseColor;
 	} mvp;
 
 	typedef struct _vertex_t {
@@ -33,15 +46,22 @@ class BasicShadowMap : public VKWindow {
 	} Vertex;
 
   public:
-	BasicShadowMap(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	SkyboxCubeMap(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		prevTimeCounter = SDL_GetPerformanceCounter();
+		this->setTitle("Skybox");
+		this->show();
 	}
-	~BasicShadowMap() {}
+	virtual ~SkyboxCubeMap() {}
 
 	virtual void release() override {
 
-		// vkFreeDescriptorSets
+		vkDestroySampler(getDevice(), sampler, nullptr);
+
+		vkDestroyImageView(getDevice(), skyboxTextureView, nullptr);
+		vkDestroyImage(getDevice(), texture, nullptr);
+		vkFreeMemory(getDevice(), textureMemory, nullptr);
+
+		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -61,9 +81,9 @@ class BasicShadowMap : public VKWindow {
 	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 0, 0}, // triangle 1 : begin
 										  {-1.0f, -1.0f, 1.0f, 0, 1},
 										  {-1.0f, 1.0f, 1.0f, 1, 1}, // triangle 1 : end
-										  {1.0f, 1.0f, -1.0f, 0, 0}, // triangle 2 : begin
-										  {-1.0f, -1.0f, -1.0f, 1, 1},
-										  {-1.0f, 1.0f, -1.0f, 1, 0}, // triangle 2 : end
+										  {1.0f, 1.0f, -1.0f, 1, 1}, // triangle 2 : begin
+										  {-1.0f, -1.0f, -1.0f, 1, 0},
+										  {-1.0f, 1.0f, -1.0f, 0, 0}, // triangle 2 : end
 										  {1.0f, -1.0f, 1.0f, 0, 0},
 										  {-1.0f, -1.0f, -1.0f, 0, 1},
 										  {1.0f, -1.0f, -1.0f, 1, 1},
@@ -99,8 +119,8 @@ class BasicShadowMap : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
+		auto vertShaderCode = IOUtil::readFile("shaders/skybox.vert.spv");
+		auto fragShaderCode = IOUtil::readFile("shaders/panoramic.frag.spv");
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -117,7 +137,7 @@ class BasicShadowMap : public VKWindow {
 		fragShaderStageInfo.module = fragShaderModule;
 		fragShaderStageInfo.pName = "main";
 
-		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+		std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -127,17 +147,12 @@ class BasicShadowMap : public VKWindow {
 		bindingDescription.stride = sizeof(Vertex);
 		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
+		std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions;
 
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
 		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[0].offset = 0;
-
-		attributeDescriptions[1].binding = 0;
-		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[1].offset = 12;
 
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -152,7 +167,14 @@ class BasicShadowMap : public VKWindow {
 		uboLayoutBinding.pImmutableSamplers = nullptr;
 		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, {uboLayoutBinding});
+		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+		samplerLayoutBinding.binding = 1;
+		samplerLayoutBinding.descriptorCount = 1;
+		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerLayoutBinding.pImmutableSamplers = nullptr;
+		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, {uboLayoutBinding, samplerLayoutBinding});
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -212,7 +234,7 @@ class BasicShadowMap : public VKWindow {
 
 		VkPipelineDepthStencilStateCreateInfo depthStencil{};
 		depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depthStencil.depthTestEnable = VK_TRUE;
+		depthStencil.depthTestEnable = VK_FALSE;
 		depthStencil.depthWriteEnable = VK_TRUE;
 		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 		depthStencil.depthBoundsTestEnable = VK_FALSE;
@@ -230,8 +252,8 @@ class BasicShadowMap : public VKWindow {
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipelineInfo.stageCount = 2;
-		pipelineInfo.pStages = shaderStages;
+		pipelineInfo.stageCount = shaderStages.size();
+		pipelineInfo.pStages = shaderStages.data();
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
 		pipelineInfo.pInputAssemblyState = &inputAssembly;
 		pipelineInfo.pViewportState = &viewportState;
@@ -256,6 +278,30 @@ class BasicShadowMap : public VKWindow {
 
 	virtual void Initialize() override {
 
+		/*	Load and Create Texture.	*/
+		VkCommandBuffer cmd;
+		std::vector<VkCommandBuffer> cmds =
+			this->getVKDevice()->allocateCommandBuffers(getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = 0;
+		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
+
+		ImageImporter::createImage("panorama.jpg", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
+								   physicalDevice(), texture, textureMemory);
+
+		vkEndCommandBuffer(cmds[0]);
+		this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
+
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
+
+		skyboxTextureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D,
+													  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+		VKHelper::createSampler(getDevice(), sampler);
+
+		/*	Allocate uniform buffers.	*/
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
 		uniformBuffers.resize(getSwapChainImageCount());
@@ -275,21 +321,21 @@ class BasicShadowMap : public VKWindow {
 			mapMemory.push_back(_data);
 		}
 
-		VkDescriptorPoolSize poolSize{};
-		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
-
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
-		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
-
-		VKS_VALIDATE(vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool));
-
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
 
+		/*	Allocate descriptor set.	*/
+		const std::vector<VkDescriptorPoolSize> poolSize = {{
+																VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+																static_cast<uint32_t>(getSwapChainImageCount()),
+															},
+															{
+																VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+																static_cast<uint32_t>(getSwapChainImageCount()),
+															}};
+		descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
+
+		/*	*/
 		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 		VkDescriptorSetAllocateInfo allocdescInfo{};
 		allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -298,7 +344,7 @@ class BasicShadowMap : public VKWindow {
 		allocdescInfo.pSetLayouts = layouts.data();
 
 		descriptorSets.resize(getSwapChainImageCount());
-		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()));
+		VKS_VALIDATE(vkAllocateDescriptorSets(this->getDevice(), &allocdescInfo, descriptorSets.data()));
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
@@ -306,16 +352,31 @@ class BasicShadowMap : public VKWindow {
 			bufferInfo.offset = 0;
 			bufferInfo.range = sizeof(UniformBufferObject);
 
-			VkWriteDescriptorSet descriptorWrite{};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = descriptorSets[i];
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &bufferInfo;
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = skyboxTextureView;
+			imageInfo.sampler = sampler;
 
-			vkUpdateDescriptorSets(getDevice(), 1, &descriptorWrite, 0, nullptr);
+			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[0].dstSet = descriptorSets[i];
+			descriptorWrites[0].dstBinding = 0;
+			descriptorWrites[0].dstArrayElement = 0;
+			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[0].descriptorCount = 1;
+			descriptorWrites[0].pBufferInfo = &bufferInfo;
+
+			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1].dstSet = descriptorSets[i];
+			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].dstArrayElement = 0;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[1].descriptorCount = 1;
+			descriptorWrites[1].pImageInfo = &imageInfo;
+
+			vkUpdateDescriptorSets(this->getDevice(), static_cast<uint32_t>(descriptorWrites.size()),
+								   descriptorWrites.data(), 0, nullptr);
 		}
 
 		VkBufferCreateInfo bufferInfo = {};
@@ -346,30 +407,29 @@ class BasicShadowMap : public VKWindow {
 		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 		vkUnmapMemory(getDevice(), vertexMemory);
 
-		onResize(width(), height());
-	}
-
-	virtual void onResize(int width, int height) override {
-
-		prevTimeCounter = SDL_GetPerformanceCounter();
-
-		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 
-		for (size_t i = 0; i < getNrCommandBuffers(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers(i);
+		onResize(width(), height());
+
+		time.start();
+	}
+
+	virtual void onResize(int width, int height) override {
+
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
+
+		/*	Create command buffers.	*/
+		for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = this->getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			beginInfo.flags = 0;
 
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
-
-			/*	Transfer the new data 	*/
-			// vkCmdTran
 
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -382,25 +442,10 @@ class BasicShadowMap : public VKWindow {
 			std::array<VkClearValue, 2> clearValues{};
 			clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
 			clearValues[1].depthStencil = {1.0f, 0};
-			renderPassInfo.clearValueCount = clearValues.size();
+
+			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 			renderPassInfo.pClearValues = clearValues.data();
 
-			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
-
-			VkBufferMemoryBarrier ub_barrier{};
-
-			ub_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-			ub_barrier.pNext = nullptr;
-			ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			ub_barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-			ub_barrier.buffer = uniformBuffers[i];
-			ub_barrier.offset = 0;
-			ub_barrier.size = sizeof(mvp);
-			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
-
-			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
-			// 1, 					 &ub_barrier, 0, NULL);
 			VkViewport viewport = {
 				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
@@ -427,15 +472,16 @@ class BasicShadowMap : public VKWindow {
 
 	virtual void draw() override {
 
-		float elapsedTime =
-			((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
+		time.update();
+		float elapsedTime = time.getElapsed();
 
-		printf("%f\n", elapsedTime);
+		std::cout << elapsedTime << std::endl;
+		this->cameraController.update(time.deltaTime());
+		glm::mat4 viewMatrix = this->cameraController.getViewMatrix();
+		// TODO add character controller.
 		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = glm::mat4(1.0f);
-		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45), glm::vec3(0.0f, 1.0f, 0.0f));
-		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
+		this->mvp.view = viewMatrix;
+		this->mvp.modelViewProjection = this->mvp.model * this->mvp.proj * this->mvp.view;
 
 		// Setup the range
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
@@ -452,18 +498,16 @@ class BasicShadowMap : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_device_extensions = {};
-	std::unordered_map<const char *, bool> required_instance_layers = {};
-
+	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
+																		   {"VK_KHR_xlib_surface", true}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
-		BasicShadowMap window(core, d);
+		VKSampleWindow<SkyboxCubeMap> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		sample.run();
 
-		window.run();
 	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

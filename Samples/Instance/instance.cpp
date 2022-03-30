@@ -23,7 +23,7 @@ class InstanceWindow : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(std::string("Instance"));
 	}
-	~InstanceWindow() {}
+	virtual ~InstanceWindow() {}
 
 	virtual void release() override {
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -260,6 +260,8 @@ class InstanceWindow : public VKWindow {
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
+
+	virtual void draw() {}
 
 	virtual void update() {}
 };

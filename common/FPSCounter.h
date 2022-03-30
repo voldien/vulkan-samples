@@ -1,6 +1,5 @@
 #ifndef _VKSAMPLES_COMMON_FPS_COUNTER_H_
 #define _VKSAMPLES_COMMON_FPS_COUNTER_H_ 1
-#include "Prerequisities.h"
 
 /**
  * @brief

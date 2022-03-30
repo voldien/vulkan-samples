@@ -9,16 +9,18 @@ class ExternalMemoryFD : public VKSampleSession {
 	ExternalMemoryFD(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKSampleSession(core, device) {}
 
-	virtual void release() {
+	virtual void release() override {
 		vkFreeMemory(this->getDevice(), memory, nullptr);
 		vkDestroyBuffer(this->getDevice(), buffer, nullptr);
 	}
 
 	virtual void run() override {
 
+		const VkDeviceSize bufferSize = sizeof(float) * 1024 * 1024;
+
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(float) * 2048;
+		bufferInfo.size = bufferSize;
 		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -53,6 +55,11 @@ class ExternalMemoryFD : public VKSampleSession {
 
 		VKS_VALIDATE(vkGetMemoryFdKHR(this->getDevice(), &vkMemoryGetFdInfo, &fd));
 
+		FILE *bufferFD = fdopen(fd, "r");
+		void *buffer = malloc(bufferSize);
+
+		long int readResult = fread(buffer, bufferSize, 1, bufferFD);
+
 		VkMemoryFdPropertiesKHR prop;
 
 		VKS_VALIDATE(
@@ -79,7 +86,7 @@ int main(int argc, const char **argv) {
 		sample.run();
 
 	} catch (const std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

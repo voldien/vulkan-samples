@@ -52,6 +52,14 @@ class BasicTessellation : public VKWindow {
   public:
 	BasicTessellation(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
+
+		VkPhysicalDeviceFeatures2 features;
+		this->getPhysicalDevice()->checkFeature<VkPhysicalDeviceFeatures2>(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+																		   features);
+
+		if (!features.features.tessellationShader) {
+		}
+
 		this->setTitle("Basic Tessellation");
 		this->show();
 	}
@@ -158,8 +166,8 @@ class BasicTessellation : public VKWindow {
 		fragShaderStageInfo.module = tescShaderModule;
 		fragShaderStageInfo.pName = "main";
 
-		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo, teseShaderStageInfo,
-														  tescShaderStageInfo};
+		std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertShaderStageInfo, fragShaderStageInfo,
+																	 teseShaderStageInfo, tescShaderStageInfo};
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -279,8 +287,8 @@ class BasicTessellation : public VKWindow {
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipelineInfo.stageCount = 2;
-		pipelineInfo.pStages = shaderStages;
+		pipelineInfo.stageCount = shaderStages.size();
+		pipelineInfo.pStages = shaderStages.data();
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
 		pipelineInfo.pInputAssemblyState = &inputAssembly;
 		pipelineInfo.pViewportState = &viewportState;
@@ -534,7 +542,7 @@ int main(int argc, const char **argv) {
 		tessellation.run();
 
 	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

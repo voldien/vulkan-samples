@@ -28,9 +28,10 @@ class VKSampleSession {
 
 	VkPhysicalDevice physicalDevice() const { return this->getPhysicalDevice()->getHandle(); }
 	void setPhysicalDevice(VkPhysicalDevice device);
-	std::vector<VkQueue> getQueues() const noexcept;
-	const std::vector<VkPhysicalDevice> &availablePhysicalDevices() const;
+	std::vector<VkQueue> getQueues() const noexcept { return {}; }
+	const std::vector<VkPhysicalDevice> &availablePhysicalDevices() const { return {}; }
 
+	/*	*/
 	VkInstance getInstance() const noexcept { return this->core->getHandle(); }
 
   protected:
@@ -114,7 +115,7 @@ template <class T> class VKSampleWindow {
 		}
 
 		/*	Vulkan core.	*/
-		this->core = std::make_shared<VulkanCore>(required_instance_extensions, required_instance_layers);
+		this->core = std::make_shared<VulkanCore>(use_required_instance_extensions, use_required_instance_layers);
 
 		/*	All physical devices.	*/
 		std::vector<std::shared_ptr<PhysicalDevice>> physical_devices;
@@ -129,10 +130,14 @@ template <class T> class VKSampleWindow {
 			physical_devices = core->createPhysicalDevices();
 		}
 
-		// TODO print all selected devices!
-		std::cout << physical_devices[0]->getDeviceName() << std::endl;
-		this->ldevice = std::make_shared<VKDevice>(physical_devices);
+		/*	*/
+		for (size_t i = 0; i < physical_devices.size(); i++) {
+			std::cout << physical_devices[i]->getDeviceName() << std::endl;
+		}
 
+		this->ldevice = std::make_shared<VKDevice>(physical_devices, use_required_device_extensions);
+
+		/*	*/
 		this->ref = new T(core, ldevice);
 	}
 

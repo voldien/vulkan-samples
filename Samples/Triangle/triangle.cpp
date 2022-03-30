@@ -18,7 +18,7 @@ class Triangle : public VKWindow {
 		this->show();
 		this->setTitle("Triangle");
 	}
-	~Triangle() {}
+	virtual ~Triangle() {}
 	typedef struct _vertex_t {
 		float pos[2];
 		float color[3];
@@ -35,6 +35,7 @@ class Triangle : public VKWindow {
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
 
+	/*	{vertex(3)|uv(2)}*/
 	const std::vector<Vertex> vertices = {
 		{0.0f, -0.5f, 1.0f, 1.0f, 1.0f}, {0.5f, 0.5f, 0.0f, 1.0f, 0.0f}, {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f}};
 
@@ -194,6 +195,7 @@ class Triangle : public VKWindow {
 
 		VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
 
+		/*	*/
 		VkMemoryRequirements memRequirements;
 		vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
 
@@ -249,7 +251,7 @@ class Triangle : public VKWindow {
 			renderPassInfo.pClearValues = clearValues.data();
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-			
+
 			/*	*/
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 

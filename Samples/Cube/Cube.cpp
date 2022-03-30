@@ -16,12 +16,13 @@ class CubeWindow : public VKWindow {
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
-	VkDescriptorPool descpool;
+	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
+
 	vkscommon::Time time;
 
 	struct UniformBufferObject {
@@ -51,7 +52,7 @@ class CubeWindow : public VKWindow {
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
-		for (int i = 0; i < uniformBuffers.size(); i++) {
+		for (size_t i = 0; i < uniformBuffers.size(); i++) {
 			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
 			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
 			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
@@ -121,7 +122,7 @@ class CubeWindow : public VKWindow {
 		fragShaderStageInfo.module = fragShaderModule;
 		fragShaderStageInfo.pName = "main";
 
-		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+		std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -234,8 +235,8 @@ class CubeWindow : public VKWindow {
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipelineInfo.stageCount = 2;
-		pipelineInfo.pStages = shaderStages;
+		pipelineInfo.stageCount = shaderStages.size();
+		pipelineInfo.pStages = shaderStages.data();
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
 		pipelineInfo.pInputAssemblyState = &inputAssembly;
 		pipelineInfo.pViewportState = &viewportState;
@@ -294,6 +295,7 @@ class CubeWindow : public VKWindow {
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
 
+		/*	*/
 		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 		VkDescriptorSetAllocateInfo allocdescInfo{};
 		allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -337,7 +339,7 @@ class CubeWindow : public VKWindow {
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex =
-			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
+			VKHelper::findMemoryType(this->physicalDevice(), memRequirements.memoryTypeBits,
 									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
 				.value();
 
@@ -389,22 +391,6 @@ class CubeWindow : public VKWindow {
 			renderPassInfo.clearValueCount = clearValues.size();
 			renderPassInfo.pClearValues = clearValues.data();
 
-			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
-
-			VkBufferMemoryBarrier ub_barrier{};
-
-			ub_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-			ub_barrier.pNext = nullptr;
-			ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			ub_barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-			ub_barrier.buffer = uniformBuffers[i];
-			ub_barrier.offset = 0;
-			ub_barrier.size = sizeof(mvp);
-			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
-
-			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
-			// 1, 					 &ub_barrier, 0, NULL);
 			VkViewport viewport = {
 				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
@@ -465,7 +451,7 @@ int main(int argc, const char **argv) {
 		mandel.run();
 
 	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

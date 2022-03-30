@@ -23,6 +23,7 @@ class PushConstantWindow : public VKWindow {
 	vkscommon::Time time;
 
 	FPSCounter<float> fpsCounter;
+
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
@@ -40,11 +41,11 @@ class PushConstantWindow : public VKWindow {
 		this->setTitle("Push Constant");
 		this->show();
 	}
-	~PushConstantWindow() {}
+	virtual ~PushConstantWindow() {}
 
 	virtual void release() override {
 
-		// vkFreeDescriptorSets
+		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -369,6 +370,8 @@ class PushConstantWindow : public VKWindow {
 
 		VkCommandBuffer cmd = getCommandBuffers(getCurrentFrameIndex());
 
+		vkResetCommandBuffer(cmd, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+
 		VkCommandBufferBeginInfo beginInfo = {};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -389,6 +392,8 @@ class PushConstantWindow : public VKWindow {
 		renderPassInfo.clearValueCount = clearValues.size();
 		renderPassInfo.pClearValues = clearValues.data();
 
+		vkCmdUpdateBuffer(cmd, uniformBuffers[getCurrentFrameIndex()], 0, sizeof(this->mvp), &this->mvp);
+
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
@@ -398,7 +403,6 @@ class PushConstantWindow : public VKWindow {
 		vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
 
 		vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4x4), &mvp.model);
-		vkCmdUpdateBuffer(cmd, uniformBuffers[getCurrentFrameIndex()], 0, sizeof(this->mvp), &this->mvp);
 
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
 								&descriptorSets[getCurrentFrameIndex()], 0, nullptr);
@@ -414,7 +418,8 @@ class PushConstantWindow : public VKWindow {
 int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
 																		   {"VK_KHR_xlib_surface", true}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true},
+																		 {VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, true}};
 
 	try {
 		VKSampleWindow<PushConstantWindow> skybox(argc, argv, required_device_extensions, {},

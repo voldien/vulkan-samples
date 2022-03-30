@@ -16,17 +16,18 @@ class Skybox : public VKWindow {
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
-	VkDescriptorPool descpool;
+	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 	VkSampler sampler = VK_NULL_HANDLE;
-	VkImage texture;
-	VkImageView skyboxTextureView;
-	VkDeviceMemory textureMemory;
+	VkImage texture = VK_NULL_HANDLE;
+	VkImageView skyboxTextureView = VK_NULL_HANDLE;
+	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
+
 	vkscommon::Time time;
 	CameraController cameraController;
 
@@ -60,13 +61,13 @@ class Skybox : public VKWindow {
 		vkDestroyImage(getDevice(), texture, nullptr);
 		vkFreeMemory(getDevice(), textureMemory, nullptr);
 
-		// vkFreeDescriptorSets
+		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
-		for (int i = 0; i < uniformBuffers.size(); i++) {
+		for (size_t i = 0; i < uniformBuffers.size(); i++) {
 			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
 			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
 			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
@@ -136,7 +137,7 @@ class Skybox : public VKWindow {
 		fragShaderStageInfo.module = fragShaderModule;
 		fragShaderStageInfo.pName = "main";
 
-		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+		std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -251,8 +252,8 @@ class Skybox : public VKWindow {
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipelineInfo.stageCount = 2;
-		pipelineInfo.pStages = shaderStages;
+		pipelineInfo.stageCount = shaderStages.size();
+		pipelineInfo.pStages = shaderStages.data();
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
 		pipelineInfo.pInputAssemblyState = &inputAssembly;
 		pipelineInfo.pViewportState = &viewportState;
@@ -506,7 +507,7 @@ int main(int argc, const char **argv) {
 		skybox.run();
 
 	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

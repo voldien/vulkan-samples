@@ -1,9 +1,16 @@
-FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+FILE(GLOB SOURCE_SKYBOX_CUBEMAP_FILES ${CMAKE_CURRENT_SOURCE_DIR}/skybox-cubemap.cpp)
+FILE(GLOB SOURCE_SKYBOX_PANORAMIC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/skybox-panoramic.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
-ADD_EXECUTABLE(Skybox ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(Skybox ${Vulkan_LIBRARIES} vk-sample-common vk-sample-common-asset-importer)
-ADD_DEPENDENCIES(Skybox vk-sample-common vk-sample-common-asset-importer)
-
+ADD_EXECUTABLE(SkyboxCubeMap ${SOURCE_SKYBOX_CUBEMAP_FILES} ${HEADER_FILES} )
+TARGET_LINK_LIBRARIES(SkyboxCubeMap vk-sample-common vk-sample-common-asset-importer)
+ADD_DEPENDENCIES(SkyboxCubeMap vk-sample-common vk-sample-common-asset-importer)
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(Skybox PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+TARGET_INCLUDE_DIRECTORIES(SkyboxCubeMap PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+
+ADD_EXECUTABLE(SkyboxPanoramic ${SOURCE_SKYBOX_PANORAMIC_FILES} ${HEADER_FILES} )
+TARGET_LINK_LIBRARIES(SkyboxPanoramic vk-sample-common vk-sample-common-asset-importer)
+ADD_DEPENDENCIES(SkyboxPanoramic vk-sample-common vk-sample-common-asset-importer)
+# Vulkan dependies headers.
+TARGET_INCLUDE_DIRECTORIES(SkyboxPanoramic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
