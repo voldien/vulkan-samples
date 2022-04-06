@@ -35,7 +35,7 @@ static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue tran
 	}
 	float averageTime = 0;
 	for (size_t n = 0; n < timeSample.size(); n++) {
-		averageTime += (float)timeSample[n] / (float)SDL_GetPerformanceFrequency();
+		averageTime += static_cast<float>(timeSample[n]) / static_cast<float>(SDL_GetPerformanceFrequency());
 	}
 
 	averageTime /= timeSample.size();
@@ -48,10 +48,12 @@ static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue tran
 
 class MemoryTransfer : public VKSampleSession {
   public:
-	MemoryTransfer(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device) : VKSampleSession(core, device) {}
+	MemoryTransfer(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+		: VKSampleSession(core, device) {}
 
 	virtual void run() override {
 		const int nrTransferSamples = 100;
+
 		/*	1KB, 1MB, 128MB, 512MB.	*/
 		const std::array<VkDeviceSize, 4> memorySizes = {1024, 1024 * 1024, 1024 * 1024 * 128, 1024 * 1024 * 512};
 
@@ -90,7 +92,7 @@ class MemoryTransfer : public VKSampleSession {
 									   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, cpu2gpuBuffer[i], cpu2gpu[i]);
 			}
-			std::cout << "\nCPU to GPU Buffer Memory Transfer Speed" << std::endl;
+			std::cout << std::endl << "CPU to GPU Buffer Memory Transfer Speed" << std::endl;
 			for (size_t i = 0; i < memorySizes.size(); i++) {
 				bufferMemoryTransfer(device, transfer, cmds[0], timeSample, stagingBuffer[i], cpu2gpuBuffer[i],
 									 memorySizes[i]);
@@ -114,7 +116,7 @@ class MemoryTransfer : public VKSampleSession {
 			}
 
 			/*	GPU->GPU	*/
-			std::cout << "\nGPU to GPU Buffer Memory Transfer Speed" << std::endl;
+			std::cout << std::endl << "GPU to GPU Buffer Memory Transfer Speed" << std::endl;
 			for (size_t i = 0; i < memorySizes.size(); i++) {
 				bufferMemoryTransfer(device, transfer, cmds[0], timeSample, gpu2gpuBufferSrc[i], gpu2gpuBufferDst[i],
 									 memorySizes[i]);
@@ -136,7 +138,7 @@ class MemoryTransfer : public VKSampleSession {
 			}
 
 			/*	GPU->CPU	*/
-			std::cout << "\nGPU to CPU Buffer Memory Transfer Speed" << std::endl;
+			std::cout << std::endl << "GPU to CPU Buffer Memory Transfer Speed" << std::endl;
 			for (size_t i = 0; i < memorySizes.size(); i++) {
 				bufferMemoryTransfer(device, transfer, cmds[0], timeSample, gpu2cpuBufferSrc[i], gpu2cpuBufferDst[i],
 									 memorySizes[i]);
@@ -169,7 +171,7 @@ int main(int argc, const char **argv) {
 		mandel.run();
 
 	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

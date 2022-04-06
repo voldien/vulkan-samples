@@ -7,7 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
-class CubeWindow : public VKWindow {
+class ConditionalDraw : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
@@ -34,11 +34,11 @@ class CubeWindow : public VKWindow {
 	} Vertex;
 
   public:
-	CubeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	ConditionalDraw(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		prevTimeCounter = SDL_GetPerformanceCounter();
 	}
-	~CubeWindow() {}
+	virtual ~ConditionalDraw() {}
 
 	virtual void release() override {
 
@@ -440,7 +440,7 @@ int main(int argc, const char **argv) {
 		std::vector<PhysicalDevice *> p{core->createPhysicalDevice(0)};
 		printf("%s\n", p[0]->getDeviceName());
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(p);
-		CubeWindow window(core, d);
+		ConditionalDraw window(core, d);
 
 		window.run();
 	} catch (std::exception &ex) {

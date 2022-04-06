@@ -1,7 +1,9 @@
-#ifndef _STARTUP_WINDOW_SAMPLE_H_
-#define _STARTUP_WINDOW_SAMPLE_H_ 1
+#ifndef _VK_SAMPLES_VK_WINDOWq_H_
+#define _VK_SAMPLES_VK_WINDOWq_H_ 1
+#include "FPSCounter.h"
 #include "IWindow.h"
 #include "SDLWindow.h"
+#include "Util/Time.hpp"
 #include <VKDevice.h>
 #include <iostream>
 #include <memory>
@@ -34,7 +36,7 @@ class VKWindow : public IWindow {
 	 * @param width
 	 * @param height
 	 */
-	VKWindow(std::shared_ptr<VulkanCore>& core, std::shared_ptr<VKDevice>& device, int x, int y, int width, int height);
+	VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width, int height);
 	VKWindow(const VKWindow &other) = delete;
 	~VKWindow();
 
@@ -186,9 +188,13 @@ class VKWindow : public IWindow {
 	virtual intptr_t getNativePtr() const override; /*  Get native window reference object. */
 	virtual VkSurfaceKHR createSurface(const std::shared_ptr<VulkanCore> &instance) override;
 
+  public:
+	FPSCounter<float> &getFPSCounter() noexcept { return this->fpsCounter; }
+	vkscommon::Time &getTimer() noexcept { return this->time; }
+
   private:
-	std::shared_ptr<VKDevice>& device;
-	std::shared_ptr<VulkanCore>& core;
+	std::shared_ptr<VKDevice> &device;
+	std::shared_ptr<VulkanCore> &core;
 	typedef struct _SwapchainBuffers {
 		struct SwapChainSupportDetails {
 			VkSurfaceCapabilitiesKHR capabilities;
@@ -238,6 +244,9 @@ class VKWindow : public IWindow {
 	VkCommandPool compute_pool;
 	VkCommandPool transfer_pool;
 	IWindow *proxyWindow;
+
+	FPSCounter<float> fpsCounter;
+	vkscommon::Time time;
 };
 
 #endif

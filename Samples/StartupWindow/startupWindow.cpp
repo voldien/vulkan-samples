@@ -6,7 +6,7 @@ class StartUpWindow : public VKWindow {
   public:
 	StartUpWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
-
+	virtual ~StartUpWindow() {}
 	virtual void Initialize() override {
 		/*	Check if supported.	*/
 		onResize(width(), height());

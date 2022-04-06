@@ -9,6 +9,8 @@ class CachePipeline : public VKSampleSession {
 	CachePipeline(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKSampleSession(core, device) {}
 
+	virtual ~CachePipeline() {}
+
 	typedef struct _vertex_t {
 		float pos[2];
 		float color[3];
@@ -163,6 +165,14 @@ class CachePipeline : public VKSampleSession {
 
 		VKS_VALIDATE(
 			vkCreateGraphicsPipelines(getDevice(), cachepipline, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+
+		// TODO save cache pipeline.
+		size_t cache_size;
+		VKS_VALIDATE(vkGetPipelineCacheData(this->getDevice(), cachepipline, &cache_size, nullptr));
+		std::vector<uint8_t> cacheData(cache_size);
+		VKS_VALIDATE(vkGetPipelineCacheData(this->getDevice(), cachepipline, &cache_size, &cacheData[0]));
+
+		// vkMergePipelineCaches()
 
 		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);

@@ -9,6 +9,8 @@ class ExternalMemoryFD : public VKSampleSession {
 	ExternalMemoryFD(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKSampleSession(core, device) {}
 
+	virtual ~ExternalMemoryFD() { this->release(); }
+
 	virtual void release() override {
 		vkFreeMemory(this->getDevice(), memory, nullptr);
 		vkDestroyBuffer(this->getDevice(), buffer, nullptr);
@@ -33,8 +35,8 @@ class ExternalMemoryFD : public VKSampleSession {
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex =
-			VKHelper::findMemoryType(this->physicalDevice(), memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+			VKHelper::findMemoryType(this->getPhysicalDevice()->getHandle(), memRequirements.memoryTypeBits,
+									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
 				.value();
 
 		VKS_VALIDATE(vkAllocateMemory(this->getDevice(), &allocInfo, nullptr, &memory));
@@ -51,19 +53,48 @@ class ExternalMemoryFD : public VKSampleSession {
 		vkMemoryGetFdInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
 		vkMemoryGetFdInfo.pNext = nullptr;
 		vkMemoryGetFdInfo.memory = memory;
-		vkMemoryGetFdInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+		vkMemoryGetFdInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
 
 		VKS_VALIDATE(vkGetMemoryFdKHR(this->getDevice(), &vkMemoryGetFdInfo, &fd));
 
-		FILE *bufferFD = fdopen(fd, "r");
+		// FILE *bufferFD = fdopen(fd, "r");
 		void *buffer = malloc(bufferSize);
 
-		long int readResult = fread(buffer, bufferSize, 1, bufferFD);
+		ssize_t readResult; // = fread(buffer, bufferSize, 1, bufferFD);
+		readResult = read(fd, buffer, bufferSize);
+		if (readResult != bufferSize) {
+			throw cxxexcept::RuntimeException("Could not read the whole buffer {}, read {} {}", bufferSize, readResult,
+											  strerror(errno));
+		}
+		close(fd);
 
-		VkMemoryFdPropertiesKHR prop;
+		VkMemoryFdPropertiesKHR prop = {.sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR, .pNext = nullptr};
 
 		VKS_VALIDATE(
 			vkGetMemoryFdPropertiesKHR(this->getDevice(), VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT, fd, &prop));
+
+		//	prop.memoryTypeBits
+
+		/**/
+
+		// VkMemoryDedicatedAllocateInfoKHR dedicated_memory_info = {
+		// 	.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR,
+		// 	.image = image,
+		// };
+		// VkImportMemoryFdInfoKHR import_memory_info = {
+		// 	.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
+		// 	.pNext = &dedicated_memory_info,
+		// 	.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR,
+		// 	.fd = fd,
+		// };
+		// VkMemoryAllocateInfo alloc_info = {
+		// 	.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		// 	.pNext = &import_memory_info,
+		// 	.allocationSize = memRequirements.size,
+		// 	.memoryTypeIndex = allocInfo.memoryTypeIndex,
+		// };
+		// VkDeviceMemory allocmem;
+		// VKS_VALIDATE(vkAllocateMemory(getDevice(), &alloc_info, nullptr, &allocmem));
 	}
 
   protected:

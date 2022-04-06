@@ -2,7 +2,7 @@ FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 ADD_EXECUTABLE(GameOfLife ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(GameOfLife ${Vulkan_LIBRARIES} vk-sample-common )
+TARGET_LINK_LIBRARIES(GameOfLife vk-sample-common )
 ADD_DEPENDENCIES(GameOfLife vk-sample-common)
 
 # Vulkan dependies headers.

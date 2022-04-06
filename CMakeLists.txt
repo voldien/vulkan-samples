@@ -18,6 +18,17 @@ OPTION(BUILD_WITH_UBSAN "Enable Undefined Behavior sanitizer." OFF )
 OPTION(BUILD_WITH_TSAN "Enable Thread sanitizer" OFF)
 
 
+############################################
+# Backend libraries
+############################################
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/SPIRV-Cross EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/cxxopts EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/mimi-imgui EXCLUDE_FROM_ALL)
+
+#TODO remove
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/extern/flythough_camera)
+
+
 # GCC compiler flag options.
 IF((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX) AND NOT CMAKE_COMPILER_IS_MINGW)
 	#
@@ -89,15 +100,7 @@ IF(Vulkan_FOUND)
     MESSAGE(STATUS "Vulkan: ${Vulkan_LIBRARY}")
 ENDIF()
 
-############################################
-# Backend libraries
-############################################
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/SPIRV-Cross EXCLUDE_FROM_ALL)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/cxxopts EXCLUDE_FROM_ALL)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/mimi-imgui EXCLUDE_FROM_ALL)
 
-
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/extern/flythough_camera)
 
 
 ###################################################
@@ -135,8 +138,10 @@ ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Tessellation)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/StencilShadowVolume)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/SilhouetteDetection)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/ShadowMap)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/occlusionquery)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/externalmemoryfd)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/cachepipeline)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/ShaderInfo)
 
 # All shader files.
 FILE(GLOB GLSL_SOURCE_FILES

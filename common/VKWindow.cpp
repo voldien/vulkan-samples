@@ -55,7 +55,7 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	// this->core = core;
 	this->swapChain = new SwapchainBuffers();
 
-		/*  Create surface. */
+	/*  Create surface. */
 	this->surface = this->createSurface(this->core);
 
 	/*  Create command pool.    */
@@ -70,7 +70,7 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	/*	Create swap chain.	*/
 	createSwapChain();
 
-	const int MAX_FRAMES_IN_FLIGHT = this->getSwapChainImageCount();
+	const size_t MAX_FRAMES_IN_FLIGHT = this->getSwapChainImageCount();
 	this->imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	this->renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	this->inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -89,6 +89,8 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 		VKS_VALIDATE(vkCreateSemaphore(getDevice(), &semaphoreInfo, nullptr, &this->renderFinishedSemaphores[i]));
 		VKS_VALIDATE(vkCreateFence(getDevice(), &fenceInfo, nullptr, &this->inFlightFences[i]));
 	}
+
+	this->time.start();
 }
 
 uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }
@@ -121,7 +123,8 @@ const std::vector<VkImageView> &VKWindow::getSwapChainImageViews() const noexcep
 
 const std::shared_ptr<VKDevice> &VKWindow::getVKDevice() const noexcept { return this->device; }
 const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice() const noexcept {
-	// return this->device->getPhysicalDevice();
+	// TODO improve
+	return this->getVKDevice()->getPhysicalDevice(0);
 }
 
 VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
@@ -523,7 +526,13 @@ void VKWindow::run() {
 		}
 		if (visible) {
 			this->draw();
+
 			this->swapBuffer();
+			this->time.update();
+			this->fpsCounter.incrementFPS(SDL_GetPerformanceCounter());
+
+			std::cout << "FPS " << getFPSCounter().getFPS() << " Elapsed Time: " << getTimer().getElapsed()
+					  << std::endl;
 		}
 	}
 finished:

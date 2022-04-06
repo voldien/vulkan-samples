@@ -8,7 +8,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
-class SingleTextureWindow : public VKWindow {
+class SingleTexture : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
@@ -20,7 +20,7 @@ class SingleTextureWindow : public VKWindow {
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	std::vector<VkDeviceMemory> uniformBuffersMemory; // TODO single memory
 	std::vector<void *> mapMemory;
 
 	VkImage texture = VK_NULL_HANDLE;
@@ -41,9 +41,9 @@ class SingleTextureWindow : public VKWindow {
 	} Vertex;
 
   public:
-	SingleTextureWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	SingleTexture(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {}
-	~SingleTextureWindow() {}
+	virtual ~SingleTexture() {}
 
 	virtual void release() override {
 
@@ -291,7 +291,7 @@ class SingleTextureWindow : public VKWindow {
 
 		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
-		ImageImporter::createImage("uv-texture.png", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
+		ImageImporter::createImage2D("uv-texture.png", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
 								   physicalDevice(), texture, textureMemory);
 
 		vkEndCommandBuffer(cmds[0]);
@@ -501,7 +501,7 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		VKSampleWindow<SingleTextureWindow> skybox(argc, argv, required_device_extensions, {},
+		VKSampleWindow<SingleTexture> skybox(argc, argv, required_device_extensions, {},
 												   required_instance_extensions);
 		skybox.run();
 	} catch (std::exception &ex) {

@@ -12,6 +12,7 @@ class SignedDistanceFieldVolumeWindow : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {}
 
 	virtual void Initialize() { /*	*/
+	
 	}
 
 	virtual void onResize(int width, int height) override {

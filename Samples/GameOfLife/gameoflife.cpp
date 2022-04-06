@@ -2,7 +2,7 @@
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 
-class GameOfLifeWindow : public VKWindow {
+class GameOfLife : public VKWindow {
   private:
 	VkPipeline computePipeline = VK_NULL_HANDLE;
 	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
@@ -25,7 +25,6 @@ class GameOfLifeWindow : public VKWindow {
 
 	std::vector<VkDescriptorSet> descriptorSets;
 
-
 	struct reaction_diffusion_param_t {
 		float kernelA[4][4];
 		float kernelB[4][4];
@@ -45,11 +44,11 @@ class GameOfLifeWindow : public VKWindow {
 	size_t paramMemSize = sizeof(params);
 
   public:
-	GameOfLifeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	GameOfLife(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(std::string("Game of Life - Compute"));
 	}
-	~GameOfLifeWindow() {}
+	virtual ~GameOfLife() {}
 
 	virtual void release() override {
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -144,20 +143,19 @@ class GameOfLifeWindow : public VKWindow {
 		}
 
 		/*	Allocate descriptor set.	*/
-		std::vector<VkDescriptorPoolSize> poolSize = {
-			{
-				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				static_cast<uint32_t>(getSwapChainImageCount() * 1),
-			},
+		std::vector<VkDescriptorPoolSize> poolSize = {{
+														  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+														  static_cast<uint32_t>(getSwapChainImageCount() * 1),
+													  },
 
-			{
-				VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				static_cast<uint32_t>(getSwapChainImageCount()),
-			},
-			{
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				static_cast<uint32_t>(getSwapChainImageCount()),
-			}};
+													  {
+														  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+														  static_cast<uint32_t>(getSwapChainImageCount()),
+													  },
+													  {
+														  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+														  static_cast<uint32_t>(getSwapChainImageCount()),
+													  }};
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -180,8 +178,7 @@ class GameOfLifeWindow : public VKWindow {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		const VkDeviceSize cellBufferSize =
-			(unsigned int)width * (unsigned int)height * sizeof(float) * 1;
+		const VkDeviceSize cellBufferSize = (unsigned int)width * (unsigned int)height * sizeof(float) * 1;
 
 		cellsBuffers.resize(getSwapChainImageCount() * 2);
 		cellsMemory.resize(getSwapChainImageCount() * 2);
@@ -367,10 +364,9 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 
 	try {
-		VKSampleWindow<GameOfLifeWindow> mandel(argc, argv, required_device_extensions, {},
-												required_instance_extensions);
+		VKSampleWindow<GameOfLife> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
-		mandel.run();
+		sample.run();
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

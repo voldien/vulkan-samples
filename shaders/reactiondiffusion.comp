@@ -38,26 +38,28 @@ float computeDiffuseRateB(float A, float B, float diverage, float killRate, floa
 	return B + (diffuseRate * diverage + A * pow(B, 2) - (killRate - feedRate) * B) * delta;
 }
 
-int memoryAddress(ivec2 invokedPixelCoord, ivec2 imageSize, ivec2 offset){
+int memoryAddress(ivec2 invokedPixelCoord, ivec2 imageSize, ivec2 offset) {
 	ivec2 pixelCoord = (invokedPixelCoord + offset) % imageSize;
 	return pixelCoord.y * imageSize.y + pixelCoord.x;
 }
 
-float lapacianA(ivec2 pixelCord, ivec2 imageSize, mat4 convolutionKernel){
+float lapacianA(ivec2 pixelCord, ivec2 imageSize, mat4 convolutionKernel) {
 	float result = 0;
-	for(int y = 0; y < 3; y++){
-		for(int x = 0; x < 3; x++){
-			result += convolutionKernel[x][2 - y] * PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x,-1 + y))].x;
+	for (int y = 0; y < 3; y++) {
+		for (int x = 0; x < 3; x++) {
+			result += convolutionKernel[x][2 - y] *
+					  PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x, -1 + y))].x;
 		}
 	}
 	return result;
 }
 
-float lapacianB(ivec2 pixelCord, ivec2 imageSize, mat4 convolutionKernel){
+float lapacianB(ivec2 pixelCord, ivec2 imageSize, mat4 convolutionKernel) {
 	float result = 0;
-	for(int y = 0; y < 3; y++){
-		for(int x = 0; x < 3; x++){
-			result += convolutionKernel[x][2 - y] * PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x,-1 + y))].y;
+	for (int y = 0; y < 3; y++) {
+		for (int x = 0; x < 3; x++) {
+			result += convolutionKernel[x][2 - y] *
+					  PreviousAB.AB[memoryAddress(pixelCord, imageSize, ivec2(-1 + x, -1 + y))].y;
 		}
 	}
 	return result;
@@ -82,6 +84,6 @@ void main() {
 
 	/*	Display the color.	*/
 	vec4 pixel = vec4(diverageA, 0, diverageB, 1);
-	//TODO forward the diverage to a buffer to be drawn
+	// TODO forward the diverage to a buffer to be drawn
 	imageStore(img_output, pixel_coords, pixel);
 }

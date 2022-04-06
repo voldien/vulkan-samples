@@ -2,7 +2,7 @@ FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 ADD_EXECUTABLE(RenderHeadless ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(RenderHeadless ${Vulkan_LIBRARIES} vk-sample-common )
+TARGET_LINK_LIBRARIES(RenderHeadless vk-sample-common )
 ADD_DEPENDENCIES(RenderHeadless vk-sample-common)
 
 # Vulkan dependies headers.

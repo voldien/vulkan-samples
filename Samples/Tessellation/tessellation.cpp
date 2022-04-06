@@ -25,7 +25,7 @@ class BasicTessellation : public VKWindow {
 	std::vector<VkDescriptorSet> descriptorSets;
 	/*	*/
 	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	std::vector<VkDeviceMemory> uniformBuffersMemory; // TODO single memory.
 	std::vector<void *> mapMemory;
 
 	/*	Height map.	*/
@@ -34,10 +34,8 @@ class BasicTessellation : public VKWindow {
 	VkImageView textureView = VK_NULL_HANDLE;
 	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
-	vkscommon::Time time;
 	bool split;
 
-	FPSCounter<float> fpsCounter;
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
@@ -63,7 +61,7 @@ class BasicTessellation : public VKWindow {
 		this->setTitle("Basic Tessellation");
 		this->show();
 	}
-	~BasicTessellation() {}
+	virtual ~BasicTessellation() {}
 
 	virtual void release() override {
 
@@ -445,8 +443,6 @@ class BasicTessellation : public VKWindow {
 		vkUnmapMemory(getDevice(), vertexMemory);
 
 		onResize(width(), height());
-
-		time.start();
 	}
 
 	virtual void onResize(int width, int height) override {
@@ -509,7 +505,7 @@ class BasicTessellation : public VKWindow {
 
 	virtual void draw() override {
 
-		float elapsedTime = time.getElapsed();
+		float elapsedTime = getTimer().getElapsed();
 
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);

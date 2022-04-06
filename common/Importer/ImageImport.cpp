@@ -87,6 +87,7 @@ void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth
 		*pixelSize = (unsigned long int)FreeImage_GetWidth(firsbitmap) *
 					 (unsigned long int)FreeImage_GetHeight(firsbitmap) *
 					 (unsigned long int)FreeImage_GetBPP(firsbitmap);
+
 		// Multiple of 8.
 		*pixelSize += *pixelSize % 8;
 		*pixelSize /= 8;
@@ -134,7 +135,7 @@ void ImageImporter::saveTextureData(const char *cfilename, VkDevice device, VkIm
 	saveTextureData(cfilename, pixelData, width, height, layers, 0);
 }
 
-void ImageImporter::createImage(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue,
+void ImageImporter::createImage2D(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue,
 								VkPhysicalDevice physicalDevice, VkImage &textureImage,
 								VkDeviceMemory &textureImageMemory) {
 
@@ -142,7 +143,7 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 	unsigned long pixelSize;
 	void *pixels = loadTextureData(filename, &texWidth, &texHeight, &format, &internal, &type, &pixelSize);
 
-	VkDeviceSize imageSize = pixelSize;
+	const VkDeviceSize imageSize = pixelSize;
 	VkPhysicalDeviceMemoryProperties memProperties;
 
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
@@ -170,7 +171,7 @@ void ImageImporter::createImage(const char *filename, VkDevice device, VkCommand
 		vk_format = VK_FORMAT_B8G8R8_SRGB;
 	}
 	vk_format = VK_FORMAT_R8G8B8A8_SRGB;
-	
+
 	/*	Create staging buffer.	*/
 	VKHelper::createImage(device, texWidth, texHeight, 1, vk_format, VK_IMAGE_TILING_OPTIMAL,
 						  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,

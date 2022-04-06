@@ -7,7 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
-class ParticleSystemWindow : public VKWindow {
+class ParticleSystem : public VKWindow {
   private:
 	const std::string vertexShader = "";
 	const std::string fragmentShader = "";
@@ -47,7 +47,7 @@ class ParticleSystemWindow : public VKWindow {
 
 	/*	*/
 	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemories;
+	std::vector<VkDeviceMemory> uniformBuffersMemories; // TODO make a single buffer
 	std::vector<void *> mapMemory;
 
 	/*	*/
@@ -67,20 +67,21 @@ class ParticleSystemWindow : public VKWindow {
 	std::vector<VkDescriptorSet> particleComputeDescriptorSets;
 	std::vector<VkDescriptorSet> particleGraphicDescriptorSets;
 
-	size_t paramMemSize = sizeof(mvp);
-
+	VkDeviceSize UniformParamMemSize = sizeof(mvp);
+	/*	*/
 	CameraController cameraController;
-	vkscommon::Time time;
 	// TODO add ass configurable param.
 	const int localInvokation = 32;
 	const unsigned int nrParticles = localInvokation * 256;
 
   public:
-	ParticleSystemWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	ParticleSystem(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle("Particle System");
 		this->show();
 	}
+
+	virtual ~ParticleSystem() {}
 
 	virtual void release() override {
 
@@ -405,7 +406,7 @@ class ParticleSystemWindow : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
-			bufferInfo.range = paramMemSize;
+			bufferInfo.range = UniformParamMemSize;
 
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -437,10 +438,10 @@ class ParticleSystemWindow : public VKWindow {
 	virtual void Initialize() {
 
 		// TODO improve memory to align with the required by the driver
-		paramMemSize =
-			std::max(getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minMemoryMapAlignment, paramMemSize);
-		const VkDeviceSize particleGraphicBufferSize = paramMemSize * getSwapChainImageCount();
-		const VkDeviceSize particleSimBufferSize = sizeof(Particle) * nrParticles * getSwapChainImageCount();
+		this->UniformParamMemSize +=
+			UniformParamMemSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().nonCoherentAtomSize;
+
+		const VkDeviceSize particleGraphicBufferSize = UniformParamMemSize * getSwapChainImageCount();
 
 		const VkPhysicalDeviceMemoryProperties &memProperties =
 			this->getVKDevice()->getPhysicalDevice(0)->getMemoryProperties();
@@ -454,32 +455,33 @@ class ParticleSystemWindow : public VKWindow {
 		this->uniformBuffersMemories.resize(getSwapChainImageCount());
 
 		/*	Allocate memory.	*/
-		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
+		for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
 			/*	Create uniform buffer.	*/
-			VKHelper::createBuffer(getDevice(), particleGraphicBufferSize, memProperties,
+			VKHelper::createBuffer(this->getDevice(), particleGraphicBufferSize, memProperties,
 								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   uniformBuffers[i], uniformBuffersMemories[i]);
 
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemories[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
+			VKS_VALIDATE(
+				vkMapMemory(this->getDevice(), uniformBuffersMemories[i], 0, this->UniformParamMemSize, 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
 		particleBuffers.resize(1);
 		particleBufferMemory.resize(1);
-		const size_t particle_buffer_size = sizeof(Particle) * nrParticles;
+		const VkDeviceSize particle_buffer_size = sizeof(Particle) * nrParticles;
 		/*	Create particle buffer, on local device memory only.	*/
 		VKHelper::createBuffer(getDevice(), particle_buffer_size, memProperties,
 							   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 							   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, particleBuffers[0], particleBufferMemory[0]);
+		// TODO fix.
+		/*	Create init buffer to transfer.	*/
 
 		initDescriptor();
 
 		onResize(width(), height());
-
-		time.start();
 	}
 
 	virtual void onResize(int width, int height) override {
@@ -515,23 +517,23 @@ class ParticleSystemWindow : public VKWindow {
 
 			/*	Update particles.	*/
 			// TODO validate memory barrier, being not read for rendering.
-			// VKHelper::bufferBarrier(cmd, 0, VK_ACCESS_SHADER_WRITE_BIT, particleBuffers[0],
-			// 						sizeof(Particle) * nrParticles, 0, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
-			// 						VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+			VKHelper::bufferBarrier(cmd, 0, VK_ACCESS_SHADER_WRITE_BIT, particleBuffers[0],
+									sizeof(Particle) * nrParticles, 0, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+									VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-			// vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, particleSim);
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, particleSim);
 			// Bind descriptor
-			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, this->particleSimLayout, 0, 1,
-			// 						&this->particleComputeDescriptorSets[i], 0, nullptr);
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, this->particleSimLayout, 0, 1,
+									&this->particleComputeDescriptorSets[i], 0, nullptr);
 
 			/*	Update particle simulation.	*/
-			// vkCmdDispatch(cmd, nrParticles / localInvokation, 1, 1);
+			vkCmdDispatch(cmd, nrParticles / localInvokation, 1, 1);
 
-			// Barrier between compute and vertex
-			// TODO validate memory barrier. make sure that the particles has been updated before being read.
-			// VKHelper::bufferBarrier(cmd, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, particleBuffers[0],
-			// 						sizeof(Particle) * nrParticles, 0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-			// 						VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+			// // Barrier between compute and vertex
+			// // TODO validate memory barrier. make sure that the particles has been updated before being read.
+			VKHelper::bufferBarrier(cmd, 0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, particleBuffers[0],
+									sizeof(Particle) * nrParticles, 0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+									VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -557,24 +559,24 @@ class ParticleSystemWindow : public VKWindow {
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
-	virtual void draw() {
-		this->time.update();
+	virtual void draw() override {
 
-		std::cout << time.getElapsed() << std::endl;
-		cameraController.update(this->time.deltaTime());
+		cameraController.update(this->getTimer().deltaTime());
+
+		/*	*/
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = cameraController.getViewMatrix();
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
 		/*	Copy uniform memory.	*/
-		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
+		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, this->UniformParamMemSize);
 
 		/* Setup the range	*/
 		VkMappedMemoryRange stagingRange{};
 		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 		stagingRange.memory = uniformBuffersMemories[getCurrentFrameIndex()];
 		stagingRange.offset = 0;
-		stagingRange.size = (size_t)sizeof(this->mvp);
+		stagingRange.size = this->UniformParamMemSize;
 		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 };
@@ -586,8 +588,8 @@ int main(int argc, const char **argv) {
 
 	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		VKSampleWindow<ParticleSystemWindow> particleSystem(argc, argv, required_device_extensions, {},
-															required_instance_extensions);
+		VKSampleWindow<ParticleSystem> particleSystem(argc, argv, required_device_extensions, {},
+													  required_instance_extensions);
 		particleSystem.run();
 
 	} catch (std::exception &ex) {

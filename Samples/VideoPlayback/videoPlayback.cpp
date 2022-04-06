@@ -3,7 +3,6 @@
 #include "VKSampleWindow.h"
 #include "VksCommon.h"
 #include <OpenALAudioInterface.h>
-#include <SDL2/SDL.h>
 #include <VKWindow.h>
 
 #ifdef __cplusplus
@@ -26,7 +25,7 @@ extern "C" {
 #define av_frame_free avcodec_free_frame
 #endif
 
-class AVVideoPlaybackWindow : public VKWindow {
+class AVVideoPlayback : public VKWindow {
   private:
 	static const int nrVideoFrames = 2;
 	int nthVideoFrame = 0;
@@ -72,13 +71,13 @@ class AVVideoPlaybackWindow : public VKWindow {
 	std::string path;
 
   public:
-	AVVideoPlaybackWindow(const char *path, std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	AVVideoPlayback(const char *path, std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(fmt::format("VideoPlayback {}", path));
 		this->path = path;
 		this->show();
 	}
-	~AVVideoPlaybackWindow() {
+	virtual ~AVVideoPlayback() {
 		if (this->frame)
 			av_frame_free(&this->frame);
 		avcodec_free_context(&this->pAudioCtx);
@@ -90,7 +89,7 @@ class AVVideoPlaybackWindow : public VKWindow {
 
 	virtual void release() override {
 
-		for (int i = 0; i < nrVideoFrames; i++) {
+		for (size_t i = 0; i < nrVideoFrames; i++) {
 			vkDestroyImage(this->getDevice(), videoFrames[i], nullptr);
 			vkFreeMemory(this->getDevice(), videoFrameMemory[i], nullptr);
 			vkFreeMemory(this->getDevice(), videoStagingFrameMemory[i], nullptr);
@@ -444,9 +443,9 @@ int main(int argc, const char **argv) {
 		// mandel.run();
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-		printf("%s\n", devices[0]->getDeviceName());
+
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices, required_device_extensions);
-		AVVideoPlaybackWindow window(argv[1], core, d);
+		AVVideoPlayback window(argv[1], core, d);
 
 		window.run();
 	} catch (std::exception &ex) {

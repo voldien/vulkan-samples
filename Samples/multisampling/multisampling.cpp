@@ -18,7 +18,7 @@ class MultiSampling : public VKWindow {
 		this->show();
 		this->setTitle("MultiSampling");
 	}
-	~MultiSampling() {}
+	virtual ~MultiSampling() {}
 	typedef struct _vertex_t {
 		float pos[2];
 		float color[3];
@@ -27,12 +27,12 @@ class MultiSampling : public VKWindow {
 	virtual void release() override {
 
 		/*	*/
-		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
-		vkFreeMemory(getDevice(), vertexMemory, nullptr);
+		vkDestroyBuffer(this->getDevice(), vertexBuffer, nullptr);
+		vkFreeMemory(this->getDevice(), vertexMemory, nullptr);
 
 		/*	*/
-		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
+		vkDestroyPipeline(this->getDevice(), graphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(this->getDevice(), pipelineLayout, nullptr);
 	}
 
 	const std::vector<Vertex> vertices = {
@@ -123,7 +123,7 @@ class MultiSampling : public VKWindow {
 		VkPipelineMultisampleStateCreateInfo multisampling{};
 		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		multisampling.sampleShadingEnable = VK_FALSE;
-		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT;
 
 		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 		colorBlendAttachment.colorWriteMask =

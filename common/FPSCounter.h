@@ -1,5 +1,5 @@
-#ifndef _VKSAMPLES_COMMON_FPS_COUNTER_H_
-#define _VKSAMPLES_COMMON_FPS_COUNTER_H_ 1
+#ifndef _VK_SAMPLES_COMMON_FPS_COUNTER_H_
+#define _VK_SAMPLES_COMMON_FPS_COUNTER_H_ 1
 
 /**
  * @brief
@@ -30,7 +30,26 @@ template <typename T = double> class FPSCounter {
 		totalFPS++;
 	}
 
+	void update(float elapsedTime) {
+		if (totalFPS % fpsSample == 0) {
+		}
+		totalFPS++;
+	}
+
 	unsigned int getFPS() const noexcept { return averageFPS; }
+
+  protected:
+	void internal_update(long int timeSample) {
+		if (totalFPS % fpsSample == 0) {
+			/*  Compute number average FPS.  */
+			long int deltaTime = timeSample - prevTimeSample;
+			T sec = static_cast<T>(deltaTime) / static_cast<T>(timeResolution);
+			averageFPS = static_cast<T>(fpsSample) / sec;
+			prevTimeSample = timeSample;
+
+			this->totalFPS = 0;
+		}
+	}
 
   private:
 	int totalFPS;

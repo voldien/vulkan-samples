@@ -1,5 +1,6 @@
 #ifndef _VK_SAMPLE_WINDOW_H_
 #define _VK_SAMPLE_WINDOW_H_ 1
+#include "FPSCounter.h"
 #include "Util/Time.hpp"
 #include "VKWindow.h"
 #include <cxxopts.hpp>
@@ -14,6 +15,12 @@ class VKSampleSession {
 	virtual void release() {}
 	virtual void commandline(cxxopts::Options &options) {}
 
+	virtual ~VKSampleSession() {}
+
+  public:
+	FPSCounter<float> &getFPSCounter() noexcept { return this->fpsCounter; }
+
+  public:
 	/*	*/
 	VkDevice getDevice() const noexcept { return this->device->getHandle(); }
 
@@ -23,13 +30,14 @@ class VKSampleSession {
 
 	const std::shared_ptr<VKDevice> &getVKDevice() const noexcept { return this->device; }
 	const std::shared_ptr<PhysicalDevice> getPhysicalDevice() const noexcept {
-		this->getVKDevice()->getPhysicalDevice(0);
+		return this->getVKDevice()->getPhysicalDevice(0);
 	}
+	std::shared_ptr<PhysicalDevice> getPhysicalDevice() noexcept { return this->getVKDevice()->getPhysicalDevice(0); }
 
 	VkPhysicalDevice physicalDevice() const { return this->getPhysicalDevice()->getHandle(); }
 	void setPhysicalDevice(VkPhysicalDevice device);
 	std::vector<VkQueue> getQueues() const noexcept { return {}; }
-	const std::vector<VkPhysicalDevice> &availablePhysicalDevices() const { return {}; }
+	const std::vector<VkPhysicalDevice> &availablePhysicalDevices() const { return core->getPhysicalDevices(); }
 
 	/*	*/
 	VkInstance getInstance() const noexcept { return this->core->getHandle(); }
@@ -49,6 +57,7 @@ class VKSampleSession {
 	VkCommandPool transfer_pool;
 
   protected:
+	FPSCounter<float> fpsCounter;
 	vkscommon::Time time;
 };
 class TmpVKSampleWindow : public VKWindow, public VKSampleSession {

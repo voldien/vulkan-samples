@@ -9,7 +9,7 @@ A set of vulkan sample for educational purposes.
 ## Required Packages
 
 ```bash
-apt install libfmt-dev libglm-dev libsdl2-dev
+apt install libfmt-dev libglm-dev libsdl2-dev libassimp-dev libfreeimage-dev
 ```
 
 ## Build Instruction
@@ -37,7 +37,9 @@ Render a single triangle
 
 ## Textured Cube
 
-## SkyBox
+## SkyBox - CubeMap
+
+## SkyBox - Panoramic
 
 ## Push Constant - VK_KHR_push_descriptor
 

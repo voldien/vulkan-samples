@@ -12,7 +12,7 @@ class ComputeHeadless : public VKSampleSession {
 		cmdBuffer = this->device->allocateCommandBuffers(this->compute_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 2);
 	}
 
-	~ComputeHeadless() {
+	virtual ~ComputeHeadless() {
 
 		vkDestroyDescriptorSetLayout(getDevice(), computeDescriptorSetLayout, nullptr);
 

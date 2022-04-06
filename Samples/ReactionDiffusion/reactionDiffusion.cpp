@@ -4,7 +4,7 @@
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 
-class ReactionDiffusionWindow : public VKWindow {
+class ReactionDiffusion : public VKWindow {
   private:
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
@@ -46,23 +46,40 @@ class ReactionDiffusionWindow : public VKWindow {
 	unsigned int paramMemSize = sizeof(params);
 
   public:
-	ReactionDiffusionWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	ReactionDiffusion(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(std::string("ReactionDiffusion Algorithm - Compute"));
+		this->show();
 	}
-	~ReactionDiffusionWindow() {}
+	virtual ~ReactionDiffusion() {}
 
 	virtual void release() override {
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 
-		for (unsigned int i = 0; i < computeImageViews.size(); i++)
-			vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
+		for (size_t i = 0; i < reactionDiffuseImage.size(); i++) {
+			vkDestroyImage(getDevice(), reactionDiffuseImage[i], nullptr);
+		}
+		for (size_t i = 0; i < reactionDiffuseImageMemory.size(); i++) {
+			vkFreeMemory(getDevice(), reactionDiffuseImageMemory[i], nullptr);
+		}
 
-		for (unsigned int i = 0; i < paramMemory.size(); i++)
-			vkFreeMemory(getDevice(), paramMemory[i], nullptr);
+		for (size_t i = 0; i < computeImageViews.size(); i++) {
+			vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
+		}
+
+		for (size_t i = 0; i < cellsBuffers.size(); i++) {
+			vkDestroyBuffer(this->getDevice(), cellsBuffers[i], nullptr);
+		}
+		for (size_t i = 0; i < cellsMemory.size(); i++) {
+			vkFreeMemory(getDevice(), cellsMemory[i], nullptr);
+		}
 
 		vkDestroyBuffer(getDevice(), paramBuffer, nullptr);
+		for (size_t i = 0; i < paramMemory.size(); i++) {
+			vkFreeMemory(getDevice(), paramMemory[i], nullptr);
+		}
+
 		vkDestroyPipeline(getDevice(), computePipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), computePipelineLayout, nullptr);
 	}
@@ -124,9 +141,8 @@ class ReactionDiffusionWindow : public VKWindow {
 	virtual void Initialize() override {
 		// TODO fix get correct physical device.
 		// TODO fix alignment size.
-		paramMemSize = std::max(
-			(unsigned int)getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment,
-			(unsigned int)paramMemSize);
+		paramMemSize +=
+			paramMemSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
 
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
@@ -392,7 +408,7 @@ int main(int argc, const char **argv) {
 																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
-		VKSampleWindow<ReactionDiffusionWindow> mandel(argc, argv, required_device_extensions, {},
+		VKSampleWindow<ReactionDiffusion> mandel(argc, argv, required_device_extensions, {},
 													   required_instance_extensions);
 		mandel.run();
 

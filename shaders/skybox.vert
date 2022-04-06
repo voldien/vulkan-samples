@@ -14,7 +14,8 @@ layout(set = 0, binding = 0) uniform params {
 	mat4 modelView;
 	mat4 ModelViewProjection;
 	vec4 DiffuseColor;
-} params_;
+}
+params_;
 
 void main() {
 	vec4 MVPPos = params_.ModelViewProjection * vec4(vertex, 1.0);

@@ -1,116 +1,48 @@
-#include "Importer/ImageImport.h"
-#include "Util/Time.hpp"
-#include "VKSampleWindow.h"
-#include "VksCommon.h"
-#include <Core/SystemInfo.h>
-#include <Core/TaskScheduler/TaskScheduler.h>
-#include <Util/CameraController.h>
+#include "Importer/IOUtil.h"
+#include <SDL2/SDL.h>
+#include <VKSampleWindow.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/mat4x4.hpp>
+#include <iostream>
 
-class MultiThreading : public VKWindow {
+class OcclusionQuery : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
-	VkDescriptorPool descpool = VK_NULL_HANDLE;
-
-	std::vector<VkDescriptorSet> descriptorSets;
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
-	std::vector<void *> mapMemory;
-
-	std::vector<VkCommandBuffer> secondaryCommandBuffer;
-	vkscommon::Time time;
-	CameraController cameraController;
-
-	fragcore::TaskScheduler *tashSch;
-
-	struct UniformBufferObject {
-		alignas(16) glm::mat4 model;
-		alignas(16) glm::mat4 view;
-		alignas(16) glm::mat4 proj;
-	} mvp;
-
-	typedef struct _vertex_t {
-		float pos[3];
-		float uv[2];
-	} Vertex;
 
   public:
-	MultiThreading(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	OcclusionQuery(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		this->setTitle("MultiThreading");
 		this->show();
+		this->setTitle("OcclusionQuery");
 	}
-	virtual ~MultiThreading() {}
+	virtual ~OcclusionQuery() {}
+	typedef struct _vertex_t {
+		float pos[2];
+		float color[3];
+	} Vertex;
 
 	virtual void release() override {
 
-		// vkFreeDescriptorSets
-		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
-
+		/*	*/
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
-		for (int i = 0; i < uniformBuffers.size(); i++) {
-			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
-			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
-			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
-		}
-
-		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
+		/*	*/
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
 
-	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 0, 0}, // triangle 1 : begin
-										  {-1.0f, -1.0f, 1.0f, 0, 1},
-										  {-1.0f, 1.0f, 1.0f, 1, 1}, // triangle 1 : end
-										  {1.0f, 1.0f, -1.0f, 1, 1}, // triangle 2 : begin
-										  {-1.0f, -1.0f, -1.0f, 1, 0},
-										  {-1.0f, 1.0f, -1.0f, 0, 0}, // triangle 2 : end
-										  {1.0f, -1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, -1.0f, 0, 1},
-										  {1.0f, -1.0f, -1.0f, 1, 1},
-										  {1.0f, 1.0f, -1.0f, 0, 0},
-										  {1.0f, -1.0f, -1.0f, 1, 1},
-										  {-1.0f, -1.0f, -1.0f, 1, 0},
-										  {-1.0f, -1.0f, -1.0f, 0, 0},
-										  {-1.0f, 1.0f, 1.0f, 0, 1},
-										  {-1.0f, 1.0f, -1.0f, 1, 1},
-										  {1.0f, -1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, 1.0f, 1, 1},
-										  {-1.0f, -1.0f, -1.0f, 0, 1},
-										  {-1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, 1.0f, 0, 1},
-										  {1.0f, -1.0f, 1.0f, 1, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, -1.0f, -1.0f, 1, 1},
-										  {1.0f, 1.0f, -1.0f, 1, 0},
-										  {1.0f, -1.0f, -1.0f, 0, 0},
-										  {1.0f, 1.0f, 1.0f, 0, 1},
-										  {1.0f, -1.0f, 1.0f, 1, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, 1.0f, -1.0f, 1, 1},
-										  {-1.0f, 1.0f, -1.0f, 0, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, 1.0f, -1.0f, 0, 1},
-										  {-1.0f, 1.0f, 1.0f, 1, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, 1.0f, 1.0f, 1, 1},
-										  {1.0f, -1.0f, 1.0f, 1, 0}
-
-	};
+	/*	{vertex(3)|uv(2)}*/
+	const std::vector<Vertex> vertices = {
+		{0.0f, -0.5f, 1.0f, 1.0f, 1.0f}, {0.5f, 0.5f, 0.0f, 1.0f, 0.0f}, {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f}};
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
+		auto vertShaderCode = IOUtil::readFile("shaders/triangle.vert.spv");
+		auto fragShaderCode = IOUtil::readFile("shaders/triangle.frag.spv");
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -141,28 +73,18 @@ class MultiThreading : public VKWindow {
 
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
-		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
 		attributeDescriptions[0].offset = 0;
 
 		attributeDescriptions[1].binding = 0;
 		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[1].offset = 12;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[1].offset = 8;
 
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
-		/*	*/
-		VkDescriptorSetLayoutBinding uboLayoutBinding{};
-		uboLayoutBinding.binding = 0;
-		uboLayoutBinding.descriptorCount = 1;
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBinding.pImmutableSamplers = nullptr;
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, {uboLayoutBinding});
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -195,7 +117,7 @@ class MultiThreading : public VKWindow {
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
-		rasterizer.cullMode = VK_CULL_MODE_NONE;
+		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -222,13 +144,18 @@ class MultiThreading : public VKWindow {
 
 		VkPipelineDepthStencilStateCreateInfo depthStencil{};
 		depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depthStencil.depthTestEnable = VK_TRUE;
-		depthStencil.depthWriteEnable = VK_TRUE;
+		depthStencil.depthTestEnable = VK_FALSE;
+		depthStencil.depthWriteEnable = VK_FALSE;
 		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 		depthStencil.depthBoundsTestEnable = VK_FALSE;
 		depthStencil.stencilTestEnable = VK_FALSE;
 
-		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 0;
+		pipelineLayoutInfo.pushConstantRangeCount = 0;
+
+		VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 		VkDynamicState dynamicStateEnables[1];
 		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
@@ -247,8 +174,8 @@ class MultiThreading : public VKWindow {
 		pipelineInfo.pViewportState = &viewportState;
 		pipelineInfo.pRasterizationState = &rasterizer;
 		pipelineInfo.pMultisampleState = &multisampling;
-		pipelineInfo.pDepthStencilState = &depthStencil;
 		pipelineInfo.pColorBlendState = &colorBlending;
+		pipelineInfo.pDepthStencilState = &depthStencil;
 		pipelineInfo.layout = pipelineLayout;
 		pipelineInfo.renderPass = getDefaultRenderPass();
 		pipelineInfo.subpass = 0;
@@ -265,72 +192,10 @@ class MultiThreading : public VKWindow {
 	}
 
 	virtual void Initialize() override {
-
-		this->secondaryCommandBuffer = this->getVKDevice()->allocateCommandBuffers(
-			this->getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_SECONDARY, fragcore::SystemInfo::getCPUCoreCount());
-
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-		uniformBuffers.resize(getSwapChainImageCount());
-		uniformBuffersMemory.resize(getSwapChainImageCount());
-
-		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
-
-		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffers[i], uniformBuffersMemory[i]);
-			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
-			mapMemory.push_back(_data);
-		}
-
-		VkDescriptorPoolSize poolSize{};
-		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
-
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
-		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
-
-		VKS_VALIDATE(vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool));
-
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
 
-		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
-		VkDescriptorSetAllocateInfo allocdescInfo{};
-		allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocdescInfo.descriptorPool = descpool;
-		allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
-		allocdescInfo.pSetLayouts = layouts.data();
-
-		descriptorSets.resize(getSwapChainImageCount());
-		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()));
-
-		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
-
-			VkWriteDescriptorSet descriptorWrite{};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = descriptorSets[i];
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &bufferInfo;
-
-			vkUpdateDescriptorSets(getDevice(), 1, &descriptorWrite, 0, nullptr);
-		}
-
+		/*	Allocate buffer for the triangle.	*/
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferInfo.size = sizeof(vertices[0]) * vertices.size();
@@ -339,6 +204,7 @@ class MultiThreading : public VKWindow {
 
 		VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
 
+		/*	*/
 		VkMemoryRequirements memRequirements;
 		vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
 
@@ -346,12 +212,15 @@ class MultiThreading : public VKWindow {
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex =
-			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+			getVKDevice()
+				->findMemoryType(memRequirements.memoryTypeBits,
+								 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
 				.value();
 
+		/*	Allocate memory that will be used for the buffer.	*/
 		VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
+		/*	Bind the vertex buffer with the memory that contains the triangle vertices data.	*/
 		VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
 		void *data;
@@ -360,19 +229,13 @@ class MultiThreading : public VKWindow {
 		vkUnmapMemory(getDevice(), vertexMemory);
 
 		onResize(width(), height());
-
-		time.start();
 	}
 
 	virtual void onResize(int width, int height) override {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
-		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = glm::mat4(1.0f);
-		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 
-		for (size_t i = 0; i < getNrCommandBuffers(); i++) {
+		for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
@@ -380,9 +243,6 @@ class MultiThreading : public VKWindow {
 			beginInfo.flags = 0;
 
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
-
-			/*	Transfer the new data 	*/
-			// vkCmdTran
 
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -392,31 +252,27 @@ class MultiThreading : public VKWindow {
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;
 
+			/*	*/
 			std::array<VkClearValue, 2> clearValues{};
 			clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
 			clearValues[1].depthStencil = {1.0f, 0};
 			renderPassInfo.clearValueCount = clearValues.size();
 			renderPassInfo.pClearValues = clearValues.data();
 
+			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
 			VkViewport viewport = {
 				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-			//	vkCmdExecuteCommands();
+			/*	*/
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-			// vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			VkBuffer vertexBuffers[] = {vertexBuffer};
+			VkDeviceSize offsets[] = {0};
+			vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
 
-			// /*	*/
-			// vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-			// VkBuffer vertexBuffers[] = {vertexBuffer};
-			// VkDeviceSize offsets[] = {0};
-			// vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
-
-			// vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i],
-			// 0, 						nullptr);
-
-			// vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
+			vkCmdDraw(cmd, 3, 1, 0, 0);
 
 			vkCmdEndRenderPass(cmd);
 
@@ -424,47 +280,16 @@ class MultiThreading : public VKWindow {
 		}
 	}
 
-	virtual void draw() override {
-
-		time.update();
-		float elapsedTime = time.getElapsed();
-
-		std::cout << elapsedTime << std::endl;
-		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = glm::mat4(1.0f);
-		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
-
-		/*	Invoked tasks.	*/
-
-		/*	Wait to finish task*/
-
-		/*	Migrate tasks.	*/
-
-		// Setup the range
-		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
-		VkMappedMemoryRange stagingRange{};
-		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
-		stagingRange.offset = 0;
-		stagingRange.size = (size_t)sizeof(this->mvp);
-		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
-	}
-
 	virtual void update() {}
 };
 
 int main(int argc, const char **argv) {
-
 	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
 																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
-
 	try {
-		VKSampleWindow<MultiThreading> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		VKSampleWindow<OcclusionQuery> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		sample.run();
-
 	} catch (std::exception &ex) {
 		std::cerr << ex.what();
 		return EXIT_FAILURE;

@@ -84,7 +84,8 @@ int main(int argc, const char **argv) {
 
 	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
 																		   {"VK_KHR_xlib_surface", true}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{"VK_KHR_ray_tracing_pipeline", true},
+	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true},
+																		 {"VK_KHR_ray_tracing_pipeline", true},
 																		 {"VK_KHR_acceleration_structure", true}};
 
 	try {

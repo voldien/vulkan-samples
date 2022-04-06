@@ -2,7 +2,7 @@ FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 ADD_EXECUTABLE(Tessellation ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(Tessellation ${Vulkan_LIBRARIES} vk-sample-common )
+TARGET_LINK_LIBRARIES(Tessellation vk-sample-common )
 ADD_DEPENDENCIES(Tessellation vk-sample-common)
 
 # Vulkan dependies headers.

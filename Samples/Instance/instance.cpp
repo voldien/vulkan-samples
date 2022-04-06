@@ -3,7 +3,7 @@
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 
-class InstanceWindow : public VKWindow {
+class Instance : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
@@ -15,15 +15,16 @@ class InstanceWindow : public VKWindow {
 		glm::mat4 view;
 		glm::mat4 proj;
 	};
-	static const size_t nrInstances = 100;
-	std::array<glm::mat4, nrInstances> instanceModel;
+	const size_t nrInstances = 100;
+	std::vector<glm::mat4> instanceModel;
 
   public:
-	InstanceWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	Instance(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		this->setTitle(std::string("Instance"));
+		this->setTitle(fmt::format("Instance: {}", nrInstances));
+		instanceModel.resize(nrInstances);
 	}
-	virtual ~InstanceWindow() {}
+	virtual ~Instance() {}
 
 	virtual void release() override {
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -272,7 +273,7 @@ int main(int argc, const char **argv) {
 																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
-		VKSampleWindow<InstanceWindow> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		VKSampleWindow<Instance> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		mandel.run();
 	} catch (std::exception &ex) {
 		// std::cerr << ex.what();

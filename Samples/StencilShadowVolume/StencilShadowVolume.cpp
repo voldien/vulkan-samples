@@ -6,7 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
-class StencilShadowVolumeWindow : public VKWindow {
+class StencilShadowVolume : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
@@ -33,11 +33,11 @@ class StencilShadowVolumeWindow : public VKWindow {
 	} Vertex;
 
   public:
-	StencilShadowVolumeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	StencilShadowVolume(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		prevTimeCounter = SDL_GetPerformanceCounter();
 	}
-	~StencilShadowVolumeWindow() {}
+	~StencilShadowVolume() {}
 
 	virtual void release() override {
 
@@ -458,7 +458,7 @@ int main(int argc, const char **argv) {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_layers);
 		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
 		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices);
-		StencilShadowVolumeWindow window(core, d);
+		StencilShadowVolume window(core, d);
 
 		window.run();
 	} catch (std::exception &ex) {

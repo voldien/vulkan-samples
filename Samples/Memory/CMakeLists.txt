@@ -5,5 +5,4 @@ ADD_EXECUTABLE(MemoryTransfer ${SOURCE_FILES} ${HEADER_FILES} )
 TARGET_LINK_LIBRARIES(MemoryTransfer vk-sample-common )
 ADD_DEPENDENCIES(MemoryTransfer vk-sample-common)
 
-# Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(MemoryTransfer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

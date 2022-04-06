@@ -385,22 +385,6 @@ class SilhouetteDetectionWindow : public VKWindow {
 			renderPassInfo.clearValueCount = clearValues.size();
 			renderPassInfo.pClearValues = clearValues.data();
 
-			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
-
-			VkBufferMemoryBarrier ub_barrier{};
-
-			ub_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-			ub_barrier.pNext = nullptr;
-			ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			ub_barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-			ub_barrier.buffer = uniformBuffers[i];
-			ub_barrier.offset = 0;
-			ub_barrier.size = sizeof(mvp);
-			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
-
-			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
-			// 1, 					 &ub_barrier, 0, NULL);
 			VkViewport viewport = {
 				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);

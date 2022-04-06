@@ -42,7 +42,7 @@ class MarchingCubes : public VKWindow {
 		this->setTitle("Marching Cubes");
 		this->show();
 	}
-	~MarchingCubes() {}
+	virtual ~MarchingCubes() {}
 
 	virtual void release() override {
 

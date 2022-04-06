@@ -3,7 +3,7 @@
 
 layout(local_size_x = 32, local_size_y = 1) in;
 
-//TODO refractor.
+// TODO refractor.
 struct particle_t {
 	vec3 pos;
 	vec4 velocity;
@@ -21,7 +21,7 @@ struct particle_param_t {
 	mat4 modelViewProjection;
 	vec4 diffuse;
 	float deltaTime;
-	// Particle configurable 
+	// Particle configurable
 };
 
 layout(set = 0, binding = 1) uniform params { particle_param_t _params; }
@@ -38,11 +38,11 @@ float rand(vec2 co) {
 
 void main() {
 	uint index = gl_GlobalInvocationID.x;
-	
+
 	vec3 force_impulse = vec3(0);
 
 	for (int i = 0; i < 32; i++) {
-		//forcePoint += attractors[i].xyz;
+		// forcePoint += attractors[i].xyz;
 	}
 
 	vec4 vel = positions.pos[index].velocity;

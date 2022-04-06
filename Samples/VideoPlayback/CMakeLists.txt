@@ -11,7 +11,7 @@ ELSE()
 	# TODO add logic for handling if pkg-config not available.
 ENDIF()
 ADD_EXECUTABLE(VideoPlayback ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(VideoPlayback ${Vulkan_LIBRARIES} ${AVUTIL_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVCODEC_LIBRARIES} ${SWSCALE_LIBRARIES} vk-sample-common fragcore-aal)
+TARGET_LINK_LIBRARIES(VideoPlayback ${AVUTIL_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVCODEC_LIBRARIES} ${SWSCALE_LIBRARIES} fragcore-audio-interface vk-sample-common fragcore-aal)
 ADD_DEPENDENCIES(VideoPlayback vk-sample-common)
 
 # Vulkan dependies headers.

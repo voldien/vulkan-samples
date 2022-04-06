@@ -1,8 +1,6 @@
 #include "Importer/IOUtil.h"
-#include <SDL2/SDL.h>
 #include <VKSampleWindow.h>
 #include <VKWindow.h>
-#include <glm/glm.hpp>
 #include <iostream>
 
 class Triangle : public VKWindow {
@@ -157,6 +155,14 @@ class Triangle : public VKWindow {
 
 		VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
+		VkDynamicState dynamicStateEnables[1];
+		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
+		VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
+		dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicStateInfo.pNext = NULL;
+		dynamicStateInfo.pDynamicStates = dynamicStateEnables;
+		dynamicStateInfo.dynamicStateCount = 1;
+
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipelineInfo.stageCount = 2;
@@ -172,6 +178,7 @@ class Triangle : public VKWindow {
 		pipelineInfo.renderPass = getDefaultRenderPass();
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineInfo.pDynamicState = &dynamicStateInfo;
 
 		VKS_VALIDATE(
 			vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
@@ -251,6 +258,10 @@ class Triangle : public VKWindow {
 			renderPassInfo.pClearValues = clearValues.data();
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+			VkViewport viewport = {
+				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
+			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 			/*	*/
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);

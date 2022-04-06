@@ -2,7 +2,7 @@ FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 ADD_EXECUTABLE(ComputeCloth ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(ComputeCloth ${Vulkan_LIBRARIES} vk-sample-common )
+TARGET_LINK_LIBRARIES(ComputeCloth vk-sample-common )
 ADD_DEPENDENCIES(ComputeCloth vk-sample-common)
 
 # Vulkan dependies headers.

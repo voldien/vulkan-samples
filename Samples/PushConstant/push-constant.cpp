@@ -7,22 +7,21 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
-class PushConstantWindow : public VKWindow {
+class PushConstant : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
-	VkDescriptorPool descpool;
+	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	VkBuffer uniformBuffer;
+	VkDeviceMemory uniformBufferMemory;
 	std::vector<void *> mapMemory;
-	vkscommon::Time time;
 
-	FPSCounter<float> fpsCounter;
+	VkDeviceSize bufferSize;
 
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
@@ -36,20 +35,23 @@ class PushConstantWindow : public VKWindow {
 	} Vertex;
 
   public:
-	PushConstantWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	PushConstant(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle("Push Constant");
 		this->show();
 	}
-	virtual ~PushConstantWindow() {}
+	virtual ~PushConstant() {}
 
 	virtual void release() override {
 
-		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
+
+		vkUnmapMemory(getDevice(), uniformBufferMemory);
+		vkDestroyBuffer(getDevice(), uniformBuffer, nullptr);
+		vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
 
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
@@ -253,22 +255,23 @@ class PushConstantWindow : public VKWindow {
 
 	virtual void Initialize() override {
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-		uniformBuffers.resize(getSwapChainImageCount());
-		uniformBuffersMemory.resize(getSwapChainImageCount());
+		// TODO align
+		bufferSize = sizeof(UniformBufferObject);
+		bufferSize +=
+			bufferSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
+		VKHelper::createBuffer(getDevice(), bufferSize * getSwapChainImageCount(), memProperties,
+							   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+							   uniformBuffer, uniformBufferMemory);
+
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffers[i], uniformBuffersMemory[i]);
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
+			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, bufferSize * i, bufferSize, 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -299,9 +302,9 @@ class PushConstantWindow : public VKWindow {
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.buffer = uniformBuffer;
+			bufferInfo.offset = bufferSize * i;
+			bufferInfo.range = bufferSize;
 
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -344,8 +347,6 @@ class PushConstantWindow : public VKWindow {
 		vkUnmapMemory(getDevice(), vertexMemory);
 
 		onResize(width(), height());
-
-		time.start();
 	}
 
 	virtual void onResize(int width, int height) override {
@@ -358,23 +359,19 @@ class PushConstantWindow : public VKWindow {
 	}
 
 	virtual void draw() override {
-		time.update();
 
-		printf("%f\n", time.getElapsed());
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 		this->mvp.model =
-			glm::rotate(this->mvp.model, glm::radians(time.getElapsed() * 45), glm::vec3(0.0f, 1.0f, 0.0f));
+			glm::rotate(this->mvp.model, glm::radians(getTimer().getElapsed() * 45), glm::vec3(0.0f, 1.0f, 0.0f));
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
 		VkCommandBuffer cmd = getCommandBuffers(getCurrentFrameIndex());
 
-		vkResetCommandBuffer(cmd, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-
 		VkCommandBufferBeginInfo beginInfo = {};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		beginInfo.flags = 0;
 
 		VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
@@ -392,7 +389,7 @@ class PushConstantWindow : public VKWindow {
 		renderPassInfo.clearValueCount = clearValues.size();
 		renderPassInfo.pClearValues = clearValues.data();
 
-		vkCmdUpdateBuffer(cmd, uniformBuffers[getCurrentFrameIndex()], 0, sizeof(this->mvp), &this->mvp);
+		vkCmdUpdateBuffer(cmd, uniformBuffer, bufferSize * getCurrentFrameIndex(), sizeof(this->mvp), &this->mvp);
 
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -422,8 +419,7 @@ int main(int argc, const char **argv) {
 																		 {VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, true}};
 
 	try {
-		VKSampleWindow<PushConstantWindow> skybox(argc, argv, required_device_extensions, {},
-												  required_instance_extensions);
+		VKSampleWindow<PushConstant> skybox(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		skybox.run();
 
 	} catch (std::exception &ex) {

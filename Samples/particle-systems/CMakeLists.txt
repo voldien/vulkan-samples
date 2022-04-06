@@ -3,7 +3,7 @@ FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 #
 ADD_EXECUTABLE(ParticleSystem ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(ParticleSystem ${Vulkan_LIBRARIES} vk-sample-common )
+TARGET_LINK_LIBRARIES(ParticleSystem vk-sample-common )
 ADD_DEPENDENCIES(ParticleSystem vk-sample-common)
 
 # Vulkan dependies headers.

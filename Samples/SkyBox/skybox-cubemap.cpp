@@ -24,11 +24,10 @@ class SkyboxCubeMap : public VKWindow {
 	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	VkBuffer uniformBuffer;
+	VkDeviceMemory uniformBufferMemory;
 	std::vector<void *> mapMemory;
 
-	vkscommon::Time time;
 	CameraController cameraController;
 
 	struct UniformBufferObject {
@@ -48,7 +47,7 @@ class SkyboxCubeMap : public VKWindow {
   public:
 	SkyboxCubeMap(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		this->setTitle("Skybox");
+		this->setTitle("Skybox Cubemap");
 		this->show();
 	}
 	virtual ~SkyboxCubeMap() {}
@@ -61,17 +60,14 @@ class SkyboxCubeMap : public VKWindow {
 		vkDestroyImage(getDevice(), texture, nullptr);
 		vkFreeMemory(getDevice(), textureMemory, nullptr);
 
-		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
-		for (size_t i = 0; i < uniformBuffers.size(); i++) {
-			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
-			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
-			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
-		}
+		vkDestroyBuffer(getDevice(), uniformBuffer, nullptr);
+		vkUnmapMemory(getDevice(), uniformBufferMemory);
+		vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
 
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
@@ -287,7 +283,8 @@ class SkyboxCubeMap : public VKWindow {
 		beginInfo.flags = 0;
 		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
-		ImageImporter::createImage("panorama.jpg", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
+		/*	*/
+		ImageImporter::createImage2D("panorama.jpg", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
 								   physicalDevice(), texture, textureMemory);
 
 		vkEndCommandBuffer(cmds[0]);
@@ -302,22 +299,24 @@ class SkyboxCubeMap : public VKWindow {
 		VKHelper::createSampler(getDevice(), sampler);
 
 		/*	Allocate uniform buffers.	*/
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		VkDeviceSize uniformBufferSize = sizeof(UniformBufferObject);
+		// TODO align
+		// bufferSize += bufferSize %
 
-		uniformBuffers.resize(getSwapChainImageCount());
-		uniformBuffersMemory.resize(getSwapChainImageCount());
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
+		VKHelper::createBuffer(getDevice(), uniformBufferSize * getSwapChainImageCount(), memProperties,
+							   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+							   uniformBuffer, uniformBufferMemory);
+
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffers[i], uniformBuffersMemory[i]);
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
+			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i,
+									 (size_t)sizeof(this->mvp), 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -348,9 +347,9 @@ class SkyboxCubeMap : public VKWindow {
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.buffer = uniformBuffer;
+			bufferInfo.offset = uniformBufferSize * i;
+			bufferInfo.range = uniformBufferSize;
 
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -412,8 +411,6 @@ class SkyboxCubeMap : public VKWindow {
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 
 		onResize(width(), height());
-
-		time.start();
 	}
 
 	virtual void onResize(int width, int height) override {
@@ -472,11 +469,7 @@ class SkyboxCubeMap : public VKWindow {
 
 	virtual void draw() override {
 
-		time.update();
-		float elapsedTime = time.getElapsed();
-
-		std::cout << elapsedTime << std::endl;
-		this->cameraController.update(time.deltaTime());
+		this->cameraController.update(getTimer().deltaTime());
 		glm::mat4 viewMatrix = this->cameraController.getViewMatrix();
 		// TODO add character controller.
 		this->mvp.model = glm::mat4(1.0f);
@@ -485,12 +478,12 @@ class SkyboxCubeMap : public VKWindow {
 
 		// Setup the range
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
-		VkMappedMemoryRange stagingRange{};
-		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
-		stagingRange.offset = 0;
-		stagingRange.size = (size_t)sizeof(this->mvp);
-		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
+		// 	VkMappedMemoryRange stagingRange{};
+		// 	stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		// 	stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
+		// 	stagingRange.offset = 0;
+		// 	stagingRange.size = (size_t)sizeof(this->mvp);
+		// 	vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
 	virtual void update() {}
@@ -503,8 +496,9 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		VKSampleWindow<SkyboxCubeMap> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		sample.run();
+		VKSampleWindow<SkyboxCubeMap> skybox(argc, argv, required_device_extensions, {},
+											   required_instance_extensions);
+		skybox.run();
 
 	} catch (std::exception &ex) {
 		std::cerr << ex.what() << std::endl;

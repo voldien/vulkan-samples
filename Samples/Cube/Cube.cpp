@@ -9,7 +9,7 @@
 #include <glm/mat4x4.hpp>
 
 // TODO fix UV of the cube!
-class CubeWindow : public VKWindow {
+class Cube : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
@@ -19,11 +19,11 @@ class CubeWindow : public VKWindow {
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	VkBuffer uniformBuffer;
+	VkDeviceMemory uniformBufferMemory;
 	std::vector<void *> mapMemory;
 
-	vkscommon::Time time;
+	VkDeviceSize uniformMemSize;
 
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
@@ -37,26 +37,24 @@ class CubeWindow : public VKWindow {
 	} Vertex;
 
   public:
-	CubeWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	Cube(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle("Cube");
 		this->show();
 	}
-	~CubeWindow() {}
+	virtual ~Cube() {}
 
 	virtual void release() override {
 
-		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
-		for (size_t i = 0; i < uniformBuffers.size(); i++) {
-			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
-			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
-			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
-		}
+		vkUnmapMemory(getDevice(), uniformBufferMemory);
+		vkDestroyBuffer(getDevice(), uniformBuffer, nullptr);
+
+		vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
 
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
@@ -261,23 +259,28 @@ class CubeWindow : public VKWindow {
 
 	virtual void Initialize() override {
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		this->uniformMemSize = sizeof(UniformBufferObject);
 
-		uniformBuffers.resize(getSwapChainImageCount());
-		uniformBuffersMemory.resize(getSwapChainImageCount());
+		this->uniformMemSize +=
+			uniformMemSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().nonCoherentAtomSize;
+
+		const VkDeviceSize uniformBufferSize = this->getSwapChainImageCount() * uniformMemSize;
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
-		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffers[i], uniformBuffersMemory[i]);
+		VKHelper::createBuffer(getDevice(), uniformBufferSize, memProperties,
+							   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+							   uniformBuffer, uniformBufferMemory);
+
+		this->mapMemory.resize(this->getSwapChainImageCount());
+		for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
-			mapMemory.push_back(_data);
+			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, this->uniformMemSize * i, this->uniformMemSize,
+									 0, &_data));
+			this->mapMemory[i] = _data;
 		}
 
 		VkDescriptorPoolSize poolSize{};
@@ -308,8 +311,8 @@ class CubeWindow : public VKWindow {
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
+			bufferInfo.buffer = uniformBuffer;
+			bufferInfo.offset = this->uniformMemSize * i;
 			bufferInfo.range = sizeof(UniformBufferObject);
 
 			VkWriteDescriptorSet descriptorWrite{};
@@ -352,9 +355,15 @@ class CubeWindow : public VKWindow {
 		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 		vkUnmapMemory(getDevice(), vertexMemory);
 
-		onResize(width(), height());
+		// Setup the range
+		VkMappedMemoryRange stagingRange{};
+		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		stagingRange.memory = vertexMemory;
+		stagingRange.offset = 0;
+		stagingRange.size = bufferInfo.size;
+		VKS_VALIDATE(vkFlushMappedMemoryRanges(this->getDevice(), 1, &stagingRange));
 
-		time.start();
+		onResize(width(), height());
 	}
 
 	virtual void onResize(int width, int height) override {
@@ -375,7 +384,6 @@ class CubeWindow : public VKWindow {
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
 			/*	Transfer the new data 	*/
-			// vkCmdTran
 
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -417,24 +425,24 @@ class CubeWindow : public VKWindow {
 
 	virtual void draw() override {
 
-		time.update();
-		float elapsedTime = time.getElapsed();
+		float elapsedTime = getTimer().getElapsed();
 
-		std::cout << elapsedTime << std::endl;
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
-		// Setup the range
+		/*	Copy new uniform data.	*/
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
+
+		// Setup the range
 		VkMappedMemoryRange stagingRange{};
 		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
-		stagingRange.offset = 0;
-		stagingRange.size = (size_t)sizeof(this->mvp);
-		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
+		stagingRange.memory = uniformBufferMemory;
+		stagingRange.offset = this->getCurrentFrameIndex() * this->uniformMemSize;
+		stagingRange.size = this->uniformMemSize;
+		// vkFlushMappedMemoryRanges(this->getDevice(), 1, &stagingRange);
 	}
 
 	virtual void update() {}
@@ -447,8 +455,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 
 	try {
-		VKSampleWindow<CubeWindow> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		mandel.run();
+		VKSampleWindow<Cube> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		sample.run();
 
 	} catch (std::exception &ex) {
 		std::cerr << ex.what() << std::endl;
