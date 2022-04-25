@@ -6,7 +6,7 @@ layout(location = 1) in vec4 inVelocity;
 
 layout(location = 0) out vec4 velocity;
 
-layout(binding = 0) uniform UniformBufferObject {
+layout(binding = 0) uniform UniformBufferBlock {
 	mat4 model;
 	mat4 view;
 	mat4 proj;

@@ -25,7 +25,7 @@ class Cube : public VKWindow {
 
 	VkDeviceSize uniformMemSize;
 
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
@@ -259,7 +259,7 @@ class Cube : public VKWindow {
 
 	virtual void Initialize() override {
 
-		this->uniformMemSize = sizeof(UniformBufferObject);
+		this->uniformMemSize = sizeof(UniformBufferBlock);
 
 		this->uniformMemSize +=
 			uniformMemSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().nonCoherentAtomSize;
@@ -313,7 +313,7 @@ class Cube : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffer;
 			bufferInfo.offset = this->uniformMemSize * i;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.range = sizeof(UniformBufferBlock);
 
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

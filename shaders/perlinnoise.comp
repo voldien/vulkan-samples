@@ -9,7 +9,7 @@ struct gradients {
 	float a;
 } ;
 
-layout(set = 0, binding = 3) uniform UniformBufferObject {
+layout(set = 0, binding = 3) uniform UniformBufferBlock {
 	gradients grads;
 	float res;
 	float t;

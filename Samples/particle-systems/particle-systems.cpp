@@ -12,16 +12,20 @@ class ParticleSystem : public VKWindow {
 	const std::string vertexShader = "";
 	const std::string fragmentShader = "";
 	const std::string particleCompute = "";
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
 		alignas(16) glm::mat4 modelView;
 		alignas(16) glm::mat4 modelViewProjection;
 		glm::vec4 diffuseColor;
-
-		/*	particle */
 		float delta;
+
+		/*	*/
+		float speed;
+		float lifetime;
+		float gravity;
+
 	} mvp;
 
 	struct ParticleSimulatorVariables {
@@ -373,10 +377,15 @@ class ParticleSystem : public VKWindow {
 		for (size_t i = 0; i < particleComputeDescriptorSets.size(); i++) {
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
-			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = particleBuffers[0];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(Particle) * nrParticles;
+			VkDescriptorBufferInfo bufferParticleInfo{};
+			bufferParticleInfo.buffer = particleBuffers[0];
+			bufferParticleInfo.offset = 0;
+			bufferParticleInfo.range = sizeof(Particle) * nrParticles;
+
+			VkDescriptorBufferInfo bufferUniformInfo{};
+			bufferUniformInfo.buffer = uniformBuffers[i];
+			bufferUniformInfo.offset = 0;
+			bufferUniformInfo.range = UniformParamMemSize;
 
 			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites[0].dstSet = particleComputeDescriptorSets[i];
@@ -385,7 +394,7 @@ class ParticleSystem : public VKWindow {
 			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			descriptorWrites[0].descriptorCount = 1;
 			descriptorWrites[0].pImageInfo = nullptr;
-			descriptorWrites[0].pBufferInfo = &bufferInfo;
+			descriptorWrites[0].pBufferInfo = &bufferParticleInfo;
 
 			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites[1].dstSet = particleComputeDescriptorSets[i];
@@ -394,7 +403,7 @@ class ParticleSystem : public VKWindow {
 			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			descriptorWrites[1].descriptorCount = 1;
 			descriptorWrites[1].pImageInfo = nullptr;
-			descriptorWrites[1].pBufferInfo = &bufferInfo;
+			descriptorWrites[1].pBufferInfo = &bufferUniformInfo;
 
 			vkUpdateDescriptorSets(this->getDevice(), static_cast<uint32_t>(descriptorWrites.size()),
 								   descriptorWrites.data(), 0, nullptr);
@@ -478,6 +487,20 @@ class ParticleSystem : public VKWindow {
 							   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, particleBuffers[0], particleBufferMemory[0]);
 		// TODO fix.
 		/*	Create init buffer to transfer.	*/
+		std::vector<VkCommandBuffer> cmds =
+			this->getVKDevice()->allocateCommandBuffers(getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = 0;
+		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
+
+		vkCmdFillBuffer(cmds[0], particleBuffers[0], 0, particle_buffer_size, 0);
+
+		vkEndCommandBuffer(cmds[0]);
+		this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
+
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
+		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
 		initDescriptor();
 
@@ -567,6 +590,8 @@ class ParticleSystem : public VKWindow {
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = cameraController.getViewMatrix();
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
+		this->mvp.delta = getTimer().deltaTime();
+		this->mvp.speed = 1.0f;
 
 		/*	Copy uniform memory.	*/
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, this->UniformParamMemSize);

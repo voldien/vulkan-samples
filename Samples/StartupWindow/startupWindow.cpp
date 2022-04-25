@@ -16,7 +16,7 @@ class StartUpWindow : public VKWindow {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
-		for (unsigned int i = 0; i < getNrCommandBuffers(); i++) {
+		for (size_t i = 0; i < getNrCommandBuffers(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};

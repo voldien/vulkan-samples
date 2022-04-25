@@ -30,7 +30,7 @@ class SkyboxPanoramic : public VKWindow {
 
 	CameraController cameraController;
 
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		glm::mat4 model;
 		glm::mat4 view;
 		glm::mat4 proj;
@@ -284,7 +284,7 @@ class SkyboxPanoramic : public VKWindow {
 		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
 		/*	*/
-		ImageImporter::createImage2D("panorama.jpg", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
+		ImageImporter::createImage2D("panorama.png", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
 								   physicalDevice(), texture, textureMemory);
 
 		vkEndCommandBuffer(cmds[0]);
@@ -299,7 +299,7 @@ class SkyboxPanoramic : public VKWindow {
 		VKHelper::createSampler(getDevice(), sampler);
 
 		/*	Allocate uniform buffers.	*/
-		VkDeviceSize uniformBufferSize = sizeof(UniformBufferObject);
+		VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
 		// TODO align
 		// bufferSize += bufferSize %
 

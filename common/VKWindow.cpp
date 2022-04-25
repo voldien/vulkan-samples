@@ -241,7 +241,7 @@ void VKWindow::createSwapChain() {
 	/*	*/
 	const VKHelper::QueueFamilyIndices indices =
 		VKHelper::findQueueFamilies(physicalDevice->getHandle(), this->surface);
-	std::vector<uint32_t> queueFamilyIndices = {indices.graphicsFamily, indices.presentFamily};
+	std::vector<uint32_t> queueFamilyIndices = {(uint32_t)indices.graphicsFamily, (uint32_t)indices.presentFamily};
 
 	/*  */
 	VkSwapchainCreateInfoKHR createSwapChainInfo = {};
@@ -528,7 +528,7 @@ void VKWindow::run() {
 			this->draw();
 
 			this->swapBuffer();
-			this->time.update();
+			this->getTimer().update();
 			this->fpsCounter.incrementFPS(SDL_GetPerformanceCounter());
 
 			std::cout << "FPS " << getFPSCounter().getFPS() << " Elapsed Time: " << getTimer().getElapsed()

@@ -29,7 +29,7 @@ class SingleTexture : public VKWindow {
 	vkscommon::Time time;
 
 	FPSCounter<float> fpsCounter;
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
@@ -305,7 +305,7 @@ class SingleTexture : public VKWindow {
 
 		VKHelper::createSampler(getDevice(), sampler);
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		VkDeviceSize bufferSize = sizeof(UniformBufferBlock);
 
 		uniformBuffers.resize(getSwapChainImageCount());
 		uniformBuffersMemory.resize(getSwapChainImageCount());
@@ -353,7 +353,7 @@ class SingleTexture : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.range = sizeof(UniformBufferBlock);
 
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

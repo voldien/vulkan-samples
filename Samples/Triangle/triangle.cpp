@@ -16,7 +16,9 @@ class Triangle : public VKWindow {
 		this->show();
 		this->setTitle("Triangle");
 	}
+
 	virtual ~Triangle() {}
+
 	typedef struct _vertex_t {
 		float pos[2];
 		float color[3];
@@ -33,7 +35,7 @@ class Triangle : public VKWindow {
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
 
-	/*	{vertex(3)|uv(2)}*/
+	/*	{vertex(3)|uv(2)}	*/
 	const std::vector<Vertex> vertices = {
 		{0.0f, -0.5f, 1.0f, 1.0f, 1.0f}, {0.5f, 0.5f, 0.0f, 1.0f, 0.0f}, {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f}};
 
@@ -289,7 +291,7 @@ int main(int argc, const char **argv) {
 		VKSampleWindow<Triangle> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		sample.run();
 	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

@@ -1,4 +1,3 @@
-#include "FPSCounter.h"
 #include "Importer/ImageImport.h"
 #include "Util/Time.hpp"
 #include "VksCommon.h"
@@ -10,36 +9,52 @@
 
 class BasicTessellation : public VKWindow {
   private:
-	VkBuffer vertexBuffer = VK_NULL_HANDLE;
-
 	struct {
 		VkPipeline basic_tessellation;
 		VkPipeline wireframe_tessellation;
 	} pipelines = {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 
+	/*	*/
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
-	std::vector<VkDescriptorSet> descriptorSets;
 	/*	*/
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory; // TODO single memory.
-	std::vector<void *> mapMemory;
+	VkBuffer vertexBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 
-	/*	Height map.	*/
+	/*	*/
+	std::vector<VkDescriptorSet> descriptorSets;
+
+	/*	*/
+	VkBuffer uniformBuffer;
+	VkDeviceMemory uniformBufferMemory;
+	std::vector<void *> mapMemory;
+	VkDeviceSize bufferSize;
+
 	VkSampler sampler = VK_NULL_HANDLE;
+
+	/*	Height map texture.	*/
 	VkImage texture = VK_NULL_HANDLE;
 	VkImageView textureView = VK_NULL_HANDLE;
 	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
+	/*	*/
+	VkImage diffuseTexture = VK_NULL_HANDLE;
+	VkImageView diffuseTextureView = VK_NULL_HANDLE;
+	VkDeviceMemory diffuseTextureMemory = VK_NULL_HANDLE;
+
 	bool split;
 
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
+
+		/*	Light sun.	*/
+		glm::vec3 direction;
+		glm::vec3 lightColor;
+		float lightIntensity;
 	} mvp;
 
 	typedef struct _vertex_t {
@@ -337,7 +352,8 @@ class BasicTessellation : public VKWindow {
 												VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		VKHelper::createSampler(getDevice(), sampler);
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		// TODO fix alignment
+		this->bufferSize = sizeof(UniformBufferBlock);
 
 		uniformBuffers.resize(getSwapChainImageCount());
 		uniformBuffersMemory.resize(getSwapChainImageCount());
@@ -385,7 +401,7 @@ class BasicTessellation : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.range = sizeof(UniformBufferBlock);
 
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -453,8 +469,8 @@ class BasicTessellation : public VKWindow {
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 
-		for (int i = 0; i < getNrCommandBuffers(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers(i);
+		for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = this->getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -525,6 +541,8 @@ class BasicTessellation : public VKWindow {
 
 	virtual void update() {}
 };
+
+// TODO add texture option.
 
 int main(int argc, const char **argv) {
 

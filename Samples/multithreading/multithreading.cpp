@@ -30,7 +30,7 @@ class MultiThreading : public VKWindow {
 
 	fragcore::TaskScheduler *tashSch;
 
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
@@ -269,7 +269,7 @@ class MultiThreading : public VKWindow {
 		this->secondaryCommandBuffer = this->getVKDevice()->allocateCommandBuffers(
 			this->getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_SECONDARY, fragcore::SystemInfo::getCPUCoreCount());
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		VkDeviceSize bufferSize = sizeof(UniformBufferBlock);
 
 		uniformBuffers.resize(getSwapChainImageCount());
 		uniformBuffersMemory.resize(getSwapChainImageCount());
@@ -317,7 +317,7 @@ class MultiThreading : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.range = sizeof(UniformBufferBlock);
 
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

@@ -25,7 +25,7 @@ class Panorama : public VKWindow {
 	vkscommon::Time time;
 	CameraController cameraController;
 
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
@@ -263,7 +263,7 @@ class Panorama : public VKWindow {
 
 		/*	Load and Create Texture.	*/
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		VkDeviceSize bufferSize = sizeof(UniformBufferBlock);
 
 		uniformBuffers.resize(getSwapChainImageCount());
 		uniformBuffersMemory.resize(getSwapChainImageCount());
@@ -311,7 +311,7 @@ class Panorama : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.range = sizeof(UniformBufferBlock);
 
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

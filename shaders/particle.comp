@@ -10,6 +10,11 @@ struct particle_t {
 	float t;
 };
 
+struct particle_setting{
+	float speed;
+	float lifetime;
+};
+
 layout(std430, set = 0, binding = 0) buffer Positions { particle_t pos[]; }
 positions;
 
@@ -20,8 +25,12 @@ struct particle_param_t {
 	mat4 modelView;
 	mat4 modelViewProjection;
 	vec4 diffuse;
+
+
 	float deltaTime;
-	// Particle configurable
+
+	particle_setting setting;
+
 };
 
 layout(set = 0, binding = 1) uniform params { particle_param_t _params; }
@@ -39,27 +48,34 @@ float rand(vec2 co) {
 void main() {
 	uint index = gl_GlobalInvocationID.x;
 
+	vec4 vel = positions.pos[index].velocity;
+	vec3 pos = positions.pos[index].pos;
+	float newW = positions.pos[index].t;
+
 	vec3 force_impulse = vec3(0);
 
 	for (int i = 0; i < 32; i++) {
 		// forcePoint += attractors[i].xyz;
 	}
 
-	vec4 vel = positions.pos[index].velocity;
-	vec3 pos = positions.pos[index].pos;
-	float newW = positions.pos[index].t;
+	float k_v = 1.5;
 
-	float newDT;
-	vec3 s;
-	newW -= 0.0001 * newDT;
+	float f = force_impulse.x + 1.0;
+
+	float newDT = u_pushConstants._params.deltaTime * 100.0;
+
+	newW -= newDT;
+
+	vec3 v = vel.xyz + (f * newDT) * k_v;
+	vec3 s = pos + v * newDT;
 
 	if (newW <= 0) {
-		s = -s + rand(s.xy) * 20.0 - rand(s.yz) * 20.0;
-		// v.xyz *= 0.01f;
-		newW = 0.99;
+		s = -s + rand(s.xy + vec2(index, index)) * 20.0 - rand(s.yz + vec2(index, index)) * 20.0;
+		v.xyz *= 0.01f;
+		newW = 2.99;
 	}
-	vec3 v;
 
+	/*	Update particle.	*/
 	positions.pos[index].t = newW;
 	positions.pos[index].pos = s;
 	positions.pos[index].velocity = vec4(v, vel.w);

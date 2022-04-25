@@ -30,7 +30,7 @@ class SkyboxCubeMap : public VKWindow {
 
 	CameraController cameraController;
 
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		glm::mat4 model;
 		glm::mat4 view;
 		glm::mat4 proj;
@@ -299,7 +299,7 @@ class SkyboxCubeMap : public VKWindow {
 		VKHelper::createSampler(getDevice(), sampler);
 
 		/*	Allocate uniform buffers.	*/
-		VkDeviceSize uniformBufferSize = sizeof(UniformBufferObject);
+		VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
 		// TODO align
 		// bufferSize += bufferSize %
 

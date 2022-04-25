@@ -10,7 +10,7 @@ class Instance : public VKWindow {
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory;
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		glm::mat4 model;
 		glm::mat4 view;
 		glm::mat4 proj;

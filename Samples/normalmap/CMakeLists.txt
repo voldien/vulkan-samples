@@ -1,0 +1,9 @@
+FILE(GLOB SOURCE_NORMAL_MAP_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+
+ADD_EXECUTABLE(NormalMap ${SOURCE_NORMAL_MAP_FILES} ${HEADER_FILES} )
+TARGET_LINK_LIBRARIES(NormalMap vk-sample-common vk-sample-common-asset-importer)
+ADD_DEPENDENCIES(NormalMap vk-sample-common vk-sample-common-asset-importer)
+
+# Vulkan dependies headers.
+TARGET_INCLUDE_DIRECTORIES(NormalMap PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

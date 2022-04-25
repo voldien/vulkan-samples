@@ -1,121 +1,9 @@
 #include "Importer/ImageImport.h"
 #include "Importer/IOUtil.h"
 #include <FreeImage.h>
+#include <ImageLoader.h>
 #include <stdexcept>
-
-void *ImageImporter::loadTextureData(const char *cfilename, unsigned int *pwidth, unsigned int *pheight,
-									 unsigned int *pformat, unsigned int *pinternalformat, unsigned int *ptype,
-									 unsigned long *pixelSize) {
-
-	/*	Free image.	*/
-	FREE_IMAGE_FORMAT imgtype;		 /**/
-	FREE_IMAGE_COLOR_TYPE colortype; /**/
-	FREE_IMAGE_TYPE imgt;			 /**/
-	FIMEMORY *stream;				 /**/
-	FIBITMAP *firsbitmap;			 /**/
-	void *pixel;					 /**/
-	unsigned int bpp;
-
-	std::vector<char> io = IOUtil::readFile(cfilename);
-
-	if (io.size() <= 0)
-		throw cxxexcept::InvalidArgumentException("Texture data must be greater than 0.");
-
-	/*	1 byte for the size in order, Because it crash otherwise if set to 0.	*/
-	stream = FreeImage_OpenMemory((BYTE *)io.data(), io.size());
-	if (stream == nullptr)
-		throw cxxexcept::RuntimeException("Failed to open freeimage memory stream. ");
-
-	/*	Seek to beginning of the memory stream.	*/
-	FreeImage_SeekMemory(stream, 0, SEEK_SET);
-
-	/*	Load image from */
-	imgtype = FreeImage_GetFileTypeFromMemory(stream, io.size());
-	FreeImage_SeekMemory(stream, 0, SEEK_SET);
-	firsbitmap = FreeImage_LoadFromMemory(imgtype, stream, 0);
-	if (firsbitmap == nullptr) {
-		FreeImage_CloseMemory(stream);
-		throw cxxexcept::RuntimeException("Failed to create free-image from memory.");
-	}
-
-	/*	Reset to beginning of stream.	*/
-	FreeImage_SeekMemory(stream, 0, SEEK_SET);
-	imgt = FreeImage_GetImageType(firsbitmap);
-	colortype = FreeImage_GetColorType(firsbitmap);
-	// imagetype = FreeImage_GetImageType(firsbitmap);
-
-	switch (colortype) {
-	case FIC_RGB:
-		if (pformat)
-			*pformat = (Format)TextureFormat::BGR24; // eBGR;
-		if (pinternalformat)
-			*pinternalformat = (Format)GraphicFormat::R8G8B8_SRGB; // eRGB;
-		bpp = 3;
-		break;
-	case FIC_RGBALPHA:
-		if (pformat)
-			*pformat = (Format)TextureFormat::BGRA32; // eBGR;
-		if (pinternalformat)
-			*pinternalformat = (Format)GraphicFormat::R8G8B8A8_SRGB; // eRGB;
-
-		bpp = 4;
-		break;
-	case FIC_MINISWHITE:
-	case FIC_MINISBLACK:
-		if (pformat)
-			*pformat = SingleColor;
-		if (pinternalformat)
-			*pinternalformat = SingleColor;
-		bpp = 1;
-		break;
-	default:
-		break;
-	}
-
-	/*	Get attributes from the image.	*/
-	pixel = FreeImage_GetBits(firsbitmap);
-	if (pwidth)
-		*pwidth = FreeImage_GetWidth(firsbitmap);
-	if (pheight)
-		*pheight = FreeImage_GetHeight(firsbitmap);
-
-	/*	*/
-	bpp = (FreeImage_GetBPP(firsbitmap) / 8);
-	/*	Compute the size in bytes.	*/
-	if (pixelSize) {
-		/*	Round up,	*/
-		*pixelSize = (unsigned long int)FreeImage_GetWidth(firsbitmap) *
-					 (unsigned long int)FreeImage_GetHeight(firsbitmap) *
-					 (unsigned long int)FreeImage_GetBPP(firsbitmap);
-
-		// Multiple of 8.
-		*pixelSize += *pixelSize % 8;
-		*pixelSize /= 8;
-	}
-
-	if (ptype)
-		*ptype = UnsignedByte;
-
-	/*	Check error and release resources.	*/
-	if (pixel == nullptr || io.size() == 0) {
-		FreeImage_Unload(firsbitmap);
-		FreeImage_CloseMemory(stream);
-		throw cxxexcept::RuntimeException("Failed getting pixel data from FreeImage.");
-	}
-
-	/*	Make a copy of pixel data.	*/
-	void *pixels = malloc(*pixelSize);
-	if (pixels == nullptr)
-		throw cxxexcept::RuntimeException("Failed to allocate {}, {}.", io.size(), strerror(errno));
-
-	/*	Copy the buffer.	*/
-	memcpy(pixels, pixel, *pixelSize);
-
-	/*	Release free image resources.	*/
-	FreeImage_Unload(firsbitmap);
-	FreeImage_CloseMemory(stream);
-	return pixels;
-}
+using namespace fragcore;
 
 void ImageImporter::saveTextureData(const char *cfilename, const void *pixelData, unsigned int width,
 									unsigned int height, int layers, unsigned int format) {}
@@ -136,20 +24,18 @@ void ImageImporter::saveTextureData(const char *cfilename, VkDevice device, VkIm
 }
 
 void ImageImporter::createImage2D(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue,
-								VkPhysicalDevice physicalDevice, VkImage &textureImage,
-								VkDeviceMemory &textureImageMemory) {
+								  VkPhysicalDevice physicalDevice, VkImage &textureImage,
+								  VkDeviceMemory &textureImageMemory) {
 
-	unsigned int texWidth, texHeight, internal, type, format;
-	unsigned long pixelSize;
-	void *pixels = loadTextureData(filename, &texWidth, &texHeight, &format, &internal, &type, &pixelSize);
+	ImageLoader imageLoader;
+	Image image = imageLoader.loadImage(filename);
 
-	const VkDeviceSize imageSize = pixelSize;
+	std::cout << image.getSize() << " w,h" << image.width() << " " << image.height() << std::endl;
+
+	const VkDeviceSize imageSize = image.getSize();
 	VkPhysicalDeviceMemoryProperties memProperties;
 
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-	if (!pixels)
-		throw cxxexcept::RuntimeException("failed to load texture image!");
 
 	VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(device, commandPool);
 
@@ -159,28 +45,44 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 	VKHelper::createBuffer(device, imageSize, memProperties, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 						   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, stagingBuffer, stagingBufferMemory);
 
+	/*	Write image data.	*/
 	void *stageData;
 	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &stageData);
-	memcpy(stageData, pixels, static_cast<size_t>(imageSize));
+	memcpy(stageData, image.getPixelData(), static_cast<size_t>(imageSize));
 	vkUnmapMemory(device, stagingBufferMemory);
 
-	VkFormat vk_format = VK_FORMAT_R8G8B8A8_SRGB;
-	if (internal == GraphicFormat::R8G8B8A8_SRGB) {
+	VkFormat vk_format;
+	switch (image.getFormat()) {
+	case TextureFormat::RGB24:
+		vk_format = VK_FORMAT_R8G8B8_SRGB;
+		break;
+	case TextureFormat::RGBA32:
 		vk_format = VK_FORMAT_R8G8B8A8_SRGB;
-	} else if (internal == GraphicFormat::R8G8B8_SRGB) {
+		break;
+	case TextureFormat::BGR24:
 		vk_format = VK_FORMAT_B8G8R8_SRGB;
+		break;
+	case TextureFormat::BGRA32:
+		vk_format = VK_FORMAT_B8G8R8A8_SRGB;
+		break;
+	case TextureFormat::RGBAFloat:
+		vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	default:
+		throw RuntimeException("No Supported Image format {}", image.getFormat());
 	}
-	vk_format = VK_FORMAT_R8G8B8A8_SRGB;
+
+	/*	TODO check if combination supported.	*/
 
 	/*	Create staging buffer.	*/
-	VKHelper::createImage(device, texWidth, texHeight, 1, vk_format, VK_IMAGE_TILING_OPTIMAL,
+	VKHelper::createImage(device, image.width(), image.height(), 1, vk_format, VK_IMAGE_TILING_OPTIMAL,
 						  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, textureImage, textureImageMemory);
 	/*	*/
 	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-	VKHelper::copyBufferToImageCmd(cmd, stagingBuffer, textureImage,
-								   {static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1});
+	VKHelper::copyBufferToImageCmd(
+		cmd, stagingBuffer, textureImage,
+		{static_cast<uint32_t>(image.width()), static_cast<uint32_t>(image.height()), image.layers()});
 
 	/*	*/
 	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -191,6 +93,46 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
 
-	free(pixels);
+void ImageImporter::createCubeMap(const std::vector<std::string> &paths, VkDevice device, VkCommandPool commandPool,
+								  VkQueue queue, VkPhysicalDevice physicalDevice, VkImage &textureImage,
+								  VkDeviceMemory &textureImageMemory) {
+	// ImageLoader imageLoader;
+	// VkBuffer stagingBuffer;
+	// VkDeviceMemory stagingBufferMemory;
+	// VkFormat vk_format;
+	// VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(device, commandPool);
+
+	// int width, height;
+
+	// /*	Create staging buffer.	*/
+	// VKHelper::createImage(device, width, height, 6, vk_format, VK_IMAGE_TILING_OPTIMAL,
+	// 					  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+	// 					  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, textureImage, textureImageMemory);
+
+	// for (size_t i = 0; i < paths.size(); i++) {
+	// 	Image image = imageLoader.loadImage(paths[i]);
+
+	// 	const VkDeviceSize imageSize = image.getSize();
+	// 	VkPhysicalDeviceMemoryProperties memProperties;
+
+	// 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+	// 	/*	*/
+	// 	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_UNDEFINED,
+	// 									VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+	// 	VKHelper::copyBufferToImageCmd(
+	// 		cmd, stagingBuffer, textureImage,
+	// 		{static_cast<uint32_t>(image.width()), static_cast<uint32_t>(image.height()), image.layers()});
+
+	// 	/*	*/
+	// 	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	// 									VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	// }
+	// /*	*/
+	// VKHelper::endSingleTimeCommands(device, queue, cmd, commandPool);
+	// vkDestroyBuffer(device, stagingBuffer, nullptr);
+	// vkFreeMemory(device, stagingBufferMemory, nullptr);
 }

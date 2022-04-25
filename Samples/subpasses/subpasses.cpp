@@ -18,6 +18,7 @@ class SubPasses : public VKWindow {
 		this->show();
 		this->setTitle("SubPasses");
 	}
+	
 	virtual ~SubPasses() {}
 	typedef struct _vertex_t {
 		float pos[2];

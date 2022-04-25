@@ -1,0 +1,9 @@
+FILE(GLOB SOURCE_OCEAN_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+FILE(GLOB HEADER_OCEAN_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+
+ADD_EXECUTABLE(Ocean ${SOURCE_OCEAN_FILES} ${HEADER_OCEAN_FILES} )
+TARGET_LINK_LIBRARIES(Ocean vk-sample-common vk-sample-common-asset-importer )
+ADD_DEPENDENCIES(Ocean vk-sample-common vk-sample-common-asset-importer)
+
+# Vulkan dependies headers.
+TARGET_INCLUDE_DIRECTORIES(Ocean PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

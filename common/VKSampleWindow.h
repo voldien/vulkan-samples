@@ -97,12 +97,15 @@ template <class T> class VKSampleWindow {
 			exit(EXIT_SUCCESS);
 		}
 
+		/*	*/
 		bool debug = result["debug"].as<bool>();
+		bool fullscreen = result["fullscreen"].as<bool>();
 		if (result.count("time") > 0) {
 		}
 		if (result.count("gpu-device") > 0) {
 		}
 
+		/*	*/
 		int nr_instance_extensions = result["instance-extensions"].count();
 		int nr_instance_layers = result["instance-layers"].count();
 		int nr_device_extensions = result["device-extensions"].count();
@@ -118,6 +121,7 @@ template <class T> class VKSampleWindow {
 		use_required_instance_layers.merge(required_instance_layers);
 		use_required_instance_extensions.merge(required_instance_extensions);
 
+		/*	*/
 		std::vector<const char *> required_extension = VKWindow::getRequiredDeviceExtensions();
 		for (auto it = required_extension.cbegin(); it != required_extension.cend(); it++) {
 			required_device_extensions[(*it)] = true;
@@ -145,6 +149,11 @@ template <class T> class VKSampleWindow {
 		}
 
 		this->ldevice = std::make_shared<VKDevice>(physical_devices, use_required_device_extensions);
+
+		int width, height;
+		if (fullscreen) {
+			// Display
+		}
 
 		/*	*/
 		this->ref = new T(core, ldevice);

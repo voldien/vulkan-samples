@@ -1,12 +1,6 @@
 [submodule "extern/flythough_camera"]
 	path = extern/flythough_camera
 	url = https://github.com/nlguillemot/flythrough_camera.git
-[submodule "extern/freetype"]
-	path = extern/freetype
-	url = https://gitlab.freedesktop.org/freetype/freetype.git
-[submodule "extern/SPIRV-Cross"]
-	path = extern/SPIRV-Cross
-	url = https://github.com/KhronosGroup/SPIRV-Cross.git
 [submodule "extern/mimi-imgui"]
 	path = extern/mimi-imgui
 	url = https://github.com/voldien/mimi-imgui.git

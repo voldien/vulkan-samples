@@ -22,7 +22,7 @@ class ConditionalDraw : public VKWindow {
 	std::vector<void *> mapMemory;
 	long prevTimeCounter;
 
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
@@ -244,7 +244,7 @@ class ConditionalDraw : public VKWindow {
 
 	virtual void Initialize() override {
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		VkDeviceSize bufferSize = sizeof(UniformBufferBlock);
 
 		uniformBuffers.resize(swapChainImageCount());
 		uniformBuffersMemory.resize(swapChainImageCount());
@@ -294,7 +294,7 @@ class ConditionalDraw : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.range = sizeof(UniformBufferBlock);
 
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

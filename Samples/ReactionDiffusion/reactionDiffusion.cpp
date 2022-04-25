@@ -402,6 +402,8 @@ class ReactionDiffusion : public VKWindow {
 	}
 };
 
+// TODO Add seed argument.
+
 int main(int argc, const char **argv) {
 
 	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
@@ -409,11 +411,11 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	try {
 		VKSampleWindow<ReactionDiffusion> mandel(argc, argv, required_device_extensions, {},
-													   required_instance_extensions);
+												 required_instance_extensions);
 		mandel.run();
 
 	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

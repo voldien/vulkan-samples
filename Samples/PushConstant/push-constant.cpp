@@ -23,7 +23,7 @@ class PushConstant : public VKWindow {
 
 	VkDeviceSize bufferSize;
 
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
@@ -256,7 +256,7 @@ class PushConstant : public VKWindow {
 	virtual void Initialize() override {
 
 		// TODO align
-		bufferSize = sizeof(UniformBufferObject);
+		bufferSize = sizeof(UniformBufferBlock);
 		bufferSize +=
 			bufferSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
 

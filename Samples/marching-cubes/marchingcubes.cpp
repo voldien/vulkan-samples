@@ -25,7 +25,7 @@ class MarchingCubes : public VKWindow {
 	vkscommon::Time time;
 	CameraController cameraController;
 
-	struct UniformBufferObject {
+	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
@@ -261,7 +261,7 @@ class MarchingCubes : public VKWindow {
 
 	virtual void Initialize() override {
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+		VkDeviceSize bufferSize = sizeof(UniformBufferBlock);
 
 		uniformBuffers.resize(getSwapChainImageCount());
 		uniformBuffersMemory.resize(getSwapChainImageCount());
@@ -309,7 +309,7 @@ class MarchingCubes : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+			bufferInfo.range = sizeof(UniformBufferBlock);
 
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
