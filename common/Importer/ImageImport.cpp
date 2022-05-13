@@ -30,8 +30,6 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 	ImageLoader imageLoader;
 	Image image = imageLoader.loadImage(filename);
 
-	std::cout << image.getSize() << " w,h" << image.width() << " " << image.height() << std::endl;
-
 	const VkDeviceSize imageSize = image.getSize();
 	VkPhysicalDeviceMemoryProperties memProperties;
 
@@ -69,6 +67,7 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 		vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 	default:
 		throw RuntimeException("No Supported Image format {}", image.getFormat());
+		break;
 	}
 
 	/*	TODO check if combination supported.	*/

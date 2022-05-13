@@ -35,20 +35,21 @@ Render a single triangle
 
 ## Shader Uniforms - Cube
 
-## Textured Cube
+
+## Texture
+
 
 ## SkyBox - CubeMap
 
+
 ## SkyBox - Panoramic
+
 
 ## Push Constant - VK_KHR_push_descriptor
 
+## NormaMap
+
 ## Direction Light
-
-
-## Panoramic - CubeMap
-
-## Panoramic - 
 
 ## Shadow Mapping
 
@@ -60,17 +61,13 @@ Render a single triangle
 
 ## Billboard
 
-
 ## Particle System - Compute Shader
-## 
 
 ## ReactionDiffusion - Compute Shader
 
 ## Mandelbrot - Compute Shader 
 
 ## Video Playback
-
-# Headless Samples
 
 ## Memory Benchmark - Benchmarking the performance of transfering 
 

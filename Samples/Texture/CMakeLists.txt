@@ -1,9 +1,9 @@
-FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
-FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+FILE(GLOB SOURCE_TEXTURE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+FILE(GLOB HEADER_TEXTURE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
-ADD_EXECUTABLE(SingleTexture ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(SingleTexture vk-sample-common vk-sample-common-asset-importer )
-ADD_DEPENDENCIES(SingleTexture vk-sample-common vk-sample-common-asset-importer)
+ADD_EXECUTABLE(Texture ${SOURCE_TEXTURE_FILES} ${HEADER_TEXTURE_FILES} )
+TARGET_LINK_LIBRARIES(Texture vk-sample-common vk-sample-common-asset-importer )
+ADD_DEPENDENCIES(Texture vk-sample-common vk-sample-common-asset-importer)
 
 # Vulkan dependies headers.
-TARGET_INCLUDE_DIRECTORIES(SingleTexture PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+TARGET_INCLUDE_DIRECTORIES(Texture PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )

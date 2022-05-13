@@ -32,7 +32,7 @@ class CameraController {
 	const glm::mat4 &getViewMatrix() const noexcept { return this->view; }
 
   private:
-	float fov = 80.0f;
+	float fov = 60.0f;
 	float speed = 100;
 	float activated = 1.0f;
 	float xspeed = 0.5f;

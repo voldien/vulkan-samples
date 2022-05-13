@@ -19,9 +19,15 @@ class NormalMap : public VKWindow {
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 	VkSampler sampler = VK_NULL_HANDLE;
+	/*	*/
 	VkImage texture = VK_NULL_HANDLE;
 	VkImageView skyboxTextureView = VK_NULL_HANDLE;
 	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
+
+	/*	*/
+	VkImage normal_texture = VK_NULL_HANDLE;
+	VkImageView normal_texture_view = VK_NULL_HANDLE;
+	VkDeviceMemory normalMemory = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	VkBuffer uniformBuffer;
@@ -47,7 +53,7 @@ class NormalMap : public VKWindow {
   public:
 	NormalMap(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
-		this->setTitle("Skybox Panoramic");
+		this->setTitle("NormalMap");
 		this->show();
 	}
 	virtual ~NormalMap() {}
@@ -59,6 +65,10 @@ class NormalMap : public VKWindow {
 		vkDestroyImageView(getDevice(), skyboxTextureView, nullptr);
 		vkDestroyImage(getDevice(), texture, nullptr);
 		vkFreeMemory(getDevice(), textureMemory, nullptr);
+
+		vkDestroyImageView(getDevice(), normal_texture_view, nullptr);
+		vkDestroyImage(getDevice(), normal_texture, nullptr);
+		vkFreeMemory(getDevice(), normalMemory, nullptr);
 
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
@@ -283,9 +293,13 @@ class NormalMap : public VKWindow {
 		beginInfo.flags = 0;
 		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
-		/*	*/
-		ImageImporter::createImage2D("panorama.png", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
-								   physicalDevice(), texture, textureMemory);
+		/*	Diffuse Texture.	*/
+		ImageImporter::createImage2D("normal_diffuse.png", getDevice(), getGraphicCommandPool(),
+									 getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
+
+		/*	Normal Texture.	*/
+		ImageImporter::createImage2D("normal.png", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
+									 physicalDevice(), normal_texture, normalMemory);
 
 		vkEndCommandBuffer(cmds[0]);
 		this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
@@ -350,12 +364,17 @@ class NormalMap : public VKWindow {
 			bufferInfo.offset = uniformBufferSize * i;
 			bufferInfo.range = uniformBufferSize;
 
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = skyboxTextureView;
-			imageInfo.sampler = sampler;
+			VkDescriptorImageInfo imageDiffuseInfo{};
+			imageDiffuseInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageDiffuseInfo.imageView = skyboxTextureView;
+			imageDiffuseInfo.sampler = sampler;
 
-			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+			VkDescriptorImageInfo imageNormalInfo{};
+			imageDiffuseInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageDiffuseInfo.imageView = normal_texture_view;
+			imageDiffuseInfo.sampler = sampler;
+
+			std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
 
 			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites[0].dstSet = descriptorSets[i];
@@ -371,12 +390,21 @@ class NormalMap : public VKWindow {
 			descriptorWrites[1].dstArrayElement = 0;
 			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = &imageInfo;
+			descriptorWrites[1].pImageInfo = &imageDiffuseInfo;
+
+			descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[2].dstSet = descriptorSets[i];
+			descriptorWrites[2].dstBinding = 2;
+			descriptorWrites[2].dstArrayElement = 0;
+			descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[2].descriptorCount = 1;
+			descriptorWrites[2].pImageInfo = &imageNormalInfo;
 
 			vkUpdateDescriptorSets(this->getDevice(), static_cast<uint32_t>(descriptorWrites.size()),
 								   descriptorWrites.data(), 0, nullptr);
 		}
 
+		/*	*/
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferInfo.size = sizeof(vertices[0]) * vertices.size();
@@ -405,17 +433,13 @@ class NormalMap : public VKWindow {
 		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 		vkUnmapMemory(getDevice(), vertexMemory);
 
-		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = glm::mat4(1.0f);
-		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-
 		onResize(width(), height());
 	}
 
 	virtual void onResize(int width, int height) override {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
+		this->mvp.proj = glm::perspective(glm::radians(60.0f), (float)width / (float)height, 0.15f, 100.0f);
 
 		/*	Create command buffers.	*/
 		for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
@@ -473,16 +497,10 @@ class NormalMap : public VKWindow {
 		// TODO add character controller.
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = viewMatrix;
-		this->mvp.modelViewProjection = this->mvp.model * this->mvp.proj * this->mvp.view;
+		this->mvp.modelViewProjection = this->mvp.model * this->mvp.view * this->mvp.proj;
 
 		// Setup the range
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
-		// 	VkMappedMemoryRange stagingRange{};
-		// 	stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		// 	stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
-		// 	stagingRange.offset = 0;
-		// 	stagingRange.size = (size_t)sizeof(this->mvp);
-		// 	vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
 	virtual void update() {}
@@ -495,8 +513,7 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		VKSampleWindow<NormalMap> skybox(argc, argv, required_device_extensions, {},
-											   required_instance_extensions);
+		VKSampleWindow<NormalMap> skybox(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		skybox.run();
 
 	} catch (std::exception &ex) {

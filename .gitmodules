@@ -1,9 +1,9 @@
 [submodule "extern/flythough_camera"]
 	path = extern/flythough_camera
 	url = https://github.com/nlguillemot/flythrough_camera.git
-[submodule "extern/mimi-imgui"]
-	path = extern/mimi-imgui
-	url = https://github.com/voldien/mimi-imgui.git
 [submodule "extern/cxxopts"]
 	path = extern/cxxopts
 	url = https://github.com/jarro2783/cxxopts
+[submodule "extern/nekomimi"]
+	path = extern/nekomimi
+	url = https://github.com/voldien/nekomimi.git

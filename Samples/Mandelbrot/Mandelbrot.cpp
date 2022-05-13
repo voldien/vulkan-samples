@@ -1,4 +1,3 @@
-#include "FPSCounter.h"
 #include "VKSampleWindow.h"
 #include "VksCommon.h"
 #include <VKWindow.h>
@@ -30,7 +29,6 @@ class MandelBrotWindow : public VKWindow {
 		int nrSamples;
 	} params = {};
 
-	FPSCounter<float> fpsCounter;
 	size_t paramMemSize = sizeof(params);
 
   public:
@@ -38,7 +36,6 @@ class MandelBrotWindow : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(std::string("MandelBrot"));
 		this->show();
-		//	fpsCounter = FPSCounter(100);
 	}
 	virtual ~MandelBrotWindow() {}
 
@@ -295,9 +292,6 @@ class MandelBrotWindow : public VKWindow {
 		params.posY = 0;
 		params.zoom = 1.0f;
 		params.nrSamples = 128;
-
-		fpsCounter.incrementFPS(SDL_GetPerformanceCounter());
-		printf("fps: %d\n", fpsCounter.getFPS());
 	}
 };
 
@@ -313,7 +307,7 @@ int main(int argc, const char **argv) {
 		mandel.run();
 
 	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

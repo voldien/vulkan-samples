@@ -22,9 +22,9 @@ OPTION(BUILD_WITH_TSAN "Enable Thread sanitizer" OFF)
 # Backend libraries
 ############################################
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/cxxopts EXCLUDE_FROM_ALL)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/mimi-imgui EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi EXCLUDE_FROM_ALL)
 
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/mimi-imgui/extern/fragcore/modules/audio EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/audio EXCLUDE_FROM_ALL)
 #TODO remove
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/extern/flythough_camera)
 
@@ -182,6 +182,7 @@ FOREACH(GLSL ${GLSL_SOURCE_FILES})
 		OUTPUT ${SPIRV}
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${EXECUTABLE_OUTPUT_PATH}/Shaders/"
 		COMMAND glslc ${GLSL} -o ${SPIRV}
+		#COMMAND ${CMAKE_COMMAND} -E copy ${SPIRV} "${EXECUTABLE_OUTPUT_PATH}/Shaders/${SPIRV}".
 		DEPENDS ${GLSL})
 	list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach(GLSL)
@@ -191,6 +192,12 @@ add_custom_target(
     DEPENDS ${SPIRV_BINARY_FILES}
     )
 #TODO add dep shaders and all.
+
+# All shader files.
+FILE(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/Shaders ${CMAKE_CURRENT_BINARY_DIR}/Shaders SYMBOLIC)
+FILE(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/asset ${CMAKE_CURRENT_BINARY_DIR}/asset SYMBOLIC)
+
+
 
 IF(BUILD_WTIH_TEST)
 	ENABLE_TESTING()

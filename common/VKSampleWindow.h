@@ -135,7 +135,7 @@ template <class T> class VKSampleWindow {
 		bool group_device_request = device_index > 1;
 		if (device_index >= 0) {
 			// TODO validate if valid device index.
-			if (device_index > core->getNrPhysicalDevices())
+			if ((uint32_t)device_index > core->getNrPhysicalDevices())
 				throw cxxexcept::RuntimeException("Must be valid physical device {} greater than {}", device_index,
 												  core->getNrPhysicalDevices());
 			physical_devices.push_back(core->createPhysicalDevice(device_index));

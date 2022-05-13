@@ -1,9 +1,7 @@
-#include "FPSCounter.h"
-#include "Importer/ImageImport.h"
-#include "Util/Time.hpp"
-#include "VksCommon.h"
-#include <SDL2/SDL.h>
+#include <Importer/ImageImport.h>
+#include <Util/CameraController.h>
 #include <VKWindow.h>
+#include <VksCommon.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
@@ -18,21 +16,23 @@ class SingleTexture : public VKWindow {
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 	VkSampler sampler = VK_NULL_HANDLE;
 
+	/*	*/
 	std::vector<VkDescriptorSet> descriptorSets;
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory; // TODO single memory
+	VkBuffer uniformBuffer;
+	VkDeviceMemory uniformBufferMemory;
 	std::vector<void *> mapMemory;
+
+	CameraController camera;
 
 	VkImage texture = VK_NULL_HANDLE;
 	VkImageView textureView = VK_NULL_HANDLE;
 	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
-	vkscommon::Time time;
 
-	FPSCounter<float> fpsCounter;
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
+		alignas(16) glm::mat4 modelView;
 	} mvp;
 
 	typedef struct _vertex_t {
@@ -40,14 +40,18 @@ class SingleTexture : public VKWindow {
 		float uv[2];
 	} Vertex;
 
+	VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
+
   public:
 	SingleTexture(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {}
+		: VKWindow(core, device, -1, -1, -1, -1) {
+		this->setTitle("Texture");
+		this->show();
+	}
 	virtual ~SingleTexture() {}
 
 	virtual void release() override {
 
-		VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 		/*	*/
@@ -59,12 +63,9 @@ class SingleTexture : public VKWindow {
 		vkFreeMemory(getDevice(), textureMemory, nullptr);
 
 		/*	*/
-		for (int i = 0; i < uniformBuffers.size(); i++) {
-			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
-			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
-			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
-		}
-
+		vkDestroyBuffer(getDevice(), uniformBuffer, nullptr);
+		vkUnmapMemory(getDevice(), uniformBufferMemory);
+		vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
 		/*	*/
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
@@ -116,8 +117,8 @@ class SingleTexture : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp-texture.frag.spv");
+		auto vertShaderCode = IOUtil::readFile("shaders/texture.vert.spv");
+		auto fragShaderCode = IOUtil::readFile("shaders/texture.frag.spv");
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -244,8 +245,6 @@ class SingleTexture : public VKWindow {
 
 		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
 
-		// VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
-
 		VkDynamicState dynamicStateEnables[1];
 		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 		VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
@@ -291,8 +290,8 @@ class SingleTexture : public VKWindow {
 
 		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
-		ImageImporter::createImage2D("uv-texture.png", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
-								   physicalDevice(), texture, textureMemory);
+		ImageImporter::createImage2D("uv-texture.jpg", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
+									 physicalDevice(), texture, textureMemory);
 
 		vkEndCommandBuffer(cmds[0]);
 		this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
@@ -300,27 +299,29 @@ class SingleTexture : public VKWindow {
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
-		textureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8A8_SRGB,
+		textureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8_SRGB,
 												VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 		VKHelper::createSampler(getDevice(), sampler);
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferBlock);
-
-		uniformBuffers.resize(getSwapChainImageCount());
-		uniformBuffersMemory.resize(getSwapChainImageCount());
+		// TODO improve memory to align with the required by the driver
+		this->uniformBufferSize +=
+			uniformBufferSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().nonCoherentAtomSize;
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
+		VKHelper::createBuffer(getDevice(), uniformBufferSize * getSwapChainImageCount(), memProperties,
+							   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+							   uniformBuffer, uniformBufferMemory);
+
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffers[i], uniformBuffersMemory[i]);
+
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
+			VKS_VALIDATE(
+				vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, uniformBufferSize, 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -351,8 +352,8 @@ class SingleTexture : public VKWindow {
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
+			bufferInfo.buffer = uniformBuffer;
+			bufferInfo.offset = uniformBufferSize * i;
 			bufferInfo.range = sizeof(UniformBufferBlock);
 
 			VkDescriptorImageInfo imageInfo{};
@@ -410,20 +411,21 @@ class SingleTexture : public VKWindow {
 		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 		vkUnmapMemory(getDevice(), vertexMemory);
 
-		onResize(width(), height());
+		/*	*/
+		this->mvp.model = glm::mat4(1.0f);
+		this->mvp.view = glm::mat4(1.0f);
+		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 
-		time.start();
+		onResize(width(), height());
 	}
 
 	virtual void onResize(int width, int height) override {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
-		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = glm::mat4(1.0f);
-		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
+		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 1000.0f);
 
-		for (int i = 0; i < getNrCommandBuffers(); i++) {
+		/*	*/
+		for (size_t i = 0; i < getNrCommandBuffers(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
@@ -473,26 +475,25 @@ class SingleTexture : public VKWindow {
 
 	virtual void draw() override {
 
-		float elapsedTime = time.getElapsed();
+		/*	*/
+		float elapsedTime = getTimer().getElapsed();
+		camera.update(getTimer().deltaTime());
 
+		/*	*/
 		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = glm::mat4(1.0f);
-		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45), glm::vec3(0.0f, 1.0f, 0.0f));
-		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
+		this->mvp.model = glm::translate(this->mvp.model, glm::vec3(0.0f, 0.0f, 5.0f));
+		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.55f));
 
-		// Setup the range
+		this->mvp.modelView =   camera.getViewMatrix();
+
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
-		VkMappedMemoryRange stagingRange{};
-		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
-		stagingRange.offset = 0;
-		stagingRange.size = (size_t)sizeof(this->mvp);
-		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
 	virtual void update() {}
 };
+
+// TODO add custom texture.
 
 int main(int argc, const char **argv) {
 
@@ -500,12 +501,12 @@ int main(int argc, const char **argv) {
 																		   {"VK_KHR_xlib_surface", true}};
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	// TODO add custom argument options for adding path of the texture and what type.
+
 	try {
-		VKSampleWindow<SingleTexture> skybox(argc, argv, required_device_extensions, {},
-												   required_instance_extensions);
+		VKSampleWindow<SingleTexture> skybox(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		skybox.run();
 	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+		std::cerr << ex.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
