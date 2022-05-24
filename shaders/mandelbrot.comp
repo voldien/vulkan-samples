@@ -15,7 +15,7 @@ struct mandelbrot_param_t {
 	int nrSamples;
 };
 
-layout(set = 0, binding = 1) uniform params { mandelbrot_param_t _params; }
+layout(set = 0, binding = 1, std140) uniform params { mandelbrot_param_t _params; }
 u_pushConstants;
 
 vec2 squareImaginary(in const vec2 number) {

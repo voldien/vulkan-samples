@@ -75,12 +75,6 @@ class PNTessellation : public VKWindow {
 		vkDestroyImage(getDevice(), texture, nullptr);
 		vkFreeMemory(getDevice(), textureMemory, nullptr);
 
-		for (int i = 0; i < uniformBuffers.size(); i++) {
-			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
-			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
-			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
-		}
-
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
@@ -340,21 +334,18 @@ class PNTessellation : public VKWindow {
 
 		VkDeviceSize bufferSize = sizeof(UniformBufferBlock);
 
-		uniformBuffers.resize(getSwapChainImageCount());
-		uniformBuffersMemory.resize(getSwapChainImageCount());
-
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffers[i], uniformBuffersMemory[i]);
-			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
-			mapMemory.push_back(_data);
+			// VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
+			// 					   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			// 					   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+			// 						   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			// 					   uniformBuffers[i], uniformBuffersMemory[i]);
+			// void *_data;
+			// VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
+			// mapMemory.push_back(_data);
 		}
 
 		/*	Allocate descriptor set.	*/
@@ -384,7 +375,7 @@ class PNTessellation : public VKWindow {
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = uniformBuffers[i];
+			bufferInfo.buffer = uniformBuffer;
 			bufferInfo.offset = 0;
 			bufferInfo.range = sizeof(UniformBufferBlock);
 
@@ -516,12 +507,6 @@ class PNTessellation : public VKWindow {
 
 		// Setup the range
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
-		VkMappedMemoryRange stagingRange{};
-		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
-		stagingRange.offset = 0;
-		stagingRange.size = (size_t)sizeof(this->mvp);
-		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
 	virtual void update() {}
@@ -538,8 +523,8 @@ int main(int argc, const char **argv) {
 													required_instance_extensions);
 		tessellation.run();
 
-	} catch (std::exception &ex) {
-		std::cerr << ex.what() << std::endl;
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

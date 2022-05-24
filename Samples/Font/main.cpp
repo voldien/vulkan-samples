@@ -39,20 +39,23 @@ class BasicSDFFont : public VKWindow {
 
 	virtual void release() override {
 
-		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
+		/*	*/
+		vkDestroyDescriptorPool(this->getDevice(), descpool, nullptr);
 
-		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
-		vkFreeMemory(getDevice(), vertexMemory, nullptr);
+		/*	*/
+		vkDestroyBuffer(this->getDevice(), vertexBuffer, nullptr);
+		vkFreeMemory(this->getDevice(), vertexMemory, nullptr);
 
-		for (int i = 0; i < uniformBuffers.size(); i++) {
-			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
-			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
-			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
+		for (size_t i = 0; i < this->uniformBuffers.size(); i++) {
+			vkDestroyBuffer(this->getDevice(), this->uniformBuffers[i], nullptr);
+			vkUnmapMemory(this->getDevice(), this->uniformBuffersMemory[i]);
+			vkFreeMemory(this->getDevice(), this->uniformBuffersMemory[i], nullptr);
 		}
 
-		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
-		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
+		/*	*/
+		vkDestroyDescriptorSetLayout(this->getDevice(), descriptorSetLayout, nullptr);
+		vkDestroyPipeline(this->getDevice(), graphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(this->getDevice(), pipelineLayout, nullptr);
 	}
 
 	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 0, 0}, // triangle 1 : begin
@@ -456,8 +459,8 @@ int main(int argc, const char **argv) {
 		VKSampleWindow<BasicSDFFont> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		sample.run();
 
-	} catch (std::exception &ex) {
-		std::cerr << ex.what() << std::endl;
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

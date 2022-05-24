@@ -120,45 +120,45 @@ class Ocean : public VKWindow {
 		vkDestroyPipelineLayout(getDevice(), particleSimLayout, nullptr);
 	}
 
-	void generateHeightField(cl_float2 *h0, unsigned int fftInputH, unsigned int fftInputW) {
-		float fMultiplier, fAmplitude, fTheta;
-		for (unsigned int y = 0; y < fftInputH; y++) {
-			for (unsigned int x = 0; x < fftInputW; x++) {
-				float kx = OPENCL_PI_F * x / (float)_patchSize;
-				float ky = 2.0f * OPENCL_PI_F * y / (float)_patchSize;
-				float Er = 2.0f * rand() / (float)RAND_MAX - 1.0f;
-				float Ei = 2.0f * rand() / (float)RAND_MAX - 1.0f;
-				if (!((kx == 0.f) && (ky == 0.f))) {
-					fMultiplier = sqrt(phillips(kx, ky, windSpeed, windDir));
-				} else {
-					fMultiplier = 0.f;
-				}
-				fAmplitude = RandNormal(0.0f, 1.0f);
-				fTheta = rand() / (float)RAND_MAX * 2 * OPENCL_PI_F;
-				float h0_re = fMultiplier * fAmplitude * Er;
-				float h0_im = fMultiplier * fAmplitude * Ei;
-				int i = y * fftInputW + x;
-				cl_float2 tmp = {h0_re, h0_im};
-				h0[i] = tmp;
-			}
-		}
-	}
+	// void generateHeightField(cl_float2 *h0, unsigned int fftInputH, unsigned int fftInputW) {
+	// 	float fMultiplier, fAmplitude, fTheta;
+	// 	for (unsigned int y = 0; y < fftInputH; y++) {
+	// 		for (unsigned int x = 0; x < fftInputW; x++) {
+	// 			float kx = OPENCL_PI_F * x / (float)_patchSize;
+	// 			float ky = 2.0f * OPENCL_PI_F * y / (float)_patchSize;
+	// 			float Er = 2.0f * rand() / (float)RAND_MAX - 1.0f;
+	// 			float Ei = 2.0f * rand() / (float)RAND_MAX - 1.0f;
+	// 			if (!((kx == 0.f) && (ky == 0.f))) {
+	// 				fMultiplier = sqrt(phillips(kx, ky, windSpeed, windDir));
+	// 			} else {
+	// 				fMultiplier = 0.f;
+	// 			}
+	// 			fAmplitude = RandNormal(0.0f, 1.0f);
+	// 			fTheta = rand() / (float)RAND_MAX * 2 * OPENCL_PI_F;
+	// 			float h0_re = fMultiplier * fAmplitude * Er;
+	// 			float h0_im = fMultiplier * fAmplitude * Ei;
+	// 			int i = y * fftInputW + x;
+	// 			cl_float2 tmp = {h0_re, h0_im};
+	// 			h0[i] = tmp;
+	// 		}
+	// 	}
+	// }
 
-	float phillips(float kx, float ky, float windSpeed, float windDirection) {
-		float fWindDir = windDirection * OPENCL_PI_F / 180.0f;
-		static float A = 2.f * .00000005f;
-		float L = windSpeed * windSpeed / 9.81f;
-		float w = L / 75;
-		float ksqr = kx * kx + ky * ky;
-		float kdotwhat = kx * cosf(fWindDir) + ky * sinf(fWindDir);
-		kdotwhat = max(0.0f, kdotwhat);
-		float result =
-			(float)(A * (pow(2.7183f, -1.0f / (L * L * ksqr)) * (kdotwhat * kdotwhat)) / (ksqr * ksqr * ksqr));
-		float damp = (float)expf(-ksqr * w * w);
-		damp = expf(-1.0 / (ksqr * L * L));
-		result *= kdotwhat < 0.0f ? 0.25f : 1.0f;
-		return (result * damp);
-	}
+	// float phillips(float kx, float ky, float windSpeed, float windDirection) {
+	// 	float fWindDir = windDirection * OPENCL_PI_F / 180.0f;
+	// 	static float A = 2.f * .00000005f;
+	// 	float L = windSpeed * windSpeed / 9.81f;
+	// 	float w = L / 75;
+	// 	float ksqr = kx * kx + ky * ky;
+	// 	float kdotwhat = kx * cosf(fWindDir) + ky * sinf(fWindDir);
+	// 	kdotwhat = max(0.0f, kdotwhat);
+	// 	float result =
+	// 		(float)(A * (pow(2.7183f, -1.0f / (L * L * ksqr)) * (kdotwhat * kdotwhat)) / (ksqr * ksqr * ksqr));
+	// 	float damp = (float)expf(-ksqr * w * w);
+	// 	damp = expf(-1.0 / (ksqr * L * L));
+	// 	result *= kdotwhat < 0.0f ? 0.25f : 1.0f;
+	// 	return (result * damp);
+	// }
 
 	VkPipeline createGraphicPipeline(VkPipelineLayout *layout) {
 
@@ -656,8 +656,8 @@ int main(int argc, const char **argv) {
 		VKSampleWindow<Ocean> particleSystem(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		particleSystem.run();
 
-	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

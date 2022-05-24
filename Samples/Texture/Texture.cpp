@@ -290,7 +290,7 @@ class SingleTexture : public VKWindow {
 
 		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
-		ImageImporter::createImage2D("uv-texture.jpg", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
+		ImageImporter::createImage2D("asset/uv-texture.jpg", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
 									 physicalDevice(), texture, textureMemory);
 
 		vkEndCommandBuffer(cmds[0]);
@@ -305,8 +305,10 @@ class SingleTexture : public VKWindow {
 		VKHelper::createSampler(getDevice(), sampler);
 
 		// TODO improve memory to align with the required by the driver
-		this->uniformBufferSize +=
-			uniformBufferSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().nonCoherentAtomSize;
+		this->uniformBufferSize = sizeof(UniformBufferBlock);
+		size_t minMapBufferSize =
+			getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+		uniformBufferSize += minMapBufferSize - (uniformBufferSize % minMapBufferSize);
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
@@ -354,7 +356,7 @@ class SingleTexture : public VKWindow {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffer;
 			bufferInfo.offset = uniformBufferSize * i;
-			bufferInfo.range = sizeof(UniformBufferBlock);
+			bufferInfo.range = uniformBufferSize;
 
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -485,7 +487,7 @@ class SingleTexture : public VKWindow {
 		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.55f));
 
-		this->mvp.modelView =   camera.getViewMatrix();
+		this->mvp.modelView = camera.getViewMatrix();
 
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
 	}
@@ -505,8 +507,8 @@ int main(int argc, const char **argv) {
 	try {
 		VKSampleWindow<SingleTexture> skybox(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		skybox.run();
-	} catch (std::exception &ex) {
-		std::cerr << ex.what() << std::endl;
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

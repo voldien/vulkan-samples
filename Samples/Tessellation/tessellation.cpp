@@ -2,6 +2,7 @@
 #include "Util/Time.hpp"
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
+#include <Util/CameraController.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -21,7 +22,9 @@ class BasicTessellation : public VKWindow {
 
 	/*	*/
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
+	VkBuffer indiceBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+	size_t nrElements;
 
 	/*	*/
 	std::vector<VkDescriptorSet> descriptorSets;
@@ -30,30 +33,35 @@ class BasicTessellation : public VKWindow {
 	VkBuffer uniformBuffer;
 	VkDeviceMemory uniformBufferMemory;
 	std::vector<void *> mapMemory;
-	VkDeviceSize bufferSize;
+	VkDeviceSize uniformBufferSize;
 
 	VkSampler sampler = VK_NULL_HANDLE;
 
 	/*	Height map texture.	*/
-	VkImage texture = VK_NULL_HANDLE;
-	VkImageView textureView = VK_NULL_HANDLE;
-	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
+	VkImage heightTexture = VK_NULL_HANDLE;
+	VkImageView heightTextureView = VK_NULL_HANDLE;
+	VkDeviceMemory heightTextureMemory = VK_NULL_HANDLE;
 
 	/*	*/
 	VkImage diffuseTexture = VK_NULL_HANDLE;
 	VkImageView diffuseTextureView = VK_NULL_HANDLE;
 	VkDeviceMemory diffuseTextureMemory = VK_NULL_HANDLE;
-
-	bool split;
-
+	CameraController cameraController;
 	struct UniformBufferBlock {
-		alignas(16) glm::mat4 model;
-		alignas(16) glm::mat4 view;
-		alignas(16) glm::mat4 proj;
+		glm::mat4 model;
+		glm::mat4 view;
+		glm::mat4 proj;
+		glm::mat4 modelView;
+		glm::mat4 modelViewProjection;
+		glm::mat4 normalMatrix;
+
+		/*	Tessellation settings.	*/
+		glm::vec3 eyePos = glm::vec3(1.0f);
+		float gDisplace = 1.0f;
 
 		/*	Light sun.	*/
-		glm::vec3 direction;
-		glm::vec3 lightColor;
+		glm::vec4 direction;
+		glm::vec4 lightColor;
 		float lightIntensity;
 	} mvp;
 
@@ -62,15 +70,38 @@ class BasicTessellation : public VKWindow {
 		float uv[2];
 	} Vertex;
 
+	const std::string diffuseTexturePath = "asset/tessellation_diffusemap.png";
+	const std::string heightTexturePath = "asset/tessellation_heightmap.png";
+	/*	*/
+	const std::string vertexShaderPath = "Shaders/tessellation/tessellation.vert";
+	const std::string fragmentShaderPath = "Shaders/tessellation/tessellation.frag";
+	const std::string ControlShaderPath = "Shaders/tessellation/tessellation.tesc";
+	const std::string EvoluationShaderPath = "Shaders/tessellation/tessellation.tese";
+
   public:
 	BasicTessellation(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 
-		VkPhysicalDeviceFeatures2 features;
+		VkPhysicalDeviceFeatures enabledFeatures;
+		VkPhysicalDeviceFeatures2 deviceFeatures;
 		this->getPhysicalDevice()->checkFeature<VkPhysicalDeviceFeatures2>(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-																		   features);
+																		   deviceFeatures);
 
-		if (!features.features.tessellationShader) {
+		if (!deviceFeatures.features.tessellationShader) {
+		}
+		// Example uses tessellation shaders
+		if (deviceFeatures.features.tessellationShader) {
+			enabledFeatures.tessellationShader = VK_TRUE;
+		} else {
+		}
+
+		// Fill mode non solid is required for wireframe display
+		if (deviceFeatures.features.fillModeNonSolid) {
+			enabledFeatures.fillModeNonSolid = VK_TRUE;
+		}
+
+		if (deviceFeatures.features.samplerAnisotropy) {
+			enabledFeatures.samplerAnisotropy = VK_TRUE;
 		}
 
 		this->setTitle("Basic Tessellation");
@@ -85,15 +116,17 @@ class BasicTessellation : public VKWindow {
 
 		vkDestroySampler(getDevice(), sampler, nullptr);
 
-		vkDestroyImageView(getDevice(), textureView, nullptr);
-		vkDestroyImage(getDevice(), texture, nullptr);
-		vkFreeMemory(getDevice(), textureMemory, nullptr);
+		vkDestroyImageView(getDevice(), heightTextureView, nullptr);
+		vkDestroyImage(getDevice(), heightTexture, nullptr);
+		vkFreeMemory(getDevice(), heightTextureMemory, nullptr);
 
-		for (int i = 0; i < uniformBuffers.size(); i++) {
-			vkDestroyBuffer(getDevice(), uniformBuffers[i], nullptr);
-			vkUnmapMemory(getDevice(), uniformBuffersMemory[i]);
-			vkFreeMemory(getDevice(), uniformBuffersMemory[i], nullptr);
-		}
+		vkDestroyImageView(getDevice(), diffuseTextureView, nullptr);
+		vkDestroyImage(getDevice(), diffuseTexture, nullptr);
+		vkFreeMemory(getDevice(), diffuseTextureMemory, nullptr);
+
+		vkDestroyBuffer(getDevice(), uniformBuffer, nullptr);
+		vkUnmapMemory(getDevice(), uniformBufferMemory);
+		vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
 
 		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 		vkFreeMemory(getDevice(), vertexMemory, nullptr);
@@ -104,51 +137,12 @@ class BasicTessellation : public VKWindow {
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
 
-	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 0, 0}, // triangle 1 : begin
-										  {-1.0f, -1.0f, 1.0f, 0, 1},
-										  {-1.0f, 1.0f, 1.0f, 1, 1}, // triangle 1 : end
-										  {1.0f, 1.0f, -1.0f, 0, 0}, // triangle 2 : begin
-										  {-1.0f, -1.0f, -1.0f, 1, 1},
-										  {-1.0f, 1.0f, -1.0f, 1, 0}, // triangle 2 : end
-										  {1.0f, -1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, -1.0f, 0, 1},
-										  {1.0f, -1.0f, -1.0f, 1, 1},
-										  {1.0f, 1.0f, -1.0f, 0, 0},
-										  {1.0f, -1.0f, -1.0f, 1, 1},
-										  {-1.0f, -1.0f, -1.0f, 1, 0},
-										  {-1.0f, -1.0f, -1.0f, 0, 0},
-										  {-1.0f, 1.0f, 1.0f, 0, 1},
-										  {-1.0f, 1.0f, -1.0f, 1, 1},
-										  {1.0f, -1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, 1.0f, 1, 1},
-										  {-1.0f, -1.0f, -1.0f, 0, 1},
-										  {-1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, 1.0f, 0, 1},
-										  {1.0f, -1.0f, 1.0f, 1, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, -1.0f, -1.0f, 1, 1},
-										  {1.0f, 1.0f, -1.0f, 1, 0},
-										  {1.0f, -1.0f, -1.0f, 0, 0},
-										  {1.0f, 1.0f, 1.0f, 0, 1},
-										  {1.0f, -1.0f, 1.0f, 1, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, 1.0f, -1.0f, 1, 1},
-										  {-1.0f, 1.0f, -1.0f, 0, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, 1.0f, -1.0f, 0, 1},
-										  {-1.0f, 1.0f, 1.0f, 1, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, 1.0f, 1.0f, 1, 1},
-										  {1.0f, -1.0f, 1.0f, 1, 0}
-
-	};
-
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/tessellation/base.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/tessellation/base.frag.spv");
-		auto teseShaderCode = IOUtil::readFile("shaders/tessellation/pntriangle.tese.spv");
-		auto tescShaderCode = IOUtil::readFile("shaders/tessellation/pntriangle.tesc.spv");
+		auto vertShaderCode = IOUtil::readFile(this->vertexShaderPath);
+		auto fragShaderCode = IOUtil::readFile(this->fragmentShaderPath);
+		auto teseShaderCode = IOUtil::readFile(this->EvoluationShaderPath);
+		auto tescShaderCode = IOUtil::readFile(this->ControlShaderPath);
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -347,28 +341,35 @@ class BasicTessellation : public VKWindow {
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
+		/*	Diffuse Texture.	*/
+		ImageImporter::createImage2D(this->diffuseTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
+									 getDefaultGraphicQueue(), physicalDevice(), heightTexture, heightTextureMemory);
+
 		/*	Create random noise texture.	*/
-		textureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8A8_SRGB,
-												VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		heightTextureView = VKHelper::createImageView(getDevice(), heightTexture, VK_IMAGE_VIEW_TYPE_2D,
+													  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		VKHelper::createSampler(getDevice(), sampler);
 
-		// TODO fix alignment
-		this->bufferSize = sizeof(UniformBufferBlock);
-
-		uniformBuffers.resize(getSwapChainImageCount());
-		uniformBuffersMemory.resize(getSwapChainImageCount());
+		/*	Compute uniform buffer size, in respect to the alignment requirement.	*/
+		uniformBufferSize = sizeof(UniformBufferBlock);
+		size_t minMapBufferSize =
+			getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+		uniformBufferSize += minMapBufferSize - (uniformBufferSize % minMapBufferSize);
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
+		VKHelper::createBuffer(getDevice(), uniformBufferSize * getSwapChainImageCount(), memProperties,
+							   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+							   uniformBuffer, uniformBufferMemory);
+
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffers[i], uniformBuffersMemory[i]);
+
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
+			VKS_VALIDATE(
+				vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, uniformBufferSize, 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -399,14 +400,19 @@ class BasicTessellation : public VKWindow {
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferBlock);
+			bufferInfo.buffer = uniformBuffer;
+			bufferInfo.offset = i * uniformBufferSize;
+			bufferInfo.range = uniformBufferSize;
 
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = textureView;
-			imageInfo.sampler = sampler;
+			VkDescriptorImageInfo imageDiffuseInfo{};
+			imageDiffuseInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageDiffuseInfo.imageView = diffuseTextureView;
+			imageDiffuseInfo.sampler = sampler;
+
+			VkDescriptorImageInfo imageHeightInfo{};
+			imageHeightInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageHeightInfo.imageView = heightTextureView;
+			imageHeightInfo.sampler = sampler;
 
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
@@ -424,7 +430,15 @@ class BasicTessellation : public VKWindow {
 			descriptorWrites[1].dstArrayElement = 0;
 			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = &imageInfo;
+			descriptorWrites[1].pImageInfo = &imageDiffuseInfo;
+
+			descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[2].dstSet = descriptorSets[i];
+			descriptorWrites[2].dstBinding = 1;
+			descriptorWrites[2].dstArrayElement = 0;
+			descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[2].descriptorCount = 1;
+			descriptorWrites[2].pImageInfo = &imageHeightInfo;
 
 			vkUpdateDescriptorSets(getDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(),
 								   0, nullptr);
@@ -432,7 +446,7 @@ class BasicTessellation : public VKWindow {
 
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+		bufferInfo.size = sizeof(float) * 1; // vertices.size();//TODO fix
 		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -455,7 +469,7 @@ class BasicTessellation : public VKWindow {
 
 		void *data;
 		VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
-		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
+		// memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 		vkUnmapMemory(getDevice(), vertexMemory);
 
 		onResize(width(), height());
@@ -511,7 +525,7 @@ class BasicTessellation : public VKWindow {
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0,
 									nullptr);
 
-			vkCmdDrawIndexed(cmd, vertices.size(), 1, 0, 0, 1);
+			vkCmdDrawIndexed(cmd, this->nrElements, 1, 0, 0, 1);
 
 			vkCmdEndRenderPass(cmd);
 
@@ -521,22 +535,18 @@ class BasicTessellation : public VKWindow {
 
 	virtual void draw() override {
 
+		this->cameraController.update(getTimer().deltaTime());
 		float elapsedTime = getTimer().getElapsed();
+		glm::mat4 viewMatrix = this->cameraController.getViewMatrix();
 
 		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = glm::mat4(1.0f);
-		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
+		this->mvp.view = viewMatrix;
+		this->mvp.modelViewProjection = this->mvp.model * this->mvp.view * this->mvp.proj;
 		this->mvp.model = glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45), glm::vec3(0.0f, 1.0f, 0.0f));
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
 		// Setup the range
 		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
-		VkMappedMemoryRange stagingRange{};
-		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
-		stagingRange.offset = 0;
-		stagingRange.size = (size_t)sizeof(this->mvp);
-		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
 	virtual void update() {}
@@ -555,8 +565,8 @@ int main(int argc, const char **argv) {
 													   required_instance_extensions);
 		tessellation.run();
 
-	} catch (std::exception &ex) {
-		std::cerr << ex.what() << std::endl;
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

@@ -13,14 +13,16 @@ class MandelBrotWindow : public VKWindow {
 
 	std::vector<VkImageView> computeImageViews;
 
+	// TODO merge.
 	std::vector<VkDeviceMemory> paramMemory;
-	VkBuffer paramBuffer;
+	VkBuffer paramBuffer = VK_NULL_HANDLE;
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 	std::vector<VkDescriptorSet> descriptorSets;
-	VkCommandPool computeCmdPool;
+	VkCommandPool computeCmdPool = VK_NULL_HANDLE;
 	std::vector<VkCommandBuffer> computeCmds;
+
 	struct mandelbrot_param_t {
 		float posX, posY;
 		float mousePosX, mousePosY;
@@ -306,8 +308,8 @@ int main(int argc, const char **argv) {
 												required_instance_extensions);
 		mandel.run();
 
-	} catch (std::exception &ex) {
-		std::cerr << ex.what() << std::endl;
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

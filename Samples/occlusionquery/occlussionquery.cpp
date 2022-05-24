@@ -290,8 +290,8 @@ int main(int argc, const char **argv) {
 	try {
 		VKSampleWindow<OcclusionQuery> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		sample.run();
-	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

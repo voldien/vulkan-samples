@@ -65,6 +65,7 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 		break;
 	case TextureFormat::RGBAFloat:
 		vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		break;
 	default:
 		throw RuntimeException("No Supported Image format {}", image.getFormat());
 		break;

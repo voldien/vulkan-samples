@@ -68,8 +68,8 @@ int main(int argc, const char **argv) {
 		SignedDistanceFieldVolumeWindow window(core, d);
 
 		window.run();
-	} catch (std::exception &ex) {
-		// std::cerr << ex.what();
+	} catch (const std::exception &ex) {
+		// std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

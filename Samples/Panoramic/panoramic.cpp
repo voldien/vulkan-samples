@@ -458,8 +458,8 @@ int main(int argc, const char **argv) {
 		VKSampleWindow<Panorama> Panorama(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		Panorama.run();
 
-	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

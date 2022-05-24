@@ -15,18 +15,21 @@ class ReactionDiffusion : public VKWindow {
 	std::vector<VkDeviceMemory> reactionDiffuseImageMemory;
 
 	std::vector<VkImageView> computeImageViews;
-	std::vector<VkBuffer> cellsBuffers;
-	std::vector<VkDeviceMemory> cellsMemory;
 
-	std::vector<VkDeviceMemory> paramMemory;
-	VkBuffer paramBuffer;
+	/*	*/
+	VkBuffer cellsBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory cellsMemory = VK_NULL_HANDLE;
+
+	/*	*/
+	VkDeviceMemory paramMemory = VK_NULL_HANDLE;
+	VkBuffer paramBuffer = VK_NULL_HANDLE;
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
-
 	std::vector<VkDescriptorSet> descriptorSets;
 
 	const uint32_t nrChemicalComponents = 2;
+
 	struct reaction_diffusion_param_t {
 		float kernelA[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
 		float kernelB[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
@@ -68,17 +71,11 @@ class ReactionDiffusion : public VKWindow {
 			vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
 		}
 
-		for (size_t i = 0; i < cellsBuffers.size(); i++) {
-			vkDestroyBuffer(this->getDevice(), cellsBuffers[i], nullptr);
-		}
-		for (size_t i = 0; i < cellsMemory.size(); i++) {
-			vkFreeMemory(getDevice(), cellsMemory[i], nullptr);
-		}
+		vkDestroyBuffer(this->getDevice(), cellsBuffer, nullptr);
+		vkFreeMemory(getDevice(), cellsMemory, nullptr);
 
 		vkDestroyBuffer(getDevice(), paramBuffer, nullptr);
-		for (size_t i = 0; i < paramMemory.size(); i++) {
-			vkFreeMemory(getDevice(), paramMemory[i], nullptr);
-		}
+		vkFreeMemory(getDevice(), paramMemory, nullptr);
 
 		vkDestroyPipeline(getDevice(), computePipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), computePipelineLayout, nullptr);
@@ -87,7 +84,7 @@ class ReactionDiffusion : public VKWindow {
 	VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 		VkPipeline pipeline;
 
-		auto compShaderCode = IOUtil::readFile("shaders/reactiondiffusion.comp.spv");
+		auto compShaderCode = IOUtil::readFile("Shaders/reactiondiffusion.comp.spv");
 
 		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -139,27 +136,26 @@ class ReactionDiffusion : public VKWindow {
 	}
 
 	virtual void Initialize() override {
-		// TODO fix get correct physical device.
-		// TODO fix alignment size.
-		paramMemSize +=
-			paramMemSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+
+		paramMemSize = sizeof(params);
+		size_t minMapBufferSize =
+			getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+		paramMemSize += minMapBufferSize - (paramMemSize % minMapBufferSize);
 
 		/*	Create pipeline.	*/
 		computePipeline = createComputePipeline(&computePipelineLayout);
 
 		/*	Create params.	*/
-		VkDeviceSize bufferSize = paramMemSize * getSwapChainImageCount();
-		paramMemory.resize(1);
+		VkDeviceSize paramMemoryBufferSize = paramMemSize * getSwapChainImageCount();
+
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
-		for (size_t i = 0; i < paramMemory.size(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   paramBuffer, paramMemory[i]);
-		}
+		VKHelper::createBuffer(getDevice(), paramMemoryBufferSize, memProperties,
+							   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+							   paramBuffer, paramMemory);
 
 		/*	Allocate descriptor set.	*/
 		std::vector<VkDescriptorPoolSize> poolSize = {
@@ -194,30 +190,26 @@ class ReactionDiffusion : public VKWindow {
 
 		const VkDeviceSize cellBufferSize = width * height * sizeof(float) * nrChemicalComponents;
 
-		cellsBuffers.resize(getSwapChainImageCount() * 2);
-		cellsMemory.resize(getSwapChainImageCount() * 2);
-		for (unsigned int i = 0; i < cellsBuffers.size(); i++) {
-			// TODO fix get correct physical device.
-			VKHelper::createBuffer(getDevice(), cellBufferSize,
-								   getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
-								   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-									   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-								   cellsBuffers[i], cellsMemory[i]);
+		// TODO fix get correct physical device.
+		VKHelper::createBuffer(getDevice(), cellBufferSize,
+							   getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
+							   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+								   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+							   cellsBuffer, cellsMemory);
 
-			/*	Write noise to buffer data.	*/
-			float *cellData;
-			VKS_VALIDATE(vkMapMemory(getDevice(), cellsMemory[i], 0, cellBufferSize, 0, (void **)&cellData));
-			for (int h = 0; h < height; h++) {
-				for (int w = 0; w < width; w++) {
-					for (int c = 0; c < nrChemicalComponents; c++) {
-						cellData[h * height * nrChemicalComponents + w * nrChemicalComponents + c] =
-							fragcore::Math::PerlinNoise((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
-					}
+		/*	Write noise to buffer data.	*/
+		float *cellData;
+		VKS_VALIDATE(vkMapMemory(getDevice(), cellsMemory, 0, cellBufferSize, 0, (void **)&cellData));
+		for (int h = 0; h < height; h++) {
+			for (int w = 0; w < width; w++) {
+				for (int c = 0; c < nrChemicalComponents; c++) {
+					cellData[h * height * nrChemicalComponents + w * nrChemicalComponents + c] =
+						fragcore::Math::PerlinNoise((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
 				}
 			}
-			vkUnmapMemory(getDevice(), cellsMemory[i]);
 		}
+		vkUnmapMemory(getDevice(), cellsMemory);
 
 		/*	Create reaction diffusion image and buffer.	*/
 		reactionDiffuseImage.resize(getSwapChainImageCount());
@@ -258,13 +250,13 @@ class ReactionDiffusion : public VKWindow {
 		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
 
 			VkDescriptorBufferInfo currentCellBufferInfo{};
-			currentCellBufferInfo.buffer = cellsBuffers[i * 2 + 0];
-			currentCellBufferInfo.offset = 0;
+			currentCellBufferInfo.buffer = cellsBuffer;
+			currentCellBufferInfo.offset = (i * 2 + 0) * cellBufferSize;
 			currentCellBufferInfo.range = cellBufferSize;
 
 			VkDescriptorBufferInfo previousCellBufferInfo{};
-			previousCellBufferInfo.buffer = cellsBuffers[(i * 2 + 1) % cellsBuffers.size()];
-			previousCellBufferInfo.offset = 0;
+			previousCellBufferInfo.buffer = cellsBuffer;
+			previousCellBufferInfo.offset = ((i * 2 + 1) % nrChemicalComponents) * cellBufferSize;
 			previousCellBufferInfo.range = cellBufferSize;
 
 			VkDescriptorImageInfo imageInfo{};
@@ -317,12 +309,12 @@ class ReactionDiffusion : public VKWindow {
 			vkUpdateDescriptorSets(getDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 		}
 
-		for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
-			void *data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
-			memcpy(data, &params, paramMemSize);
-			vkUnmapMemory(getDevice(), paramMemory[0]);
-		}
+		// for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
+		// 	void *data;
+		// 	VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
+		// 	memcpy(data, &params, paramMemSize);
+		// 	vkUnmapMemory(getDevice(), paramMemory[0]);
+		// }
 
 		for (unsigned int i = 0; i < getNrCommandBuffers(); i++) {
 			VkCommandBuffer cmd = getCommandBuffers(i);
@@ -388,9 +380,9 @@ class ReactionDiffusion : public VKWindow {
 		// Setup the range
 		void *data;
 		VKS_VALIDATE(
-			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
+			vkMapMemory(getDevice(), paramMemory, paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
 		memcpy(data, &params, paramMemSize);
-		vkUnmapMemory(getDevice(), paramMemory[0]);
+		vkUnmapMemory(getDevice(), paramMemory);
 
 		int x, y;
 		SDL_GetMouseState(&x, &y);
@@ -414,8 +406,8 @@ int main(int argc, const char **argv) {
 												 required_instance_extensions);
 		mandel.run();
 
-	} catch (std::exception &ex) {
-		std::cerr << ex.what() << std::endl;
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

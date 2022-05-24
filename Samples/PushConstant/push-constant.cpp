@@ -17,11 +17,11 @@ class PushConstant : public VKWindow {
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
-	VkBuffer uniformBuffer;
-	VkDeviceMemory uniformBufferMemory;
-	std::vector<void *> mapMemory;
 
-	VkDeviceSize bufferSize;
+	VkDeviceSize uniformBufferSize;
+	VkBuffer uniformBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory uniformBufferMemory = VK_NULL_HANDLE;
+	std::vector<void *> mapMemory;
 
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
@@ -256,14 +256,14 @@ class PushConstant : public VKWindow {
 	virtual void Initialize() override {
 
 		// TODO align
-		bufferSize = sizeof(UniformBufferBlock);
-		bufferSize +=
-			bufferSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+		uniformBufferSize = sizeof(UniformBufferBlock);
+		uniformBufferSize += uniformBufferSize %
+							 getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
-		VKHelper::createBuffer(getDevice(), bufferSize * getSwapChainImageCount(), memProperties,
+		VKHelper::createBuffer(getDevice(), uniformBufferSize * getSwapChainImageCount(), memProperties,
 							   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -271,7 +271,8 @@ class PushConstant : public VKWindow {
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, bufferSize * i, bufferSize, 0, &_data));
+			VKS_VALIDATE(
+				vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, uniformBufferSize, 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -303,8 +304,8 @@ class PushConstant : public VKWindow {
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffer;
-			bufferInfo.offset = bufferSize * i;
-			bufferInfo.range = bufferSize;
+			bufferInfo.offset = uniformBufferSize * i;
+			bufferInfo.range = uniformBufferSize;
 
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -389,7 +390,8 @@ class PushConstant : public VKWindow {
 		renderPassInfo.clearValueCount = clearValues.size();
 		renderPassInfo.pClearValues = clearValues.data();
 
-		vkCmdUpdateBuffer(cmd, uniformBuffer, bufferSize * getCurrentFrameIndex(), sizeof(this->mvp), &this->mvp);
+		vkCmdUpdateBuffer(cmd, uniformBuffer, uniformBufferSize * getCurrentFrameIndex(), sizeof(this->mvp),
+						  &this->mvp);
 
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -422,8 +424,8 @@ int main(int argc, const char **argv) {
 		VKSampleWindow<PushConstant> skybox(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		skybox.run();
 
-	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

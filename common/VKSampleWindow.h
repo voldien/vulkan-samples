@@ -88,7 +88,8 @@ template <class T> class VKSampleWindow {
 			"D,device-extensions", "Perform Error Correction.", cxxopts::value<bool>()->default_value("false"))(
 			"g,gpu-device", "GPU Device Select", cxxopts::value<int32_t>()->default_value("-1"))(
 			"p,present-mode", "Present Mode", cxxopts::value<int32_t>()->default_value("-1"))(
-			"f,fullscreen", "FullScreen", cxxopts::value<bool>()->default_value("false"));
+			"f,fullscreen", "FullScreen", cxxopts::value<bool>()->default_value("false"))(
+			"H,headless", "Headless Renderer", cxxopts::value<bool>()->default_value("false"));
 
 		auto result = options.parse(argc, (char **&)argv);
 		/*	If mention help, Display help and exit!	*/
@@ -104,6 +105,7 @@ template <class T> class VKSampleWindow {
 		}
 		if (result.count("gpu-device") > 0) {
 		}
+		bool headless = result["headless"].as<bool>();
 
 		/*	*/
 		int nr_instance_extensions = result["instance-extensions"].count();

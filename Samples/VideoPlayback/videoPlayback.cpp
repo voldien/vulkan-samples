@@ -27,7 +27,7 @@ extern "C" {
 
 class AVVideoPlayback : public VKWindow {
   private:
-	static const int nrVideoFrames = 2;
+	static const int nrVideoFrames = 3;
 	int nthVideoFrame = 0;
 	int frameSize;
 
@@ -37,9 +37,9 @@ class AVVideoPlayback : public VKWindow {
 
 	/*	Stagning frames.	*/
 	std::array<VkBuffer, nrVideoFrames> videoStagingFrames;
+	// TODO merge memory.
 	std::array<VkDeviceMemory, nrVideoFrames> videoStagingFrameMemory;
 	std::array<void *, nrVideoFrames> mapMemory;
-	FPSCounter<float> fpsCounter;
 	std::shared_ptr<fragcore::OpenALAudioInterface> audioInterface;
 
 	/*  */
@@ -448,8 +448,8 @@ int main(int argc, const char **argv) {
 		AVVideoPlayback window(argv[1], core, d);
 
 		window.run();
-	} catch (std::exception &ex) {
-		std::cerr << ex.what();
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

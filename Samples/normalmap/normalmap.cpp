@@ -20,19 +20,20 @@ class NormalMap : public VKWindow {
 
 	VkSampler sampler = VK_NULL_HANDLE;
 	/*	*/
-	VkImage texture = VK_NULL_HANDLE;
-	VkImageView skyboxTextureView = VK_NULL_HANDLE;
-	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
+	VkImage diffuse_texture = VK_NULL_HANDLE;
+	VkImageView diffuse_TextureView = VK_NULL_HANDLE;
+	VkDeviceMemory diffuse_textureMemory = VK_NULL_HANDLE;
 
 	/*	*/
 	VkImage normal_texture = VK_NULL_HANDLE;
 	VkImageView normal_texture_view = VK_NULL_HANDLE;
-	VkDeviceMemory normalMemory = VK_NULL_HANDLE;
+	VkDeviceMemory normal_textureMemory = VK_NULL_HANDLE;
 
 	std::vector<VkDescriptorSet> descriptorSets;
 	VkBuffer uniformBuffer;
 	VkDeviceMemory uniformBufferMemory;
 	std::vector<void *> mapMemory;
+	VkDeviceSize uniformBufferSize;
 
 	CameraController cameraController;
 
@@ -50,6 +51,12 @@ class NormalMap : public VKWindow {
 		float uv[2];
 	} Vertex;
 
+	const std::string diffuseTexturePath = "asset/diffuse.png";
+	const std::string normalTexturePath = "asset/normalmap.png";
+
+	const std::string vertexShaderPath = "Shaders/normalmap/normalmap.vert.spv";
+	const std::string fragmentShaderPath = "Shaders/normalmap/normalmap.frag.spv";
+
   public:
 	NormalMap(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
@@ -62,13 +69,13 @@ class NormalMap : public VKWindow {
 
 		vkDestroySampler(getDevice(), sampler, nullptr);
 
-		vkDestroyImageView(getDevice(), skyboxTextureView, nullptr);
-		vkDestroyImage(getDevice(), texture, nullptr);
-		vkFreeMemory(getDevice(), textureMemory, nullptr);
+		vkDestroyImageView(getDevice(), diffuse_TextureView, nullptr);
+		vkDestroyImage(getDevice(), diffuse_texture, nullptr);
+		vkFreeMemory(getDevice(), diffuse_textureMemory, nullptr);
 
 		vkDestroyImageView(getDevice(), normal_texture_view, nullptr);
 		vkDestroyImage(getDevice(), normal_texture, nullptr);
-		vkFreeMemory(getDevice(), normalMemory, nullptr);
+		vkFreeMemory(getDevice(), normal_textureMemory, nullptr);
 
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
@@ -125,8 +132,8 @@ class NormalMap : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/skybox.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/panoramic.frag.spv");
+		auto vertShaderCode = IOUtil::readFile(vertexShaderPath);
+		auto fragShaderCode = IOUtil::readFile(fragmentShaderPath);
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -153,12 +160,27 @@ class NormalMap : public VKWindow {
 		bindingDescription.stride = sizeof(Vertex);
 		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions;
+		std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions;
 
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
 		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[0].offset = 0;
+
+		attributeDescriptions[1].binding = 0;
+		attributeDescriptions[1].location = 1;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[1].offset = 12;
+
+		attributeDescriptions[2].binding = 0;
+		attributeDescriptions[2].location = 2;
+		attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[2].offset = 20;
+
+		attributeDescriptions[3].binding = 0;
+		attributeDescriptions[3].location = 3;
+		attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[3].offset = 32;
 
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -171,16 +193,25 @@ class NormalMap : public VKWindow {
 		uboLayoutBinding.descriptorCount = 1;
 		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		uboLayoutBinding.pImmutableSamplers = nullptr;
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-		samplerLayoutBinding.binding = 1;
-		samplerLayoutBinding.descriptorCount = 1;
-		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		samplerLayoutBinding.pImmutableSamplers = nullptr;
-		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		VkDescriptorSetLayoutBinding samplerDiffuseLayoutBinding{};
+		samplerDiffuseLayoutBinding.binding = 1;
+		samplerDiffuseLayoutBinding.descriptorCount = 1;
+		samplerDiffuseLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerDiffuseLayoutBinding.pImmutableSamplers = nullptr;
+		samplerDiffuseLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, {uboLayoutBinding, samplerLayoutBinding});
+		VkDescriptorSetLayoutBinding samplerNormalLayoutBinding{};
+		samplerNormalLayoutBinding.binding = 2;
+		samplerNormalLayoutBinding.descriptorCount = 1;
+		samplerNormalLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerNormalLayoutBinding.pImmutableSamplers = nullptr;
+		samplerNormalLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VKHelper::createDescriptorSetLayout(
+			getDevice(), descriptorSetLayout,
+			{uboLayoutBinding, samplerDiffuseLayoutBinding, samplerNormalLayoutBinding});
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -294,28 +325,33 @@ class NormalMap : public VKWindow {
 		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
 		/*	Diffuse Texture.	*/
-		ImageImporter::createImage2D("normal_diffuse.png", getDevice(), getGraphicCommandPool(),
-									 getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
+		ImageImporter::createImage2D(this->diffuseTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
+									 getDefaultGraphicQueue(), physicalDevice(), diffuse_texture,
+									 diffuse_textureMemory);
 
 		/*	Normal Texture.	*/
-		ImageImporter::createImage2D("normal.png", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
-									 physicalDevice(), normal_texture, normalMemory);
+		ImageImporter::createImage2D(this->normalTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
+									 getDefaultGraphicQueue(), physicalDevice(), normal_texture, normal_textureMemory);
 
 		vkEndCommandBuffer(cmds[0]);
 		this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
+		vkFreeCommandBuffers(this->getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
-		skyboxTextureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D,
-													  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		diffuse_TextureView = VKHelper::createImageView(this->getDevice(), diffuse_texture, VK_IMAGE_VIEW_TYPE_2D,
+														VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+		normal_texture_view = VKHelper::createImageView(this->getDevice(), normal_texture, VK_IMAGE_VIEW_TYPE_2D,
+														VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 		VKHelper::createSampler(getDevice(), sampler);
 
-		/*	Allocate uniform buffers.	*/
-		VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
-		// TODO align
-		// bufferSize += bufferSize %
+		/*	Compute uniform buffer size, in respect to the alignment requirement.	*/
+		uniformBufferSize = sizeof(UniformBufferBlock);
+		size_t minMapBufferSize =
+			getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+		uniformBufferSize += minMapBufferSize - (uniformBufferSize % minMapBufferSize);
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
@@ -326,10 +362,10 @@ class NormalMap : public VKWindow {
 								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 							   uniformBuffer, uniformBufferMemory);
 
-		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
+		for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, (size_t)sizeof(this->mvp),
-									 0, &_data));
+			VKS_VALIDATE(
+				vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, uniformBufferSize, 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -343,9 +379,9 @@ class NormalMap : public VKWindow {
 															},
 															{
 																VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-																static_cast<uint32_t>(getSwapChainImageCount()),
+																static_cast<uint32_t>(getSwapChainImageCount() * 2),
 															}};
-		descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
+		descpool = VKHelper::createDescPool(getDevice(), poolSize, this->getSwapChainImageCount() * 3);
 
 		/*	*/
 		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
@@ -358,7 +394,7 @@ class NormalMap : public VKWindow {
 		descriptorSets.resize(getSwapChainImageCount());
 		VKS_VALIDATE(vkAllocateDescriptorSets(this->getDevice(), &allocdescInfo, descriptorSets.data()));
 
-		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
+		for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffer;
 			bufferInfo.offset = uniformBufferSize * i;
@@ -366,7 +402,7 @@ class NormalMap : public VKWindow {
 
 			VkDescriptorImageInfo imageDiffuseInfo{};
 			imageDiffuseInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageDiffuseInfo.imageView = skyboxTextureView;
+			imageDiffuseInfo.imageView = diffuse_TextureView;
 			imageDiffuseInfo.sampler = sampler;
 
 			VkDescriptorImageInfo imageNormalInfo{};
@@ -493,10 +529,9 @@ class NormalMap : public VKWindow {
 	virtual void draw() override {
 
 		this->cameraController.update(getTimer().deltaTime());
-		glm::mat4 viewMatrix = this->cameraController.getViewMatrix();
-		// TODO add character controller.
+
 		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = viewMatrix;
+		this->mvp.view = this->cameraController.getViewMatrix();
 		this->mvp.modelViewProjection = this->mvp.model * this->mvp.view * this->mvp.proj;
 
 		// Setup the range
@@ -513,11 +548,11 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
 	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		VKSampleWindow<NormalMap> skybox(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		skybox.run();
+		VKSampleWindow<NormalMap> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		sample.run();
 
-	} catch (std::exception &ex) {
-		std::cerr << ex.what() << std::endl;
+	} catch (const std::exception &ex) {
+		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
