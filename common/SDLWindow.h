@@ -65,7 +65,7 @@ class SDLWindow : public IWindow {
 
 	virtual intptr_t getNativePtr() const override; /*  Get native window reference object. */
 
-	virtual VkSurfaceKHR createSurface(const std::shared_ptr<VulkanCore> &instance) override;
+	virtual VkSurfaceKHR createSurface(const std::shared_ptr<fvkcore::VulkanCore> &instance) override;
 
   protected:
 	SDL_Window *window;

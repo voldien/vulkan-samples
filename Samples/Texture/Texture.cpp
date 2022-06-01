@@ -18,8 +18,8 @@ class SingleTexture : public VKWindow {
 
 	/*	*/
 	std::vector<VkDescriptorSet> descriptorSets;
-	VkBuffer uniformBuffer;
-	VkDeviceMemory uniformBufferMemory;
+	VkBuffer uniformBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory uniformBufferMemory = VK_NULL_HANDLE;
 	std::vector<void *> mapMemory;
 
 	CameraController camera;
@@ -290,8 +290,8 @@ class SingleTexture : public VKWindow {
 
 		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
-		ImageImporter::createImage2D("asset/uv-texture.jpg", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
-									 physicalDevice(), texture, textureMemory);
+		ImageImporter::createImage2D("asset/uv-texture.png", getDevice(), getGraphicCommandPool(),
+									 getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
 
 		vkEndCommandBuffer(cmds[0]);
 		this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
@@ -499,14 +499,13 @@ class SingleTexture : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
-																		   {"VK_KHR_xlib_surface", true}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 	// TODO add custom argument options for adding path of the texture and what type.
 
 	try {
-		VKSampleWindow<SingleTexture> skybox(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		skybox.run();
+		VKSampleWindow<SingleTexture> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		sample.run();
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;

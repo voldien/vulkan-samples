@@ -457,9 +457,8 @@ class MultiThreading : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
-																		   {"VK_KHR_xlib_surface", true}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
 		VKSampleWindow<MultiThreading> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);

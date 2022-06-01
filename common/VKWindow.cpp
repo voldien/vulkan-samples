@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
+using namespace fvkcore;
+
 VKWindow::~VKWindow() {
 
 	/*	Relase*/

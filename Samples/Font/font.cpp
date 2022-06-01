@@ -1,12 +1,11 @@
-#include "IOUtil.h"
-#include "VKHelper.h"
 
+#include "VksCommon.h"
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
-class ClothSimulation : public VKWindow {
+class BasicSDFFont : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
@@ -19,7 +18,8 @@ class ClothSimulation : public VKWindow {
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
-	long prevTimeCounter;
+
+	vkscommon::Time time;
 
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
@@ -33,23 +33,29 @@ class ClothSimulation : public VKWindow {
 	} Vertex;
 
   public:
-	ClothSimulation(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {
-		prevTimeCounter = SDL_GetPerformanceCounter();
-	}
-	virtual ~ClothSimulation() {}
+	BasicSDFFont(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+		: VKWindow(core, device, -1, -1, -1, -1) {}
+	virtual ~BasicSDFFont() {}
 
 	virtual void release() override {
 
-		// vkFreeDescriptorSets
-		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
+		/*	*/
+		vkDestroyDescriptorPool(this->getDevice(), descpool, nullptr);
 
-		vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
-		vkFreeMemory(getDevice(), vertexMemory, nullptr);
+		/*	*/
+		vkDestroyBuffer(this->getDevice(), vertexBuffer, nullptr);
+		vkFreeMemory(this->getDevice(), vertexMemory, nullptr);
 
-		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
-		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
+		for (size_t i = 0; i < this->uniformBuffers.size(); i++) {
+			vkDestroyBuffer(this->getDevice(), this->uniformBuffers[i], nullptr);
+			vkUnmapMemory(this->getDevice(), this->uniformBuffersMemory[i]);
+			vkFreeMemory(this->getDevice(), this->uniformBuffersMemory[i], nullptr);
+		}
+
+		/*	*/
+		vkDestroyDescriptorSetLayout(this->getDevice(), descriptorSetLayout, nullptr);
+		vkDestroyPipeline(this->getDevice(), graphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(this->getDevice(), pipelineLayout, nullptr);
 	}
 
 	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 0, 0}, // triangle 1 : begin
@@ -146,12 +152,7 @@ class ClothSimulation : public VKWindow {
 		uboLayoutBinding.pImmutableSamplers = nullptr;
 		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-		VkDescriptorSetLayoutCreateInfo layoutInfo{};
-		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = 1;
-		layoutInfo.pBindings = &uboLayoutBinding;
-
-		VKS_VALIDATE(vkCreateDescriptorSetLayout(getDevice(), &layoutInfo, nullptr, &descriptorSetLayout));
+		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, {uboLayoutBinding});
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -209,13 +210,23 @@ class ClothSimulation : public VKWindow {
 		colorBlending.blendConstants[2] = 0.0f;
 		colorBlending.blendConstants[3] = 0.0f;
 
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1;
-		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-		pipelineLayoutInfo.pushConstantRangeCount = 0;
+		VkPipelineDepthStencilStateCreateInfo depthStencil{};
+		depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depthStencil.depthTestEnable = VK_TRUE;
+		depthStencil.depthWriteEnable = VK_TRUE;
+		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+		depthStencil.depthBoundsTestEnable = VK_FALSE;
+		depthStencil.stencilTestEnable = VK_FALSE;
 
-		VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
+		VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
+
+		VkDynamicState dynamicStateEnables[1];
+		dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
+		VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
+		dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicStateInfo.pNext = NULL;
+		dynamicStateInfo.pDynamicStates = dynamicStateEnables;
+		dynamicStateInfo.dynamicStateCount = 1;
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -226,11 +237,13 @@ class ClothSimulation : public VKWindow {
 		pipelineInfo.pViewportState = &viewportState;
 		pipelineInfo.pRasterizationState = &rasterizer;
 		pipelineInfo.pMultisampleState = &multisampling;
+		pipelineInfo.pDepthStencilState = &depthStencil;
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.layout = pipelineLayout;
 		pipelineInfo.renderPass = getDefaultRenderPass();
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineInfo.pDynamicState = &dynamicStateInfo;
 
 		VKS_VALIDATE(
 			vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
@@ -245,14 +258,14 @@ class ClothSimulation : public VKWindow {
 
 		VkDeviceSize bufferSize = sizeof(UniformBufferBlock);
 
-		uniformBuffers.resize(swapChainImageCount());
-		uniformBuffersMemory.resize(swapChainImageCount());
+		uniformBuffers.resize(getSwapChainImageCount());
+		uniformBuffersMemory.resize(getSwapChainImageCount());
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
-		for (size_t i = 0; i < swapChainImageCount(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, &memProperties,
+		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
+			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
 								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -264,32 +277,30 @@ class ClothSimulation : public VKWindow {
 
 		VkDescriptorPoolSize poolSize{};
 		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount = static_cast<uint32_t>(swapChainImageCount());
+		poolSize.descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolInfo.poolSizeCount = 1;
 		poolInfo.pPoolSizes = &poolSize;
-		poolInfo.maxSets = static_cast<uint32_t>(swapChainImageCount());
+		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
 
-		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
+		VKS_VALIDATE(vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool));
 
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
 
-		std::vector<VkDescriptorSetLayout> layouts(swapChainImageCount(), descriptorSetLayout);
+		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 		VkDescriptorSetAllocateInfo allocdescInfo{};
 		allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocdescInfo.descriptorPool = descpool;
-		allocdescInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImageCount());
+		allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
 		allocdescInfo.pSetLayouts = layouts.data();
 
-		descriptorSets.resize(swapChainImageCount());
-		if (vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()) != VK_SUCCESS) {
-			throw cxxexcept::RuntimeException("failed to allocate descriptor sets!");
-		}
+		descriptorSets.resize(getSwapChainImageCount());
+		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &allocdescInfo, descriptorSets.data()));
 
-		for (size_t i = 0; i < swapChainImageCount(); i++) {
+		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i];
 			bufferInfo.offset = 0;
@@ -323,7 +334,8 @@ class ClothSimulation : public VKWindow {
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex =
 			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+				.value();
 
 		VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
@@ -345,8 +357,8 @@ class ClothSimulation : public VKWindow {
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 
-		for (int i = 0; i < getCommandBuffers().size(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers()[i];
+		for (size_t i = 0; i < getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -360,30 +372,36 @@ class ClothSimulation : public VKWindow {
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
-			renderPassInfo.framebuffer = getFrameBuffers()[i];
+			renderPassInfo.framebuffer = getFrameBuffer(i);
 			renderPassInfo.renderArea.offset = {0, 0};
 			renderPassInfo.renderArea.extent.width = width;
 			renderPassInfo.renderArea.extent.height = height;
 
-			VkClearValue clearColor = {0.1f, 0.1f, 0.1f, 1.0f};
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
+			std::array<VkClearValue, 2> clearValues{};
+			clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
+			clearValues[1].depthStencil = {1.0f, 0};
+			renderPassInfo.clearValueCount = clearValues.size();
+			renderPassInfo.pClearValues = clearValues.data();
 
 			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
 
-			VkBufferMemoryBarrier ub_barrier = {
-				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-				.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-				.buffer = uniformBuffers[i],
-				.offset = 0,
-				.size = sizeof(mvp),
-			};
+			VkBufferMemoryBarrier ub_barrier{};
+
+			ub_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+			ub_barrier.pNext = nullptr;
+			ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			ub_barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+			ub_barrier.buffer = uniformBuffers[i];
+			ub_barrier.offset = 0;
+			ub_barrier.size = sizeof(mvp);
 			// ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			// ub_barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
 
 			// vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL,
 			// 1, 					 &ub_barrier, 0, NULL);
+			VkViewport viewport = {
+				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
+			vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -407,10 +425,11 @@ class ClothSimulation : public VKWindow {
 
 	virtual void draw() override {
 
-		float elapsedTime =
-			((float)(SDL_GetPerformanceCounter() - prevTimeCounter) / (float)SDL_GetPerformanceFrequency());
+		time.update();
+		float elapsedTime = time.getElapsed();
 
-		printf("%f\n", elapsedTime);
+		std::cout << elapsedTime << std::endl;
+
 		this->mvp.model = glm::mat4(1.0f);
 		this->mvp.view = glm::mat4(1.0f);
 		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
@@ -418,11 +437,12 @@ class ClothSimulation : public VKWindow {
 		this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
 		// Setup the range
-		memcpy(mapMemory[getCurrentFrame()], &mvp, (size_t)sizeof(this->mvp));
-		VkMappedMemoryRange stagingRange = {.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-											.memory = uniformBuffersMemory[getCurrentFrame()],
-											.offset = 0,
-											.size = (size_t)sizeof(this->mvp)};
+		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
+		VkMappedMemoryRange stagingRange{};
+		stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
+		stagingRange.offset = 0;
+		stagingRange.size = (size_t)sizeof(this->mvp);
 		vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 	}
 
@@ -431,14 +451,11 @@ class ClothSimulation : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
-																		   {"VK_KHR_xlib_surface", true}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
-
-		VKSampleWindow<ClothSimulation> sample(argc, argv, required_device_extensions, {},
-											   required_instance_extensions);
+		VKSampleWindow<BasicSDFFont> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		sample.run();
 
 	} catch (const std::exception &ex) {

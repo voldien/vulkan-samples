@@ -56,7 +56,7 @@ class GLFWWindow : public IWindow {
 	virtual void setMaximumSize(int width, int height);
 	virtual void getMaximumSize(int *width, int *height);
 
-	virtual VkSurfaceKHR createSurface(const std::shared_ptr<VulkanCore> &instance) override;
+	virtual VkSurfaceKHR createSurface(const std::shared_ptr<fvkcore::VulkanCore> &instance) override;
 
   protected:
 	GLFWwindow *window;

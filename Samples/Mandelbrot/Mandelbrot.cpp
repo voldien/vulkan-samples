@@ -14,7 +14,7 @@ class MandelBrotWindow : public VKWindow {
 	std::vector<VkImageView> computeImageViews;
 
 	// TODO merge.
-	std::vector<VkDeviceMemory> paramMemory;
+	VkDeviceMemory paramMemory = VK_NULL_HANDLE;
 	VkBuffer paramBuffer = VK_NULL_HANDLE;
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
@@ -22,6 +22,8 @@ class MandelBrotWindow : public VKWindow {
 	std::vector<VkDescriptorSet> descriptorSets;
 	VkCommandPool computeCmdPool = VK_NULL_HANDLE;
 	std::vector<VkCommandBuffer> computeCmds;
+
+	const std::string computeShaderPath = "Shaders/mandelbrot/mandelbrot.comp.spv";
 
 	struct mandelbrot_param_t {
 		float posX, posY;
@@ -48,11 +50,14 @@ class MandelBrotWindow : public VKWindow {
 		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 
-		for (unsigned int i = 0; i < computeImageViews.size(); i++)
+		for (unsigned int i = 0; i < computeImageViews.size(); i++) {
 			vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
+			vkDestroyImage(getDevice(), mandelBrotImage[i], nullptr);
+			vkFreeMemory(getDevice(), mandelBrotImageMemory[i], nullptr);
+		}
 
-		for (unsigned int i = 0; i < paramMemory.size(); i++)
-			vkFreeMemory(getDevice(), paramMemory[i], nullptr);
+		vkDestroyBuffer(getDevice(), paramBuffer, nullptr);
+		vkFreeMemory(getDevice(), paramMemory, nullptr);
 
 		vkDestroyBuffer(getDevice(), paramBuffer, nullptr);
 		vkDestroyPipeline(getDevice(), computePipeline, nullptr);
@@ -62,7 +67,7 @@ class MandelBrotWindow : public VKWindow {
 	VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 		VkPipeline pipeline;
 
-		auto compShaderCode = IOUtil::readFile("shaders/mandelbrot.comp.spv");
+		auto compShaderCode = IOUtil::readFile(computeShaderPath);
 
 		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -109,18 +114,14 @@ class MandelBrotWindow : public VKWindow {
 
 		VkDeviceSize bufferSize = paramMemSize * getSwapChainImageCount();
 
-		paramMemory.resize(1);
-
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
-		for (size_t i = 0; i < paramMemory.size(); i++) {
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   paramBuffer, paramMemory[i]);
-		}
+		VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
+							   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+							   paramBuffer, paramMemory);
 
 		/*	Allocate descriptor set.	*/
 		const std::vector<VkDescriptorPoolSize> poolSize = {{
@@ -135,8 +136,6 @@ class MandelBrotWindow : public VKWindow {
 		descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
 
 		onResize(width(), height());
-
-		computeCmdPool = getVKDevice()->createCommandPool(getVKDevice()->getDefaultComputeQueueIndex());
 	}
 
 	virtual void onResize(int width, int height) override {
@@ -216,9 +215,9 @@ class MandelBrotWindow : public VKWindow {
 
 		for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
 			void *data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
+			VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory, paramMemSize * i, paramMemSize, 0, &data));
 			memcpy(data, &params, paramMemSize);
-			vkUnmapMemory(getDevice(), paramMemory[0]);
+			vkUnmapMemory(getDevice(), paramMemory);
 		}
 
 		// TODO resolve for if compute queue is not part of graphic queue.
@@ -281,9 +280,9 @@ class MandelBrotWindow : public VKWindow {
 		// Setup the range
 		void *data;
 		VKS_VALIDATE(
-			vkMapMemory(getDevice(), paramMemory[0], paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
-		memcpy(data, &params, sizeof(params));
-		vkUnmapMemory(getDevice(), paramMemory[0]);
+			vkMapMemory(getDevice(), paramMemory, paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
+		memcpy(data, &params, paramMemSize);
+		vkUnmapMemory(getDevice(), paramMemory);
 
 		/*	Update.	*/
 		int x, y;
@@ -299,14 +298,13 @@ class MandelBrotWindow : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
-																		   {"VK_KHR_xlib_surface", true}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
-		VKSampleWindow<MandelBrotWindow> mandel(argc, argv, required_device_extensions, {},
+		VKSampleWindow<MandelBrotWindow> sample(argc, argv, required_device_extensions, {},
 												required_instance_extensions);
-		mandel.run();
+		sample.run();
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

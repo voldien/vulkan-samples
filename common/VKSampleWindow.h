@@ -7,6 +7,8 @@
 #include <iostream>
 #include <map>
 
+using namespace fvkcore;
+
 class VKSampleSession {
   public:
 	VKSampleSession(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -89,7 +91,8 @@ template <class T> class VKSampleWindow {
 			"g,gpu-device", "GPU Device Select", cxxopts::value<int32_t>()->default_value("-1"))(
 			"p,present-mode", "Present Mode", cxxopts::value<int32_t>()->default_value("-1"))(
 			"f,fullscreen", "FullScreen", cxxopts::value<bool>()->default_value("false"))(
-			"H,headless", "Headless Renderer", cxxopts::value<bool>()->default_value("false"));
+			"H,headless", "Headless Renderer", cxxopts::value<bool>()->default_value("false"))(
+			"r,renderdoc", "Enable RenderDoc", cxxopts::value<bool>()->default_value("false"));
 
 		auto result = options.parse(argc, (char **&)argv);
 		/*	If mention help, Display help and exit!	*/
@@ -113,10 +116,19 @@ template <class T> class VKSampleWindow {
 		int nr_device_extensions = result["device-extensions"].count();
 		int device_index = result["gpu-device"].as<int32_t>();
 
-		std::unordered_map<const char *, bool> use_required_device_extensions = {};
+		// TODO add surface extension based on platform.
+		std::unordered_map<const char *, bool> use_required_device_extensions = {
+			{VK_KHR_SWAPCHAIN_EXTENSION_NAME, !headless}};
 		std::unordered_map<const char *, bool> use_required_instance_layers = {{"VK_LAYER_KHRONOS_validation", debug}};
 		std::unordered_map<const char *, bool> use_required_instance_extensions = {
-			{VK_KHR_SURFACE_EXTENSION_NAME, true}, {"VK_KHR_xlib_surface", true}};
+			{VK_EXT_DEBUG_UTILS_EXTENSION_NAME, debug},
+			{VK_EXT_DEBUG_REPORT_EXTENSION_NAME, debug},
+			{VK_KHR_DISPLAY_EXTENSION_NAME, !headless},
+			{"VK_KHR_surface", !headless},
+			{VK_KHR_SURFACE_EXTENSION_NAME, !headless},
+			{"VK_KHR_xlib_surface", !headless},
+			{"VK_KHR_display", !headless}};
+		//
 
 		// TODO append to device extension.
 		use_required_device_extensions.merge(required_device_extensions);

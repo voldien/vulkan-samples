@@ -10,6 +10,9 @@ class Triangle : public VKWindow {
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 
+	const std::string vertexShaderPath = "Shaders/triangle/triangle.vert.spv";
+	const std::string fragmentShaderPath = "Shaders/triangle/triangle.frag.spv";
+
   public:
 	Triangle(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
@@ -41,8 +44,8 @@ class Triangle : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle.frag.spv");
+		auto vertShaderCode = IOUtil::readFile(vertexShaderPath);
+		auto fragShaderCode = IOUtil::readFile(fragmentShaderPath);
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -284,9 +287,8 @@ class Triangle : public VKWindow {
 };
 
 int main(int argc, const char **argv) {
-	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
-																		   {"VK_KHR_xlib_surface", true}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
 		VKSampleWindow<Triangle> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		sample.run();

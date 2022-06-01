@@ -29,7 +29,7 @@ void computeSDF(in const ivec3 SDF_pixel_coord) {
 	imageStore(img_output, SDF_pixel_coord.xy, sdf_pixel);
 }
 
-void main(void) {
+void main() {
 
 	ivec3 world_compute_ID = ivec3(gl_GlobalInvocationID.xyz);
 

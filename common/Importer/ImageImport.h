@@ -1,10 +1,10 @@
 #ifndef _VK_SAMPLE_IMAGE_IMPORTER_H_
 #define _VK_SAMPLE_IMAGE_IMPORTER_H_ 1
-#include "../Core/VKDevice.h"
-#include "../Core/VKHelper.h"
+#include <VKDevice.h>
+#include <VKHelper.h>
 #include <stdio.h>
 #include <vulkan/vulkan.h>
-
+using namespace fvkcore;
 /**
  * @brief
  *

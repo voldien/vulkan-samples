@@ -4,6 +4,7 @@
 #include <ImageLoader.h>
 #include <stdexcept>
 using namespace fragcore;
+using namespace fvkcore;
 
 void ImageImporter::saveTextureData(const char *cfilename, const void *pixelData, unsigned int width,
 									unsigned int height, int layers, unsigned int format) {}

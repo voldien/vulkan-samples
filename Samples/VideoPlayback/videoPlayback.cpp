@@ -36,9 +36,10 @@ class AVVideoPlayback : public VKWindow {
 	std::array<VkDeviceMemory, nrVideoFrames> videoFrameMemory;
 
 	/*	Stagning frames.	*/
-	std::array<VkBuffer, nrVideoFrames> videoStagingFrames;
+	VkBuffer videoStagingFrames;
 	// TODO merge memory.
-	std::array<VkDeviceMemory, nrVideoFrames> videoStagingFrameMemory;
+	VkDeviceMemory videoStagingFrameMemory;
+	size_t videoStagingSize;
 	std::array<void *, nrVideoFrames> mapMemory;
 	std::shared_ptr<fragcore::OpenALAudioInterface> audioInterface;
 
@@ -71,10 +72,10 @@ class AVVideoPlayback : public VKWindow {
 	std::string path;
 
   public:
-	AVVideoPlayback(const char *path, std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+	AVVideoPlayback(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
 		this->setTitle(fmt::format("VideoPlayback {}", path));
-		this->path = path;
+		this->path = "asset/video.mp4";
 		this->show();
 	}
 	virtual ~AVVideoPlayback() {
@@ -92,9 +93,9 @@ class AVVideoPlayback : public VKWindow {
 		for (size_t i = 0; i < nrVideoFrames; i++) {
 			vkDestroyImage(this->getDevice(), videoFrames[i], nullptr);
 			vkFreeMemory(this->getDevice(), videoFrameMemory[i], nullptr);
-			vkFreeMemory(this->getDevice(), videoStagingFrameMemory[i], nullptr);
-			vkDestroyBuffer(this->getDevice(), videoStagingFrames[i], nullptr);
 		}
+		vkFreeMemory(this->getDevice(), videoStagingFrameMemory, nullptr);
+		vkDestroyBuffer(this->getDevice(), videoStagingFrames, nullptr);
 	}
 
 	void loadVideo(const char *path) {
@@ -253,22 +254,24 @@ class AVVideoPlayback : public VKWindow {
 		clip_desc.format = fragcore::AudioFormat::eStero;
 		clip_desc.datamode = fragcore::AudioDataMode::Streaming;
 
-		this->clip = audioInterface->createAudioClip(&clip_desc);
-		this->audioSource->setClip(this->clip);
+		// this->clip = audioInterface->createAudioClip(&clip_desc);
+		// this->audioSource->setClip(this->clip);
 
 		loadVideo(path.c_str());
 
+		this->videoStagingSize = (video_width * video_height * 4);
+
+		VKHelper::createBuffer(this->getDevice(), this->videoStagingSize * this->nrVideoFrames,
+							   this->getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+							   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+							   videoStagingFrames, videoStagingFrameMemory);
+
 		/*	*/
-		for (size_t i = 0; i < videoFrames.size(); i++) {
+		for (size_t i = 0; i < this->videoFrames.size(); i++) {
 
-			VKHelper::createBuffer(getDevice(), (size_t)video_width * (size_t)video_height * (size_t)4,
-								   getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
-								   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-								   videoStagingFrames[i], videoStagingFrameMemory[i]);
-
-			VKS_VALIDATE(vkMapMemory(getDevice(), videoStagingFrameMemory[i], 0, video_width * video_height * 4, 0,
-									 &mapMemory[i]));
+			VKS_VALIDATE(vkMapMemory(getDevice(), this->videoStagingFrameMemory, (i % this->nrVideoFrames) * this->videoStagingSize,
+									 this->videoStagingSize, 0, &mapMemory[i]));
 
 			VKHelper::createImage(
 				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
@@ -277,15 +280,15 @@ class AVVideoPlayback : public VKWindow {
 		}
 		onResize(width(), height());
 
-		this->audioSource->play();
+		// this->audioSource->play();
 	}
 
 	virtual void onResize(int width, int height) override {
 
 		nthVideoFrame = 0;
 
-		for (size_t i = 0; i < getNrCommandBuffers(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers(i);
+		for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = this->getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -293,7 +296,7 @@ class AVVideoPlayback : public VKWindow {
 
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 			VkBufferImageCopy imageCopyRegion{};
-			imageCopyRegion.bufferOffset = 0;
+			imageCopyRegion.bufferOffset = this->videoStagingSize * (i % nrVideoFrames);
 			imageCopyRegion.bufferRowLength = 0;
 			imageCopyRegion.bufferImageHeight = 0;
 			imageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -302,7 +305,7 @@ class AVVideoPlayback : public VKWindow {
 			imageCopyRegion.imageExtent.height = video_height;
 			imageCopyRegion.imageExtent.depth = 1;
 
-			vkCmdCopyBufferToImage(cmd, videoStagingFrames[nthVideoFrame], videoFrames[nthVideoFrame],
+			vkCmdCopyBufferToImage(cmd, videoStagingFrames, videoFrames[nthVideoFrame],
 								   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 
 			VKHelper::transitionImageLayout(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -328,8 +331,8 @@ class AVVideoPlayback : public VKWindow {
 			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-											VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 			nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
@@ -358,8 +361,9 @@ class AVVideoPlayback : public VKWindow {
 
 				while (result >= 0) {
 					result = avcodec_receive_frame(this->pVideoCtx, this->frame);
-					if (result == AVERROR(EAGAIN) || result == AVERROR_EOF)
+					if (result == AVERROR(EAGAIN) || result == AVERROR_EOF) {
 						break;
+					}
 					if (result < 0) {
 						char buf[AV_ERROR_MAX_STRING_SIZE];
 						av_strerror(result, buf, sizeof(buf));
@@ -382,15 +386,17 @@ class AVVideoPlayback : public VKWindow {
 								  this->frameoutput->data, this->frameoutput->linesize);
 
 						/*	Upload the image to staging.	*/
-						memcpy(mapMemory[nthVideoFrame], this->frameoutput->data[0], video_width * video_height * 4);
+						memcpy(mapMemory[nthVideoFrame], this->frameoutput->data[0], this->videoStagingSize);
+
 						VkMappedMemoryRange stagingRange{};
 						stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-						stagingRange.memory = videoStagingFrameMemory[nthVideoFrame];
-						stagingRange.offset = 0;
-						stagingRange.size = video_width * video_height * 4;
+						stagingRange.memory = videoStagingFrameMemory;
+						stagingRange.offset = (this->nthVideoFrame % this->nrVideoFrames) * this->videoStagingSize;
+						stagingRange.size = this->videoStagingSize;
 						VKS_VALIDATE(vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange));
+
 						VKS_VALIDATE(vkDeviceWaitIdle(getDevice()));
-						nthVideoFrame = (nthVideoFrame + 1) % nrVideoFrames;
+						this->nthVideoFrame = (this->nthVideoFrame + 1) % this->nrVideoFrames;
 					}
 				}
 			} else if (packet->stream_index == this->audioStream) {
@@ -420,7 +426,7 @@ class AVVideoPlayback : public VKWindow {
 					for (int i = 0; i < frame->nb_samples; i++)
 						for (int ch = 0; ch < pAudioCtx->channels; ch++)
 							continue;
-					clip->setData(this->frame->data[0], data_size, 0);
+					// clip->setData(this->frame->data[0], data_size, 0);
 				}
 				// this->audioSource->play();
 			}
@@ -434,23 +440,18 @@ class AVVideoPlayback : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
-																		   {"VK_KHR_xlib_surface", true}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
+	// TODO add custom argument options for adding path of the texture and what type.
+
 	try {
-		// VKSampleWindow<AVVideoPlaybackWindow> mandel(argc, argv, required_device_extensions, {},
-		// 											 required_instance_extensions);
-		// mandel.run();
-		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>(required_instance_extensions);
-		std::vector<std::shared_ptr<PhysicalDevice>> devices = core->createPhysicalDevices();
-
-		std::shared_ptr<VKDevice> d = std::make_shared<VKDevice>(devices, required_device_extensions);
-		AVVideoPlayback window(argv[1], core, d);
-
-		window.run();
+		VKSampleWindow<AVVideoPlayback> skybox(argc, argv, required_device_extensions, {},
+											   required_instance_extensions);
+		skybox.run();
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;
 	}
+
 	return EXIT_SUCCESS;
 }

@@ -157,22 +157,6 @@ FILE(GLOB_RECURSE GLSL_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.tesc
 )
 
-# INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules/SPIRV)
-# COMPILE_SHADERS(${GLSL_SOURCE_FILES})
-
-FOREACH(GLSL ${GLSL_SOURCE_FILES})
-  get_filename_component(FILE_NAME ${GLSL} NAME)
- # file(RELATIVE_PATH variable directory file)
-  set(SPIRV "${EXECUTABLE_OUTPUT_PATH}/shaders/${FILE_NAME}.spv")
-  add_custom_command(
-    OUTPUT ${SPIRV}
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${EXECUTABLE_OUTPUT_PATH}/shaders/"
-    COMMAND glslc ${GLSL} -o ${SPIRV}
-    DEPENDS ${GLSL})
-  list(APPEND SPIRV_BINARY_FILES ${SPIRV})
-endforeach(GLSL)
-
-#TODO Create SPIRV.
 FOREACH(GLSL ${GLSL_SOURCE_FILES})
 	get_filename_component(FILE_NAME ${GLSL} ABSOLUTE)
 
@@ -195,8 +179,6 @@ add_custom_target(
 # All shader files.
 FILE(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/shaders ${CMAKE_CURRENT_BINARY_DIR}/Shaders SYMBOLIC)
 FILE(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/asset ${CMAKE_CURRENT_BINARY_DIR}/asset SYMBOLIC)
-
-
 
 IF(BUILD_WTIH_TEST)
 	ENABLE_TESTING()

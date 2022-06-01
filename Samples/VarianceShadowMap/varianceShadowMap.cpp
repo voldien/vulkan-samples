@@ -258,7 +258,7 @@ class VarianceShadowMapWindow : public VKWindow {
 };
 
 int main(int argc, const char **argv) {
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
 		std::shared_ptr<VulkanCore> core = std::make_shared<VulkanCore>();
 		std::vector<std::shared_ptr<PhysicalDevice>> p = core->createPhysicalDevices();

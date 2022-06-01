@@ -398,7 +398,6 @@ class Panorama : public VKWindow {
 			ub_barrier.offset = 0;
 			ub_barrier.size = sizeof(mvp);
 
-
 			VkViewport viewport = {
 				.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
@@ -450,9 +449,8 @@ class Panorama : public VKWindow {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, true},
-																		   {"VK_KHR_xlib_surface", true}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 	// TODO add custom argument options for adding path of the texture and what type.
 	try {
 		VKSampleWindow<Panorama> Panorama(argc, argv, required_device_extensions, {}, required_instance_extensions);

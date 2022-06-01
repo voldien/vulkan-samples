@@ -55,7 +55,8 @@ class MemoryTransfer : public VKSampleSession {
 		const int nrTransferSamples = 100;
 
 		/*	1KB, 1MB, 128MB, 512MB.	*/
-		const std::array<VkDeviceSize, 4> memorySizes = {1024, 1024 * 1024, 1024 * 1024 * 128, 1024 * 1024 * 512};
+		const std::array<VkDeviceSize, 5> memorySizes = {1024, 1024 * 1024, 1024 * 1024 * 128, 1024 * 1024 * 512,
+														 1024 * 1024 * 1024};
 
 		std::vector<int64_t> timeSample(nrTransferSamples);
 
@@ -162,10 +163,10 @@ class MemoryTransfer : public VKSampleSession {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, false},
-																		   {"VK_KHR_xlib_surface", false}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, false}};
+	std::unordered_map<const char *, bool> required_instance_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
 
+	// TODO add option to be headless.
 	try {
 		VKSampleWindow<MemoryTransfer> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		mandel.run();
