@@ -62,6 +62,7 @@ class VKSampleSession {
 	FPSCounter<float> fpsCounter;
 	vkscommon::Time time;
 };
+
 class TmpVKSampleWindow : public VKWindow, public VKSampleSession {
   public:
 };

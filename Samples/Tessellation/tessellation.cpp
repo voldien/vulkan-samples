@@ -83,24 +83,22 @@ class BasicTessellation : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {
 
 		VkPhysicalDeviceFeatures enabledFeatures;
-		VkPhysicalDeviceFeatures2 deviceFeatures;
-		this->getPhysicalDevice()->checkFeature<VkPhysicalDeviceFeatures2>(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-																		   deviceFeatures);
+		VkPhysicalDeviceFeatures deviceFeatures = this->getPhysicalDevice()->getFeature();
 
-		if (!deviceFeatures.features.tessellationShader) {
+		if (!deviceFeatures.tessellationShader) {
 		}
 		// Example uses tessellation shaders
-		if (deviceFeatures.features.tessellationShader) {
+		if (deviceFeatures.tessellationShader) {
 			enabledFeatures.tessellationShader = VK_TRUE;
 		} else {
 		}
 
 		// Fill mode non solid is required for wireframe display
-		if (deviceFeatures.features.fillModeNonSolid) {
+		if (deviceFeatures.fillModeNonSolid) {
 			enabledFeatures.fillModeNonSolid = VK_TRUE;
 		}
 
-		if (deviceFeatures.features.samplerAnisotropy) {
+		if (deviceFeatures.samplerAnisotropy) {
 			enabledFeatures.samplerAnisotropy = VK_TRUE;
 		}
 

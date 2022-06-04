@@ -157,8 +157,16 @@ class VariableRateShading : public VKWindow {
 
 		VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
+		VkPipelineFragmentShadingRateStateCreateInfoKHR fragmentShadingRateInfo = {};
+		fragmentShadingRateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR;
+		fragmentShadingRateInfo.pNext = nullptr;
+		fragmentShadingRateInfo.fragmentSize = {0, 0};
+		// fragmentShadingRateInfo.combinerOps = {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+		// 									   VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR};
+
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineInfo.pNext = &fragmentShadingRateInfo;
 		pipelineInfo.stageCount = 2;
 		pipelineInfo.pStages = shaderStages;
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
@@ -183,6 +191,9 @@ class VariableRateShading : public VKWindow {
 	}
 
 	virtual void Initialize() override {
+
+		//	vkGetPhysicalDeviceFragmentShadingRatesKHR(this->get)
+
 		/*	Create pipeline.	*/
 		graphicsPipeline = createGraphicPipeline();
 
@@ -252,6 +263,11 @@ class VariableRateShading : public VKWindow {
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+			VkExtent2D fragmentSize = {};
+			VkFragmentShadingRateCombinerOpKHR ops[2] = {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+														 VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR};
+			//vkCmdSetFragmentShadingRateKHR(cmd, &fragmentSize, ops);
+
 			/*	*/
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
@@ -272,8 +288,8 @@ class VariableRateShading : public VKWindow {
 
 int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_instance_extensions = {};
-	std::unordered_map<const char *, bool> required_device_extensions = {,
-																		 {"VK_KHR_fragment_shading_rate", true}};
+	std::unordered_map<const char *, bool> required_device_extensions = {{"VK_KHR_fragment_shading_rate", true}};
+
 	try {
 		VKSampleWindow<VariableRateShading> sample(argc, argv, required_device_extensions, {},
 												   required_instance_extensions);

@@ -11,6 +11,7 @@
 #include <vulkan/vulkan.h>
 // TODO use Window based on either fragcore or MIMI.
 using namespace fvkcore;
+
 class VKWindow : public IWindow {
   protected:
 	VKWindow() = default;

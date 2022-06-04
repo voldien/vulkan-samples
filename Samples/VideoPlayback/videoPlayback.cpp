@@ -1,9 +1,9 @@
-#include "FPSCounter.h"
-#include "Importer/ImageImport.h"
-#include "VKSampleWindow.h"
-#include "VksCommon.h"
+#include <FPSCounter.h>
+#include <Importer/ImageImport.h>
 #include <OpenALAudioInterface.h>
+#include <VKSampleWindow.h>
 #include <VKWindow.h>
+#include <VksCommon.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -270,8 +270,9 @@ class AVVideoPlayback : public VKWindow {
 		/*	*/
 		for (size_t i = 0; i < this->videoFrames.size(); i++) {
 
-			VKS_VALIDATE(vkMapMemory(getDevice(), this->videoStagingFrameMemory, (i % this->nrVideoFrames) * this->videoStagingSize,
-									 this->videoStagingSize, 0, &mapMemory[i]));
+			VKS_VALIDATE(vkMapMemory(getDevice(), this->videoStagingFrameMemory,
+									 (i % this->nrVideoFrames) * this->videoStagingSize, this->videoStagingSize, 0,
+									 &mapMemory[i]));
 
 			VKHelper::createImage(
 				getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,

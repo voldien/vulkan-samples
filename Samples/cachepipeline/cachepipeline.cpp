@@ -9,7 +9,11 @@ class CachePipeline : public VKSampleSession {
 	CachePipeline(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKSampleSession(core, device) {}
 
-	virtual ~CachePipeline() {}
+	virtual ~CachePipeline() {
+
+		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
+	}
 
 	typedef struct _vertex_t {
 		float pos[2];
@@ -21,8 +25,8 @@ class CachePipeline : public VKSampleSession {
 		int width = 512;
 		int height = 512;
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle.frag.spv");
+		auto vertShaderCode = IOUtil::readFile("Shaders/triangle.vert.spv");
+		auto fragShaderCode = IOUtil::readFile("Shaders/triangle.frag.spv");
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -185,10 +189,9 @@ class CachePipeline : public VKSampleSession {
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_instance_extensions = {{VK_KHR_SURFACE_EXTENSION_NAME, false},
-																		   {"VK_KHR_xlib_surface", false}};
-	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_SWAPCHAIN_EXTENSION_NAME, false}};
-
+	std::unordered_map<const char *, bool> required_instance_extensions = {};
+	std::unordered_map<const char *, bool> required_device_extensions = {};
+	// TODO enable headless.
 	try {
 		VKSampleWindow<CachePipeline> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		sample.run();

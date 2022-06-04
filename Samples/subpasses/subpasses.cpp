@@ -18,12 +18,15 @@ class SubPasses : public VKWindow {
 		this->show();
 		this->setTitle("SubPasses");
 	}
-	
+
 	virtual ~SubPasses() {}
 	typedef struct _vertex_t {
 		float pos[2];
 		float color[3];
 	} Vertex;
+
+	const std::string vertexShaderPath =   "shaders/multipass/multipass.vert.spv";
+	const std::string fragmentShaderPath = "shaders/multipass/multipass.frag.spv";
 
 	virtual void release() override {
 
@@ -42,8 +45,8 @@ class SubPasses : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle.frag.spv");
+		auto vertShaderCode = IOUtil::readFile(vertexShaderPath);
+		auto fragShaderCode = IOUtil::readFile(fragmentShaderPath);
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);

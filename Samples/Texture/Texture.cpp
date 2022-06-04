@@ -42,6 +42,9 @@ class SingleTexture : public VKWindow {
 
 	VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
 
+	const std::string vertexShaderPath = "Shaders/texture.vert.spv";
+	const std::string fragmentShaderPath = "Shaders/texture.frag.spv";
+
   public:
 	SingleTexture(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
@@ -117,8 +120,8 @@ class SingleTexture : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/texture.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/texture.frag.spv");
+		auto vertShaderCode = IOUtil::readFile(vertexShaderPath);
+		auto fragShaderCode = IOUtil::readFile(fragmentShaderPath);
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);

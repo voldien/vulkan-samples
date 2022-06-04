@@ -289,6 +289,7 @@ class Triangle : public VKWindow {
 int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_instance_extensions = {};
 	std::unordered_map<const char *, bool> required_device_extensions = {};
+
 	try {
 		VKSampleWindow<Triangle> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
 		sample.run();
