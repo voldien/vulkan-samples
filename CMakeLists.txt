@@ -102,8 +102,6 @@ IF(Vulkan_FOUND)
 ENDIF()
 
 
-
-
 ###################################################
 # Backend common logic for all vulkan Samples
 ####################################################
@@ -159,6 +157,7 @@ FILE(GLOB_RECURSE GLSL_SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.tesc
 )
 
+# Compile shader source code to its respective spriv files.
 FOREACH(GLSL ${GLSL_SOURCE_FILES})
 	get_filename_component(FILE_NAME ${GLSL} ABSOLUTE)
 

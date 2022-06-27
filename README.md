@@ -27,45 +27,56 @@ make Shaders # Build Shaders
 ## Startup Window - 
 The simplest form of a vulkan window
 
-## Triangle - 
-Render a single triangle
-
 ## Triangle - Vertex Interpolation
+Render a single triangle with vertex color interpolation.
 
 
 ## Shader Uniforms - Cube
 
 
-## Texture
-
+## Texture - Diffuse Texture
+Render a texture cube with simple texture sampling on each face.
 
 ## SkyBox - CubeMap
-
+Render Skybox using cubemap, six 2D textures.
 
 ## SkyBox - Panoramic
+Render skybox using a single texture encoded with equirectangular for projecting to sphere .
 
 
 ## Push Constant - VK_KHR_push_descriptor
+Render element using push constant for updating model matrix.
 
 ## NormaMap
+Render geometry with normal map to add additional details on each face.
 
 ## Direction Light
+Simple directional light, using older light model.
 
 ## Shadow Mapping
+Simple shadow map rendering.
 
 ## Tessellation Basic
+Basic Tessellation on a plane, where geometry is added based on distance as height.
 
 ## PN Triangle Tessellation
+Tessellation for smoothing out the geometry as subdivsion in runtime. Based on distance.
 
 ## Ambient Occlusion
+Basic Post Processing for creating ambient occlusion effect.
 
 ## Billboard
+Create camera facing planes.
 
 ## Particle System - Compute Shader
+Particle system smoke, compute with compute shader.
+
 
 ## ReactionDiffusion - Compute Shader
 
+
 ## Mandelbrot - Compute Shader 
+A Mandelbrot render using compute shader.
 
 ## Video Playback
 
