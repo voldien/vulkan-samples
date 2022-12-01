@@ -83,7 +83,7 @@ class BasicTessellation : public VKWindow {
 		: VKWindow(core, device, -1, -1, -1, -1) {
 
 		VkPhysicalDeviceFeatures enabledFeatures;
-		VkPhysicalDeviceFeatures deviceFeatures = this->getPhysicalDevice()->getFeature();
+		VkPhysicalDeviceFeatures deviceFeatures = this->getPhysicalDevice()->getFeatures();
 
 		if (!deviceFeatures.tessellationShader) {
 		}

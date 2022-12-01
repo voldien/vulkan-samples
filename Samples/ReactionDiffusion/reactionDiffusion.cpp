@@ -19,6 +19,7 @@ class ReactionDiffusion : public VKWindow {
 	/*	*/
 	VkBuffer cellsBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory cellsMemory = VK_NULL_HANDLE;
+	size_t nrCellBuffers = 2;
 
 	/*	*/
 	VkDeviceMemory paramMemory = VK_NULL_HANDLE;
@@ -34,9 +35,9 @@ class ReactionDiffusion : public VKWindow {
 		float kernelA[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
 		float kernelB[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
 		float feedRate = 0.055f;
-		float killRate = .062;
-		float diffuseRateA = 1.0;
-		float diffuseRateB = .5;
+		float killRate = .062f;
+		float diffuseRateA = 1.0f;
+		float diffuseRateB = .5f;
 		float delta = 10.1f;
 
 		/**/
@@ -47,6 +48,8 @@ class ReactionDiffusion : public VKWindow {
 	} params = {};
 
 	unsigned int paramMemSize = sizeof(params);
+
+	const std::string computeShaderPath = "Shaders/reactiondiffusion/reactiondiffusion.comp.spv";
 
   public:
 	ReactionDiffusion(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -84,7 +87,7 @@ class ReactionDiffusion : public VKWindow {
 	VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 		VkPipeline pipeline;
 
-		auto compShaderCode = IOUtil::readFile("Shaders/reactiondiffusion.comp.spv");
+		auto compShaderCode = IOUtil::readFile(computeShaderPath.c_str());
 
 		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -95,6 +98,7 @@ class ReactionDiffusion : public VKWindow {
 		compShaderStageInfo.pName = "main";
 
 		std::array<VkDescriptorSetLayoutBinding, 4> uboLayoutBindings;
+
 		/*	*/
 		uboLayoutBindings[0].binding = 0;
 		uboLayoutBindings[0].descriptorCount = 1;
@@ -188,24 +192,29 @@ class ReactionDiffusion : public VKWindow {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
+		/*	Compute the total cell buffer size.	*/
 		const VkDeviceSize cellBufferSize = width * height * sizeof(float) * nrChemicalComponents;
 
 		// TODO fix get correct physical device.
-		VKHelper::createBuffer(getDevice(), cellBufferSize,
+		VKHelper::createBuffer(getDevice(), cellBufferSize * nrCellBuffers,
 							   getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
 							   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 							   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 								   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 							   cellsBuffer, cellsMemory);
 
-		/*	Write noise to buffer data.	*/
+		/*	Write perlin noise to buffer data as init data.	*/
 		float *cellData;
-		VKS_VALIDATE(vkMapMemory(getDevice(), cellsMemory, 0, cellBufferSize, 0, (void **)&cellData));
-		for (int h = 0; h < height; h++) {
-			for (int w = 0; w < width; w++) {
-				for (int c = 0; c < nrChemicalComponents; c++) {
-					cellData[h * height * nrChemicalComponents + w * nrChemicalComponents + c] =
-						fragcore::Math::PerlinNoise((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
+		VKS_VALIDATE(vkMapMemory(getDevice(), cellsMemory, 0, cellBufferSize * nrCellBuffers, 0, (void **)&cellData));
+		for (size_t nthBuffer = 0; nthBuffer < nrCellBuffers; nthBuffer++) {
+			for (int h = 0; h < height; h++) {
+				for (int w = 0; w < width; w++) {
+					for (int c = 0; c < nrChemicalComponents; c++) {
+						/*	*/
+						cellData[nthBuffer * (cellBufferSize / 4) +
+								 (h * height * nrChemicalComponents + w * nrChemicalComponents + c)] =
+							fragcore::Math::PerlinNoise((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
+					}
 				}
 			}
 		}
@@ -249,15 +258,15 @@ class ReactionDiffusion : public VKWindow {
 
 		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
 
-			VkDescriptorBufferInfo currentCellBufferInfo{};
-			currentCellBufferInfo.buffer = cellsBuffer;
-			currentCellBufferInfo.offset = (i * 2 + 0) * cellBufferSize;
-			currentCellBufferInfo.range = cellBufferSize;
+			VkDescriptorBufferInfo writeCellBufferInfo{};
+			writeCellBufferInfo.buffer = cellsBuffer;
+			writeCellBufferInfo.offset = ((i * nrCellBuffers + 0) % nrCellBuffers) * cellBufferSize;
+			writeCellBufferInfo.range = cellBufferSize;
 
-			VkDescriptorBufferInfo previousCellBufferInfo{};
-			previousCellBufferInfo.buffer = cellsBuffer;
-			previousCellBufferInfo.offset = ((i * 2 + 1) % nrChemicalComponents) * cellBufferSize;
-			previousCellBufferInfo.range = cellBufferSize;
+			VkDescriptorBufferInfo readCellBufferInfo{};
+			readCellBufferInfo.buffer = cellsBuffer;
+			readCellBufferInfo.offset = ((i * nrCellBuffers + 1) % nrCellBuffers) * cellBufferSize;
+			readCellBufferInfo.range = cellBufferSize;
 
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageView = computeImageViews[i];
@@ -277,7 +286,7 @@ class ReactionDiffusion : public VKWindow {
 			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			descriptorWrites[0].descriptorCount = 1;
 			descriptorWrites[0].pImageInfo = nullptr;
-			descriptorWrites[0].pBufferInfo = &currentCellBufferInfo;
+			descriptorWrites[0].pBufferInfo = &writeCellBufferInfo;
 
 			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites[1].dstSet = descriptorSets[i];
@@ -286,7 +295,7 @@ class ReactionDiffusion : public VKWindow {
 			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			descriptorWrites[1].descriptorCount = 1;
 			descriptorWrites[1].pImageInfo = nullptr;
-			descriptorWrites[1].pBufferInfo = &previousCellBufferInfo;
+			descriptorWrites[1].pBufferInfo = &readCellBufferInfo;
 
 			descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites[2].dstSet = descriptorSets[i];
@@ -309,15 +318,9 @@ class ReactionDiffusion : public VKWindow {
 			vkUpdateDescriptorSets(getDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 		}
 
-		// for (unsigned int i = 0; i < getSwapChainImageCount(); i++) {
-		// 	void *data;
-		// 	VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory[0], paramMemSize * i, paramMemSize, 0, &data));
-		// 	memcpy(data, &params, paramMemSize);
-		// 	vkUnmapMemory(getDevice(), paramMemory[0]);
-		// }
-
-		for (unsigned int i = 0; i < getNrCommandBuffers(); i++) {
-			VkCommandBuffer cmd = getCommandBuffers(i);
+		/*	Construct render command queues.	*/
+		for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
+			VkCommandBuffer cmd = this->getCommandBuffers(i);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -334,6 +337,7 @@ class ReactionDiffusion : public VKWindow {
 
 			vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
 
+			/*	Invoke sync.	*/
 			VkImageMemoryBarrier imageMemoryBarrier = {};
 			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -364,6 +368,7 @@ class ReactionDiffusion : public VKWindow {
 			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_GENERAL,
 											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
+			/*	Transfer image directly to swapchain images.	*/
 			vkCmdBlitImage(cmd, reactionDiffuseImage[i], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, getSwapChainImages()[i],
 						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion, VK_FILTER_NEAREST);
 			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -377,7 +382,8 @@ class ReactionDiffusion : public VKWindow {
 	}
 
 	virtual void draw() override {
-		// Setup the range
+
+		/*	Update uniform variables.	*/
 		void *data;
 		VKS_VALIDATE(
 			vkMapMemory(getDevice(), paramMemory, paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
@@ -388,6 +394,7 @@ class ReactionDiffusion : public VKWindow {
 		SDL_GetMouseState(&x, &y);
 		params.mousePosX = x;
 		params.mousePosY = y;
+		params.delta = getTimer().deltaTime();
 		params.posX = 0;
 		params.posY = 0;
 		params.zoom = 1.0f;

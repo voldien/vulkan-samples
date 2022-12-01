@@ -5,7 +5,9 @@
 class StartUpWindow : public VKWindow {
   public:
 	StartUpWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {}
+		: VKWindow(core, device, -1, -1, -1, -1) {
+		this->show();
+	}
 	virtual ~StartUpWindow() {}
 	virtual void Initialize() override {
 		/*	Check if supported.	*/
