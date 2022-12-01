@@ -7,3 +7,6 @@ ADD_DEPENDENCIES(PushConstant vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(PushConstant PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+
+INSTALL(TARGETS PushConstant DESTINATION bin)

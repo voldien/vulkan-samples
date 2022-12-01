@@ -7,3 +7,6 @@ ADD_DEPENDENCIES(NormalMap vk-sample-common vk-sample-common-asset-importer)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(NormalMap PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+
+INSTALL(TARGETS NormalMap DESTINATION bin)

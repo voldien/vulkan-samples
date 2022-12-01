@@ -9,3 +9,5 @@ ADD_DEPENDENCIES(RayTracing vk-sample-common)
 TARGET_INCLUDE_DIRECTORIES(RayTracing PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
 
 ## Generate the SPV object
+
+INSTALL(TARGETS RayTracing DESTINATION bin)

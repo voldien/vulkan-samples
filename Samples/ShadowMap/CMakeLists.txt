@@ -7,3 +7,6 @@ ADD_DEPENDENCIES(ShadowMap vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(ShadowMap PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+
+INSTALL(TARGETS ShadowMap DESTINATION bin)

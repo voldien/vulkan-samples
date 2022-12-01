@@ -7,3 +7,4 @@ ADD_DEPENDENCIES(GameOfLife vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(GameOfLife PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+INSTALL(TARGETS GameOfLife DESTINATION bin)

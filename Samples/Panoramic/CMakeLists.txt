@@ -7,3 +7,6 @@ ADD_DEPENDENCIES(Panoramic vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(Panoramic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+
+INSTALL(TARGETS Panoramic DESTINATION bin)

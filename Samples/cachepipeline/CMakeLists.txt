@@ -6,3 +6,6 @@ TARGET_LINK_LIBRARIES(CachePipeline vk-sample-common )
 ADD_DEPENDENCIES(CachePipeline vk-sample-common)
 
 TARGET_INCLUDE_DIRECTORIES(CachePipeline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+
+INSTALL(TARGETS CachePipeline DESTINATION bin)

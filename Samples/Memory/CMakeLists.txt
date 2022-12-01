@@ -6,3 +6,6 @@ TARGET_LINK_LIBRARIES(MemoryTransfer vk-sample-common )
 ADD_DEPENDENCIES(MemoryTransfer vk-sample-common)
 
 TARGET_INCLUDE_DIRECTORIES(MemoryTransfer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+
+INSTALL(TARGETS MemoryTransfer DESTINATION bin)

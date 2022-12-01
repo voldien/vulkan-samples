@@ -7,3 +7,5 @@ ADD_DEPENDENCIES(OcclusionQuery vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(OcclusionQuery PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+INSTALL(TARGETS OcclusionQuery DESTINATION bin)

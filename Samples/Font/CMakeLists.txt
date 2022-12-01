@@ -7,3 +7,5 @@ ADD_DEPENDENCIES(SignedDistanceFont vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(SignedDistanceFont PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+INSTALL(TARGETS SignedDistanceFont DESTINATION bin)

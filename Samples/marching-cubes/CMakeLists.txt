@@ -6,3 +6,5 @@ TARGET_LINK_LIBRARIES(MarchingCubes vk-sample-common)
 ADD_DEPENDENCIES(MarchingCubes vk-sample-common)
 
 TARGET_INCLUDE_DIRECTORIES(MarchingCubes PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+INSTALL(TARGETS MarchingCubes DESTINATION bin)

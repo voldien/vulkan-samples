@@ -7,3 +7,6 @@ ADD_DEPENDENCIES(ExternalMemoryFD vk-sample-common)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(ExternalMemoryFD PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+
+INSTALL(TARGETS ExternalMemoryFD DESTINATION bin)

@@ -6,3 +6,5 @@ TARGET_LINK_LIBRARIES(NBodySimulation vk-sample-common )
 ADD_DEPENDENCIES(NBodySimulation vk-sample-common)
 
 TARGET_INCLUDE_DIRECTORIES(NBodySimulation PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+INSTALL(TARGETS NBodySimulation DESTINATION bin)

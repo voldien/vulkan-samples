@@ -7,3 +7,6 @@ ADD_DEPENDENCIES(Ocean vk-sample-common vk-sample-common-asset-importer)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(Ocean PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+
+INSTALL(TARGETS Ocean DESTINATION bin)
