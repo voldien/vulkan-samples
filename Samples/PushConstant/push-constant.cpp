@@ -23,6 +23,9 @@ class PushConstant : public VKWindow {
 	VkDeviceMemory uniformBufferMemory = VK_NULL_HANDLE;
 	std::vector<void *> mapMemory;
 
+	const std::string vertexShaderPath = "shaders/triangle-mvp-pushconstant.vert.spv";
+	const std::string fragmentShaderPath = "shaders/triangle-mvp.frag.spv";
+
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
@@ -98,9 +101,10 @@ class PushConstant : public VKWindow {
 	};
 
 	VkPipeline createGraphicPipeline() {
-
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp-pushconstant.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
+		auto vertShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -152,8 +156,8 @@ class PushConstant : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -419,8 +423,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, true}};
 
 	try {
-		VKSampleWindow<PushConstant> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		sample.run();
+		VKSample<PushConstant> sample;
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

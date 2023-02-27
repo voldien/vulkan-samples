@@ -1,29 +1,35 @@
-#ifndef _VKCOMMON_IOTUTIL_H_
-#define _VKCOMMON_IOTUTIL_H_ 1
+#pragma once
+#include <Core/IO/FileSystem.h>
+#include <Core/IO/IOUtil.h>
 #include <Exception.hpp>
 #include <fmt/format.h>
 #include <fstream>
 #include <vector>
 
-class IOUtil {
-  public:
-	static std::vector<char> readFile(const std::string &filename) {
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+namespace vksample {
+	class FVDECLSPEC IOUtil {
+	  public:
+		static std::vector<char> readFileString(const std::string &filename, fragcore::IFileSystem *filesystem) {
 
-		if (!file.is_open()) {
-			throw cxxexcept::RuntimeException("failed to open file {}!", filename);
+			fragcore::Ref<fragcore::IO> ref =
+				fragcore::Ref<fragcore::IO>(filesystem->openFile(filename.c_str(), fragcore::IO::IOMode::READ));
+			std::vector<char> string = fragcore::IOUtil::readString<char>(ref);
+			ref->close();
+			return string;
 		}
 
-		size_t fileSize = (size_t)file.tellg();
-		std::vector<char> buffer(fileSize);
+		static std::vector<char> readFileString(const std::string &filename) {
+			return readFileString(filename, fragcore::FileSystem::getFileSystem());
+		}
 
-		file.seekg(0);
-		file.read(buffer.data(), fileSize);
+		template <typename T>
+		static std::vector<T> readFileData(const std::string &filename, fragcore::IFileSystem *filesystem) {
 
-		file.close();
-
-		return buffer;
-	}
-};
-
-#endif
+			fragcore::Ref<fragcore::IO> ref =
+				fragcore::Ref<fragcore::IO>(filesystem->openFile(filename.c_str(), fragcore::IO::IOMode::READ));
+			std::vector<T> buffer = fragcore::IOUtil::readFile<T>(ref);
+			ref->close();
+			return buffer;
+		}
+	};
+} // namespace vksample

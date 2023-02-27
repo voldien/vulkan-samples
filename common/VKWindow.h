@@ -1,18 +1,17 @@
-#ifndef _VK_SAMPLES_VK_WINDOWq_H_
-#define _VK_SAMPLES_VK_WINDOWq_H_ 1
-#include "FPSCounter.h"
+#pragma once
 #include "IWindow.h"
 #include "SDLWindow.h"
 #include "Util/Time.hpp"
-#include <VKDevice.h>
+#include "VKSampleBase.h"
 #include <iostream>
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.h>
+
 // TODO use Window based on either fragcore or MIMI.
 using namespace fvkcore;
 
-class VKWindow : public IWindow {
+class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
   protected:
 	VKWindow() = default;
 
@@ -40,7 +39,7 @@ class VKWindow : public IWindow {
 	 */
 	VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width, int height);
 	VKWindow(const VKWindow &other) = delete;
-	~VKWindow();
+	virtual ~VKWindow();
 
   public:
 	/**
@@ -58,11 +57,14 @@ class VKWindow : public IWindow {
 	 *
 	 */
 	virtual void draw();
+
+	virtual void update();
+
 	/**
 	 * @brief
 	 *
 	 */
-	virtual void run();
+	virtual void run() override;
 	// virtual void run(VkCommandBuffer cmdBuffer);
 	/**
 	 * @brief
@@ -114,7 +116,6 @@ class VKWindow : public IWindow {
 	const std::vector<VkImage> &getSwapChainImages() const noexcept;
 	const std::vector<VkImageView> &getSwapChainImageViews() const noexcept;
 
-	const std::shared_ptr<VKDevice> &getVKDevice() const noexcept;
 	const std::shared_ptr<PhysicalDevice> getPhysicalDevice() const noexcept;
 
 	VkPhysicalDevice physicalDevice() const;
@@ -191,12 +192,9 @@ class VKWindow : public IWindow {
 	virtual VkSurfaceKHR createSurface(const std::shared_ptr<VulkanCore> &instance) override;
 
   public:
-	FPSCounter<float> &getFPSCounter() noexcept { return this->fpsCounter; }
 	vkscommon::Time &getTimer() noexcept { return this->time; }
 
   private:
-	std::shared_ptr<VKDevice> &device;
-	std::shared_ptr<VulkanCore> &core;
 	typedef struct _SwapchainBuffers {
 		struct SwapChainSupportDetails {
 			VkSurfaceCapabilitiesKHR capabilities;
@@ -224,12 +222,6 @@ class VKWindow : public IWindow {
 		bool vsync = false;
 	} SwapchainBuffers;
 
-	/*  */
-	VkQueue queue; // TODO rename graphicsQueue
-	VkQueue presentQueue;
-
-	/*  */
-	uint32_t graphics_queue_node_index;
 	VkSurfaceKHR surface;
 	/*  Collection of swap chain variables. */
 	SwapchainBuffers *swapChain; // TODO remove as pointer
@@ -241,14 +233,7 @@ class VKWindow : public IWindow {
 	std::vector<VkFence> imagesInFlight;
 	std::vector<VkFence> imageAvailableFence;
 
-	/*	*/
-	VkCommandPool cmd_pool;
-	VkCommandPool compute_pool;
-	VkCommandPool transfer_pool;
 	IWindow *proxyWindow;
 
-	FPSCounter<float> fpsCounter;
 	vkscommon::Time time;
 };
-
-#endif

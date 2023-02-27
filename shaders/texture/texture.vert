@@ -8,11 +8,11 @@ layout(location = 0) out vec2 uv;
 
 layout(binding = 0) uniform UniformBufferBlock {
 
-    mat4 model;
-    mat4 view;
-    mat4 proj;
-    mat4 modelView;
- }
+	mat4 model;
+	mat4 view;
+	mat4 proj;
+	mat4 modelView;
+}
 ubo;
 
 void main() {

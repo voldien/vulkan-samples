@@ -1,19 +1,23 @@
 #include "Importer/ImageImport.h"
 #include "VKUtil.h"
 #include "VksCommon.h"
+#include <VKSampleBase.h>
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 
-class CachePipeline : public VKSampleSession {
+class CachePipeline : public vkscommon::VKSampleSessionBase {
   public:
 	CachePipeline(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKSampleSession(core, device) {}
+		: VKSampleSessionBase(core, device) {}
 
 	virtual ~CachePipeline() {
 
 		vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
+
+	const std::string vertexShaderPath = "Shaders/tessellation/tessellation.vert";
+	const std::string fragmentShaderPath = "Shaders/tessellation/tessellation.frag";
 
 	typedef struct _vertex_t {
 		float pos[2];
@@ -25,8 +29,10 @@ class CachePipeline : public VKSampleSession {
 		int width = 512;
 		int height = 512;
 
-		auto vertShaderCode = IOUtil::readFile("Shaders/triangle.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("Shaders/triangle.frag.spv");
+		auto vertShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -193,8 +199,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 	// TODO enable headless.
 	try {
-		VKSampleWindow<CachePipeline> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		sample.run();
+		VKSample<CachePipeline> sample;
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

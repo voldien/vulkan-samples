@@ -127,8 +127,8 @@ class ParticleSystem : public VKWindow {
 
 		VkPipeline graphicsPipeline;
 
-		auto vertShaderCode = IOUtil::readFile(vertexShaderPath);
-		auto fragShaderCode = IOUtil::readFile(fragmentShaderPath);
+		auto vertShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+		auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -198,8 +198,8 @@ class ParticleSystem : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -293,7 +293,7 @@ class ParticleSystem : public VKWindow {
 	VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 		VkPipeline pipeline;
 
-		auto compShaderCode = IOUtil::readFile(computeShaderPath);
+		auto compShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
 
 		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -625,10 +625,10 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	// TODO add custom argument options for adding path of the texture and what type.
+
 	try {
-		VKSampleWindow<ParticleSystem> particleSystem(argc, argv, required_device_extensions, {},
-													  required_instance_extensions);
-		particleSystem.run();
+		VKSample<ParticleSystem> particleSystem;
+		particleSystem.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

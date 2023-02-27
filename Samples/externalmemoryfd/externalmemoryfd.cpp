@@ -1,13 +1,14 @@
 #include "Importer/ImageImport.h"
 #include "VKUtil.h"
 #include "VksCommon.h"
+#include <VKSampleBase.h>
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 
-class ExternalMemoryFD : public VKSampleSession {
+class ExternalMemoryFD : public vkscommon::VKSampleSessionBase {
   public:
 	ExternalMemoryFD(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKSampleSession(core, device) {}
+		: VKSampleSessionBase(core, device) {}
 
 	virtual ~ExternalMemoryFD() { this->release(); }
 
@@ -112,9 +113,8 @@ int main(int argc, const char **argv) {
 	};
 
 	try {
-		VKSampleWindow<ExternalMemoryFD> sample(argc, argv, required_device_extensions, {},
-												required_instance_extensions);
-		sample.run();
+		VKSample<ExternalMemoryFD> sample;
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

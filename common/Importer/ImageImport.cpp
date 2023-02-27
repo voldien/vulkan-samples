@@ -1,10 +1,16 @@
-#include "Importer/ImageImport.h"
-#include "Importer/IOUtil.h"
+#include "ImageImport.h"
+#include "IOUtil.h"
 #include <FreeImage.h>
-#include <ImageLoader.h>
+#include <ImageFormat.h>
+#include <imageloader/ImageLoader.h>
+#include <magic_enum.hpp>
 #include <stdexcept>
-using namespace fragcore;
+
 using namespace fvkcore;
+using namespace vksample;
+
+ImageImporter::ImageImporter(fragcore::IFileSystem *filesystem, VKDevice &device)
+	: filesystem(filesystem), device(device) {}
 
 void ImageImporter::saveTextureData(const char *cfilename, const void *pixelData, unsigned int width,
 									unsigned int height, int layers, unsigned int format) {}
@@ -28,14 +34,15 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 								  VkPhysicalDevice physicalDevice, VkImage &textureImage,
 								  VkDeviceMemory &textureImageMemory) {
 
-	ImageLoader imageLoader;
-	Image image = imageLoader.loadImage(filename);
+	fragcore::ImageLoader imageLoader;
+	fragcore::Image image = imageLoader.loadImage(filename);
 
 	const VkDeviceSize imageSize = image.getSize();
 	VkPhysicalDeviceMemoryProperties memProperties;
 
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
+	/*	*/
 	VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(device, commandPool);
 
 	/*	*/
@@ -52,27 +59,31 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 
 	VkFormat vk_format;
 	switch (image.getFormat()) {
-	case TextureFormat::RGB24:
-		vk_format = VK_FORMAT_R8G8B8_SRGB;
+	case fragcore::TextureFormat::RGB24:
+		vk_format = VK_FORMAT_R8G8B8_UNORM;
 		break;
-	case TextureFormat::RGBA32:
-		vk_format = VK_FORMAT_R8G8B8A8_SRGB;
+	case fragcore::TextureFormat::RGBA32:
+		vk_format = VK_FORMAT_R8G8B8A8_UNORM;
 		break;
-	case TextureFormat::BGR24:
-		vk_format = VK_FORMAT_B8G8R8_SRGB;
+	case fragcore::TextureFormat::BGR24:
+		vk_format = VK_FORMAT_B8G8R8_UNORM;
 		break;
-	case TextureFormat::BGRA32:
-		vk_format = VK_FORMAT_B8G8R8A8_SRGB;
+	case fragcore::TextureFormat::BGRA32:
+		vk_format = VK_FORMAT_B8G8R8A8_UNORM;
 		break;
-	case TextureFormat::RGBAFloat:
+	case fragcore::TextureFormat::RGBAFloat:
 		vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 		break;
 	default:
-		throw RuntimeException("No Supported Image format {}", image.getFormat());
+		throw fragcore::RuntimeException("None Supported Format: {}", magic_enum::enum_name(image.getFormat()));
 		break;
 	}
 
 	/*	TODO check if combination supported.	*/
+	if (!this->device.isFormatSupported(vk_format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
+										VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)) {
+		throw fragcore::RuntimeException("None Supported Image Format on Device: {}", magic_enum::enum_name(vk_format));
+	}
 
 	/*	Create staging buffer.	*/
 	VKHelper::createImage(device, image.width(), image.height(), 1, vk_format, VK_IMAGE_TILING_OPTIMAL,

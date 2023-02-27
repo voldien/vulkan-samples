@@ -14,3 +14,5 @@ TARGET_LINK_LIBRARIES(SkyboxPanoramic vk-sample-common vk-sample-common-asset-im
 ADD_DEPENDENCIES(SkyboxPanoramic vk-sample-common vk-sample-common-asset-importer)
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(SkyboxPanoramic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+INSTALL(TARGETS SkyboxCubeMap SkyboxPanoramic DESTINATION bin)

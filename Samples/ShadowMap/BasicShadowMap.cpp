@@ -21,6 +21,9 @@ class BasicShadowMap : public VKWindow {
 	std::vector<void *> mapMemory;
 	long prevTimeCounter;
 
+	const std::string vertexShaderPath = "Shaders/tessellation/tessellation.vert";
+	const std::string fragmentShaderPath = "Shaders/tessellation/tessellation.frag";
+
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
@@ -99,8 +102,10 @@ class BasicShadowMap : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
+		auto vertShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -162,8 +167,8 @@ class BasicShadowMap : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 

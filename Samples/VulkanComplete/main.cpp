@@ -1,6 +1,6 @@
 #include "FPSCounter.h"
 #include "Importer/ImageImport.h"
-#include "VKSampleWindow.h"
+
 #include "VksCommon.h"
 #include <OpenALAudioInterface.h>
 #include <VKWindow.h>

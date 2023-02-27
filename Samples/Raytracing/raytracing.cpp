@@ -87,8 +87,8 @@ int main(int argc, const char **argv) {
 																		 {"VK_KHR_acceleration_structure", true}};
 
 	try {
-		VKSampleWindow<RayTracing> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		sample.run();
+		VKSample<RayTracing> sample;
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;

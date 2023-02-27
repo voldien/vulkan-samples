@@ -161,8 +161,8 @@ class ClothSimulation : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 

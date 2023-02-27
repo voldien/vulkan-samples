@@ -23,10 +23,13 @@ OPTION(BUILD_WITH_TSAN "Enable Thread sanitizer" OFF)
 ############################################
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/cxxopts EXCLUDE_FROM_ALL)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi EXCLUDE_FROM_ALL)
-
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/image/imageloader EXCLUDE_FROM_ALL)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/taskscheduler/TaskSch EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/font EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/geometryutil EXCLUDE_FROM_ALL)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/audio EXCLUDE_FROM_ALL)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/audio/openal EXCLUDE_FROM_ALL)
+
 #TODO remove
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/extern/flythough_camera)
 
@@ -166,8 +169,7 @@ FOREACH(GLSL ${GLSL_SOURCE_FILES})
 	add_custom_command(
 		OUTPUT ${SPIRV}
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${EXECUTABLE_OUTPUT_PATH}/Shaders/"
-		COMMAND glslc ${GLSL} -o ${SPIRV}
-		#COMMAND ${CMAKE_COMMAND} -E copy ${SPIRV} "${EXECUTABLE_OUTPUT_PATH}/Shaders/${SPIRV}".
+		COMMAND glslc -x glsl -O -Werror -g --target-env=vulkan -o ${SPIRV} ${GLSL}
 		DEPENDS ${GLSL})
 	list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach(GLSL)
@@ -179,7 +181,7 @@ add_custom_target(
 #TODO add dep shaders and all.
 
 # All shader files.
-FILE(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/shaders ${CMAKE_CURRENT_BINARY_DIR}/Shaders SYMBOLIC)
+FILE(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/shaders ${CMAKE_CURRENT_BINARY_DIR}/shaders SYMBOLIC)
 FILE(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/asset ${CMAKE_CURRENT_BINARY_DIR}/asset SYMBOLIC)
 
 IF(BUILD_WTIH_TEST)

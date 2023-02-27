@@ -1,6 +1,6 @@
 #include "Importer/IOUtil.h"
 #include <SDL2/SDL.h>
-#include <VKSampleWindow.h>
+#include <VKSample.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 #include <iostream>
@@ -25,7 +25,7 @@ class SubPasses : public VKWindow {
 		float color[3];
 	} Vertex;
 
-	const std::string vertexShaderPath =   "shaders/multipass/multipass.vert.spv";
+	const std::string vertexShaderPath = "shaders/multipass/multipass.vert.spv";
 	const std::string fragmentShaderPath = "shaders/multipass/multipass.frag.spv";
 
 	virtual void release() override {
@@ -45,11 +45,13 @@ class SubPasses : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile(vertexShaderPath);
-		auto fragShaderCode = IOUtil::readFile(fragmentShaderPath);
+		auto vertShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
 
-		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
-		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
+		VkShaderModule vertShaderModule = VKHelper::createShaderModule(this->getDevice(), vertShaderCode);
+		VkShaderModule fragShaderModule = VKHelper::createShaderModule(this->getDevice(), fragShaderCode);
 
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -98,8 +100,8 @@ class SubPasses : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -239,6 +241,7 @@ class SubPasses : public VKWindow {
 
 			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
+			/*	Multipass render pass.	*/
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 			renderPassInfo.renderPass = getDefaultRenderPass();
@@ -267,6 +270,8 @@ class SubPasses : public VKWindow {
 
 			vkCmdEndRenderPass(cmd);
 
+			/*	Blit the result to the default framebuffer.	*/
+
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
@@ -277,9 +282,11 @@ class SubPasses : public VKWindow {
 int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_instance_extensions = {};
 	std::unordered_map<const char *, bool> required_device_extensions = {};
+
 	try {
-		VKSampleWindow<SubPasses> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		sample.run();
+		VKSample<SubPasses> sample;
+
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;

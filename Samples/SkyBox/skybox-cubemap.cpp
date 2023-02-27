@@ -1,6 +1,6 @@
 #include "Importer/ImageImport.h"
 #include "Util/Time.hpp"
-#include "VKSampleWindow.h"
+
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <Util/CameraController.h>
@@ -112,11 +112,14 @@ class SkyboxCubeMap : public VKWindow {
 										  {1.0f, -1.0f, 1.0f, 1, 0}
 
 	};
+	const std::string vertexShaderPath = "shaders/skybox/skybox.vert.spv";
+	const std::string fragmentShaderPath = "shaders/skybox/cubemap.frag.spv";
 
 	VkPipeline createGraphicPipeline() {
-
-		auto vertShaderCode = IOUtil::readFile("shaders/skybox.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/panoramic.frag.spv");
+		auto vertShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -180,8 +183,8 @@ class SkyboxCubeMap : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -273,25 +276,12 @@ class SkyboxCubeMap : public VKWindow {
 	}
 
 	virtual void Initialize() override {
-
-		/*	Load and Create Texture.	*/
-		VkCommandBuffer cmd;
-		std::vector<VkCommandBuffer> cmds =
-			this->getVKDevice()->allocateCommandBuffers(getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = 0;
-		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
+		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
 		/*	*/
-		ImageImporter::createImage2D("panorama.jpg", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
-								   physicalDevice(), texture, textureMemory);
-
-		vkEndCommandBuffer(cmds[0]);
-		this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
-
-		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
+		vksample::ImageImporter imageImporter(fragcore::FileSystem::getFileSystem(), *this->getVKDevice());
+		imageImporter.createImage2D("asset/panorama.png", this->getDevice(), getGraphicCommandPool(),
+									getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
 
 		skyboxTextureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D,
 													  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -303,7 +293,6 @@ class SkyboxCubeMap : public VKWindow {
 		// TODO align
 		// bufferSize += bufferSize %
 
-
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
 
@@ -313,10 +302,10 @@ class SkyboxCubeMap : public VKWindow {
 								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 							   uniformBuffer, uniformBufferMemory);
 
-		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
+		for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i,
-									 (size_t)sizeof(this->mvp), 0, &_data));
+			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, (size_t)sizeof(this->mvp),
+									 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -495,9 +484,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		VKSampleWindow<SkyboxCubeMap> skybox(argc, argv, required_device_extensions, {},
-											   required_instance_extensions);
-		skybox.run();
+		VKSample<SkyboxCubeMap> skybox;
+		skybox.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

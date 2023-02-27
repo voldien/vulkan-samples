@@ -1,6 +1,7 @@
-#include "Importer/ImageImport.h"
-#include "VKUtil.h"
-#include "VksCommon.h"
+#include <Importer/ImageImport.h>
+#include <VKSample.h>
+#include <VKSampleBase.h>
+#include <VKUtil.h>
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 
@@ -33,6 +34,7 @@ static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue tran
 		timeSample[n] = elapsedTime;
 		vkResetCommandBuffer(cmd, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 	}
+	
 	float averageTime = 0;
 	for (size_t n = 0; n < timeSample.size(); n++) {
 		averageTime += static_cast<float>(timeSample[n]) / static_cast<float>(SDL_GetPerformanceFrequency());
@@ -46,10 +48,10 @@ static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue tran
 	std::cout << resultMsg << std::endl;
 }
 
-class MemoryTransfer : public VKSampleSession {
+class MemoryTransfer : public vkscommon::VKSampleSessionBase {
   public:
-	MemoryTransfer(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKSampleSession(core, device) {}
+	MemoryTransfer(std::shared_ptr<fvkcore::VulkanCore> &core, std::shared_ptr<fvkcore::VKDevice> &device)
+		: VKSampleSessionBase(core, device) {}
 
 	virtual void run() override {
 		const int nrTransferSamples = 100;
@@ -75,28 +77,30 @@ class MemoryTransfer : public VKSampleSession {
 		std::vector<VkDeviceMemory> gpu2cpu_dst(memorySizes.size());
 
 		try {
-			VkQueue transfer = getVKDevice()->getDefaultTransfer();
+			VkQueue transfer = this->getVKDevice()->getDefaultTransfer();
 
-			const VkPhysicalDeviceMemoryProperties &memProp = device->getPhysicalDevices()[0]->getMemoryProperties();
+			const VkPhysicalDeviceMemoryProperties &memProp =
+				this->getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties();
 
-			VkCommandPool commandPool = device->createCommandPool(device->getDefaultTransferQueueIndex());
+			VkCommandPool commandPool = this->getVKDevice()->createCommandPool(device->getDefaultTransferQueueIndex());
 			std::vector<VkCommandBuffer> cmds =
 				device->allocateCommandBuffers(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 
 			/*	CPU->GPU	*/
 			/*	Allocate all buffers.	*/
 			for (size_t i = 0; i < memorySizes.size(); i++) {
-				VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-									   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, stagingBuffer[i], staging[i]);
+				VKHelper::createBuffer(this->getVKDevice()->getHandle(), memorySizes[i], memProp,
+									   VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+									   stagingBuffer[i], staging[i]);
 
-				VKHelper::createBuffer(device->getHandle(), memorySizes[i], memProp,
+				VKHelper::createBuffer(this->getVKDevice()->getHandle(), memorySizes[i], memProp,
 									   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, cpu2gpuBuffer[i], cpu2gpu[i]);
 			}
 			std::cout << std::endl << "CPU to GPU Buffer Memory Transfer Speed" << std::endl;
 			for (size_t i = 0; i < memorySizes.size(); i++) {
-				bufferMemoryTransfer(device, transfer, cmds[0], timeSample, stagingBuffer[i], cpu2gpuBuffer[i],
-									 memorySizes[i]);
+				bufferMemoryTransfer(this->getVKDevice(), transfer, cmds[0], timeSample, stagingBuffer[i],
+									 cpu2gpuBuffer[i], memorySizes[i]);
 			}
 
 			for (size_t i = 0; i < memorySizes.size(); i++) {
@@ -161,6 +165,14 @@ class MemoryTransfer : public VKSampleSession {
 	}
 };
 
+class MemoryTransferVKSample : public VKSample<MemoryTransfer> {
+  public:
+	MemoryTransferVKSample() : VKSample<MemoryTransfer>() {}
+	virtual void customOptions(cxxopts::OptionAdder &options) override {
+		options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/texture.png"));
+	}
+};
+
 int main(int argc, const char **argv) {
 
 	std::unordered_map<const char *, bool> required_instance_extensions = {};
@@ -168,8 +180,8 @@ int main(int argc, const char **argv) {
 
 	// TODO add option to be headless.
 	try {
-		VKSampleWindow<MemoryTransfer> mandel(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		mandel.run();
+		MemoryTransferVKSample memoryTransfer;
+		memoryTransfer.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

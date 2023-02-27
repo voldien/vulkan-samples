@@ -1,4 +1,5 @@
 #pragma once
+#include <FragCore.h>
 #include <assimp/Importer.hpp>
 #include <assimp/anim.h>
 #include <assimp/camera.h>
@@ -13,147 +14,115 @@
 #include <assimp/types.h>
 #include <assimp/vector3.h>
 #include <cassert>
+#include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
+
+// TODO relocate.
+typedef struct geometry_object_t {
+	unsigned int vao;
+	unsigned int vbo;
+	unsigned int ibo;
+	size_t nrIndicesElements;
+	size_t nrVertices;
+
+	size_t vertex_offset;
+	size_t indices_offset;
+} GeometryObject;
+
+typedef struct model_object {
+	GeometryObject geometryObject;
+	glm::vec3 position;
+	glm::quat rotation;
+	glm::vec3 scale;
+	glm::mat4 transform;
+
+	struct model_object *parent;
+	std::string name;
+} NodeObject;
+
+typedef struct model_system_object {
+	size_t nrVertices;
+	size_t nrIndices;
+	size_t vertexStride;
+	size_t indicesStride;
+	void *vertexData;
+	void *indicesData;
+
+	unsigned int vertexOffset;
+	unsigned int normalOffset;
+	unsigned int tangentOffset;
+	unsigned int uvOffset;
+	unsigned int boneOffset;
+
+} ModelSystemObject;
+
+typedef struct texture_object_t {
+	size_t texture;
+	size_t width;
+	size_t height;
+	std::string filepath;
+} TextureObject;
+
+typedef struct material_object_t {
+	std::string name;
+	glm::vec4 ambient;
+	glm::vec4 diffuse;
+	glm::vec4 emission;
+	glm::vec4 specular;
+	glm::vec4 transparent;
+	glm::vec4 reflectivity;
+	float shinininess;
+	float hinininessStrength;
+} MaterialObject;
+
+typedef struct animation_object_t {
+
+} AnimationObject;
 
 using namespace Assimp;
-class ModelImporter {
+class FVDECLSPEC ModelImporter {
+  public:
+	fragcore::IFileSystem *fileSystem;
+	ModelImporter(fragcore::IFileSystem *fileSystem) : fileSystem(fileSystem) {}
+	~ModelImporter() { this->clear(); }
 
-	void loadContent(const std::string &path, unsigned long int supportFlag) {
-		Importer importer;
-		const aiScene *pScene = importer.ReadFile(path.c_str(), aiProcess_Triangulate | aiProcess_GenSmoothNormals
-												  //| aiProcess_SplitLargeMeshes
-		);
+	void loadContent(const std::string &path, unsigned long int supportFlag);
 
-		/**/
-		this->sceneRef = (aiScene *)pScene;
+	void clear();
 
-		if (pScene) {
-			aiMatrix4x4 m_GlobalInverseTransform = pScene->mRootNode->mTransformation;
-			m_GlobalInverseTransform.Inverse();
+  protected:
+	void initScene(const aiScene *scene);
 
-			this->initScene(pScene);
-			importer.FreeScene();
-		} else {
-		}
-		// return importSuccess;
-	}
+	/**
+	 *
+	 */
+	void initNoodeRoot(const aiNode *nodes, NodeObject *parent = nullptr);
 
-	void initScene(const aiScene *scene) {
-		int x;
+	MaterialObject *initMaterial(aiMaterial *material, size_t index);
 
-		// /*	 */
-		// if (scene->HasMeshes() ) {
-		// 	for (unsigned int x = 0; x < scene->mNumMeshes; x++) {
-		// 		this->initMesh(scene->mMeshes[x], x);
-		// 	}
+	ModelSystemObject *initMesh(const aiMesh *mesh, unsigned int index);
 
-		// }
+	TextureObject *initTexture(aiTexture *texture, unsigned int index);
 
-		// /*	*/
-		// if (scene->HasAnimations() ) {
-		// 	for (unsigned int x = 0; x < scene->mNumAnimations; x++) {
-		// 		this->initAnimation(scene->mAnimations[x], x);
-		// 	}
-		// }
+	// VDAnimationClip *initAnimation(const aiAnimation *animation, unsigned int index);
+	//
+	// VDLight *initLight(const aiLight *light, unsigned int index);
 
-		// /*	*/
-		// if (scene->HasTextures()) {
-		// 	for (unsigned int x = 0; x < scene->mNumTextures; x++) {
-		// 		this->initTexture(scene->mTextures[x], x);
-		// 	}
-		// }
-
-		// /*	*/
-		// if (scene->HasMaterials() ) {
-		// 	for (unsigned int x = 0; x < scene->mNumMaterials; x++) {
-		// 		this->initMaterial(scene->mMaterials[x]);
-		// 	}
-		// }
-
-		// /*	*/
-		// if (scene->HasLights()) {
-		// 	for (unsigned int x = 0; x < scene->mNumLights; x++) {
-		// 		this->initLight(scene->mLights[x], x);
-		// 	}
-		// }
-
-		// /*	*/
-		// if (scene->HasCameras() ) {
-		// 	for (unsigned int x = 0; x < scene->mNumCameras; x++) {
-		// 		this->initCamera(scene->mCameras[x], x);
-		// 	}
-		// }
-
-		// /*	*/
-		// //if (this->getFlag() & IMPORT_HIERARCHY) {
-		// 	this->initNoodeRoot(scene->mRootNode);
-		// //}
-	}
-
-	void initMesh(const aiMesh *aimesh, unsigned int index) {
-		unsigned int z;
-
-		unsigned int vertexSize = 0;
-		unsigned int indicesSize = 0;
-
-		unsigned int VertexIndex = 0, IndicesIndex = 0, bonecount = 0, initilzebone = 0;
-
-		indicesSize = 4; /*TODO remove later, if not it cased the geometry notbe rendered proparly*/
-		float *vertices = (float *)malloc(aimesh->mNumVertices * vertexSize);
-		unsigned char *Indice = (unsigned char *)malloc(indicesSize * aimesh->mNumFaces * 3);
-
-		float *temp = vertices;
-		unsigned char *Itemp = Indice;
-
-		const aiVector3D Zero = aiVector3D(0, 0, 0);
-
-		for (unsigned int x = 0; x < aimesh->mNumVertices; x++) {
-			const aiVector3D *Pos = &(aimesh->mVertices[x]);
-			aiVector3D *pNormal = &(aimesh->mNormals[x]);
-			const aiVector3D *pTexCoord = aimesh->HasTextureCoords(0) ? &(aimesh->mTextureCoords[0][x]) : &Zero;
-			// VDVector3 mtangent;
-
-			*vertices++ = Pos->x;
-			*vertices++ = Pos->y;
-			*vertices++ = Pos->z;
-
-			*vertices++ = pTexCoord->x;
-			*vertices++ = pTexCoord->y;
-
-			pNormal->Normalize();
-			*vertices++ = pNormal->x;
-			*vertices++ = pNormal->y;
-			*vertices++ = pNormal->z;
-
-			// mtangent = tangent(VDVector3(pNormal->x, pNormal->y, pNormal->z));
-			// mtangent.makeUnitVector();
-
-			*vertices++ = mtangent.x();
-			*vertices++ = mtangent.y();
-			*vertices++ = mtangent.z();
-
-		} /**/
-
-		vertices = temp;
-
-		/*	some issues with this I thing? */
-		for (unsigned int x = 0; x < aimesh->mNumFaces; x++) {
-			const aiFace &face = aimesh->mFaces[x];
-			assert(face.mNumIndices == 3); // Check if Indices Count is 3 other case error
-			memcpy(Indice, &face.mIndices[0], indicesSize);
-			Indice += indicesSize;
-			memcpy(Indice, &face.mIndices[1], indicesSize);
-			Indice += indicesSize;
-			memcpy(Indice, &face.mIndices[2], indicesSize);
-			Indice += indicesSize;
-		}
-
-		Indice = Itemp;
-
-		/**/
-		free(vertices);
-		free(Indice);
-	}
+  public:
+	const std::vector<NodeObject *> getNodes() const { return this->nodes; }
+	const std::vector<ModelSystemObject> &getModels() const { return this->models; }
+	const NodeObject *getNodeRoot() const { return this->rootNode; }
+	const std::vector<TextureObject> &getTextures() const { return this->textures; }
 
   private:
-	Assimp::aiScene *sceneRef;
+	aiScene *sceneRef;
+	std::vector<NodeObject *> nodes;
+	std::vector<ModelSystemObject> models;
+	std::vector<MaterialObject> materials;
+	std::vector<TextureObject> textures;
+	std::vector<AnimationObject> animations;
+
+	NodeObject *rootNode;
 };
+
+static void drawScene(NodeObject *node) {}

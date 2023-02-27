@@ -33,7 +33,7 @@ VKWindow::~VKWindow() {
 
 VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
 				   int height)
-	: core(core), device(device) {
+	: VKSampleSessionBase(core, device) {
 
 	this->proxyWindow = new SDLWindow();
 
@@ -123,7 +123,6 @@ const std::vector<VkImageView> &VKWindow::getSwapChainImageViews() const noexcep
 	return this->swapChain->swapChainImageViews;
 }
 
-const std::shared_ptr<VKDevice> &VKWindow::getVKDevice() const noexcept { return this->device; }
 const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice() const noexcept {
 	// TODO improve
 	return this->getVKDevice()->getPhysicalDevice(0);
@@ -211,6 +210,7 @@ void VKWindow::swapBuffer() {
 }
 
 void VKWindow::createSwapChain() {
+	/*	*/
 	const std::shared_ptr<PhysicalDevice> &physicalDevice = device->getPhysicalDevice(0);
 
 	/*  */
@@ -322,6 +322,7 @@ void VKWindow::createSwapChain() {
 						  depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProps, this->swapChain->depthImage,
 						  this->swapChain->depthImageMemory);
+
 	this->swapChain->depthImageView = VKHelper::createImageView(
 		getDevice(), this->swapChain->depthImage, VK_IMAGE_VIEW_TYPE_2D, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
@@ -476,13 +477,15 @@ void VKWindow::vsync(bool state) {
 	}
 }
 
-void VKWindow::setFullScreen(bool fullscreen) { this->setFullScreen(fullscreen); }
+void VKWindow::setFullScreen(bool fullscreen) { this->proxyWindow->setFullScreen(fullscreen); }
 
 void VKWindow::Initialize() {}
 
 void VKWindow::release() {}
 
 void VKWindow::draw() {}
+
+void VKWindow::update() {}
 
 void VKWindow::onResize(int width, int height) {}
 
@@ -536,9 +539,20 @@ void VKWindow::run() {
 			std::cout << "FPS " << getFPSCounter().getFPS() << " Elapsed Time: " << getTimer().getElapsed()
 					  << std::endl;
 		}
+		/*	*/
+		const Uint8 *state = SDL_GetKeyboardState(nullptr);
+		if (state[SDL_SCANCODE_F12]) {
+			// this->captureScreenShot();
+		}
+
+		/*	Enter fullscreen via short command.	*/
+		if (state[SDL_SCANCODE_RETURN] && (state[SDL_SCANCODE_LCTRL] || state[SDL_SCANCODE_RCTRL])) {
+			this->setFullScreen(!this->isFullScreen());
+		}
 	}
 finished:
-	vkDeviceWaitIdle(getDevice());
+	/*	Wait intill all gpu tasks has been finished before terminate.	*/
+	vkDeviceWaitIdle(this->getDevice());
 
 	/*	Release all the resources associated with the window application.	*/
 	this->release();
@@ -558,7 +572,13 @@ void VKWindow::maximize() { proxyWindow->maximize(); }
 
 void VKWindow::minimize() { proxyWindow->minimize(); }
 
-void VKWindow::setTitle(const std::string &title) { proxyWindow->setTitle(title); }
+void VKWindow::setTitle(const std::string &title) {
+
+	/*	*/
+	std::string override_title = title + " | Vulkan version: " + this->device->getPhysicalDevice(0)->getDeviceName();
+
+	this->proxyWindow->setTitle(override_title);
+}
 
 std::string VKWindow::getTitle() const { return proxyWindow->getTitle(); }
 

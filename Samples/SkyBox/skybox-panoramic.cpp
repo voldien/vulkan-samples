@@ -1,10 +1,11 @@
-#include "Importer/ImageImport.h"
 #include "Util/Time.hpp"
-#include "VKSampleWindow.h"
+
 #include "VksCommon.h"
+#include <Importer/ImageImport.h>
 #include <SDL2/SDL.h>
 #include <Util/CameraController.h>
 #include <VKWindow.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
@@ -12,32 +13,38 @@
 class SkyboxPanoramic : public VKWindow {
   private:
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+
+	std::vector<VkDescriptorSet> descriptorSets;
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 	VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 	VkSampler sampler = VK_NULL_HANDLE;
 	VkImage texture = VK_NULL_HANDLE;
+
 	VkImageView skyboxTextureView = VK_NULL_HANDLE;
 	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
-	std::vector<VkDescriptorSet> descriptorSets;
+	/*	*/
 	VkBuffer uniformBuffer;
 	VkDeviceMemory uniformBufferMemory;
 	std::vector<void *> mapMemory;
+	VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
 
 	CameraController cameraController;
 
+	const std::string vertexShaderPath = "shaders/skybox/skybox.vert.spv";
+	const std::string fragmentShaderPath = "shaders/skybox/panoramic.frag.spv";
+
 	struct UniformBufferBlock {
-		glm::mat4 model;
-		glm::mat4 view;
 		glm::mat4 proj;
-		glm::mat4 modelView;
 		glm::mat4 modelViewProjection;
-		glm::vec4 diffuseColor;
-	} mvp;
+		glm::vec4 tintColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		float exposure = 1.0f;
+	} uniform_stage_buffer;
 
 	typedef struct _vertex_t {
 		float pos[3];
@@ -47,6 +54,12 @@ class SkyboxPanoramic : public VKWindow {
   public:
 	SkyboxPanoramic(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 		: VKWindow(core, device, -1, -1, -1, -1) {
+
+		this->cameraController.setPosition(glm::vec3(0.0f));
+		this->cameraController.lookAt(glm::vec3(1.f));
+
+		this->cameraController.enableNavigation(false);
+
 		this->setTitle("Skybox Panoramic");
 		this->show();
 	}
@@ -74,49 +87,12 @@ class SkyboxPanoramic : public VKWindow {
 		vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
 	}
 
-	const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 0, 0}, // triangle 1 : begin
-										  {-1.0f, -1.0f, 1.0f, 0, 1},
-										  {-1.0f, 1.0f, 1.0f, 1, 1}, // triangle 1 : end
-										  {1.0f, 1.0f, -1.0f, 1, 1}, // triangle 2 : begin
-										  {-1.0f, -1.0f, -1.0f, 1, 0},
-										  {-1.0f, 1.0f, -1.0f, 0, 0}, // triangle 2 : end
-										  {1.0f, -1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, -1.0f, 0, 1},
-										  {1.0f, -1.0f, -1.0f, 1, 1},
-										  {1.0f, 1.0f, -1.0f, 0, 0},
-										  {1.0f, -1.0f, -1.0f, 1, 1},
-										  {-1.0f, -1.0f, -1.0f, 1, 0},
-										  {-1.0f, -1.0f, -1.0f, 0, 0},
-										  {-1.0f, 1.0f, 1.0f, 0, 1},
-										  {-1.0f, 1.0f, -1.0f, 1, 1},
-										  {1.0f, -1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, 1.0f, 1, 1},
-										  {-1.0f, -1.0f, -1.0f, 0, 1},
-										  {-1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, -1.0f, 1.0f, 0, 1},
-										  {1.0f, -1.0f, 1.0f, 1, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, -1.0f, -1.0f, 1, 1},
-										  {1.0f, 1.0f, -1.0f, 1, 0},
-										  {1.0f, -1.0f, -1.0f, 0, 0},
-										  {1.0f, 1.0f, 1.0f, 0, 1},
-										  {1.0f, -1.0f, 1.0f, 1, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {1.0f, 1.0f, -1.0f, 1, 1},
-										  {-1.0f, 1.0f, -1.0f, 0, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, 1.0f, -1.0f, 0, 1},
-										  {-1.0f, 1.0f, 1.0f, 1, 1},
-										  {1.0f, 1.0f, 1.0f, 0, 0},
-										  {-1.0f, 1.0f, 1.0f, 1, 1},
-										  {1.0f, -1.0f, 1.0f, 1, 0}
-
-	};
-
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/skybox.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/panoramic.frag.spv");
+		auto vertShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -140,7 +116,7 @@ class SkyboxPanoramic : public VKWindow {
 
 		VkVertexInputBindingDescription bindingDescription = {};
 		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Vertex);
+		bindingDescription.stride = sizeof(fragcore::ProceduralGeometry::Vertex);
 		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions;
@@ -161,7 +137,7 @@ class SkyboxPanoramic : public VKWindow {
 		uboLayoutBinding.descriptorCount = 1;
 		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		uboLayoutBinding.pImmutableSamplers = nullptr;
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 		samplerLayoutBinding.binding = 1;
@@ -180,8 +156,8 @@ class SkyboxPanoramic : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -274,24 +250,12 @@ class SkyboxPanoramic : public VKWindow {
 
 	virtual void Initialize() override {
 
-		/*	Load and Create Texture.	*/
-		VkCommandBuffer cmd;
-		std::vector<VkCommandBuffer> cmds =
-			this->getVKDevice()->allocateCommandBuffers(getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = 0;
-		VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
-
-		/*	*/
-		ImageImporter::createImage2D("panorama.png", getDevice(), getGraphicCommandPool(), getDefaultGraphicQueue(),
-								   physicalDevice(), texture, textureMemory);
-
-		vkEndCommandBuffer(cmds[0]);
-		this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
-
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
+		/*	Load and Create Texture.	*/
+		/*	*/
+		vksample::ImageImporter imageImporter(fragcore::FileSystem::getFileSystem(), *this->getVKDevice());
+		imageImporter.createImage2D("asset/panorama.png", this->getDevice(), getGraphicCommandPool(),
+									getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
 
 		skyboxTextureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D,
 													  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -299,9 +263,9 @@ class SkyboxPanoramic : public VKWindow {
 		VKHelper::createSampler(getDevice(), sampler);
 
 		/*	Allocate uniform buffers.	*/
-		VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
-		// TODO align
-		// bufferSize += bufferSize %
+		const size_t minMapBufferSize =
+			getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+		this->uniformBufferSize = fragcore::Math::align(this->uniformBufferSize, minMapBufferSize);
 
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
@@ -314,8 +278,8 @@ class SkyboxPanoramic : public VKWindow {
 
 		for (size_t i = 0; i < getSwapChainImageCount(); i++) {
 			void *_data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, (size_t)sizeof(this->mvp),
-									 0, &_data));
+			VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i,
+									 (size_t)sizeof(this->uniform_stage_buffer), 0, &_data));
 			mapMemory.push_back(_data);
 		}
 
@@ -377,45 +341,49 @@ class SkyboxPanoramic : public VKWindow {
 								   descriptorWrites.data(), 0, nullptr);
 		}
 
-		VkBufferCreateInfo bufferInfo = {};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(vertices[0]) * vertices.size();
-		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		{
+			/*	Load geometry.	*/
+			std::vector<fragcore::ProceduralGeometry::Vertex> vertices;
+			std::vector<unsigned int> indices;
+			fragcore::ProceduralGeometry::generateCube(1.0f, vertices, indices);
 
-		VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
+			VkBufferCreateInfo bufferInfo = {};
+			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+			bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+			bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		VkMemoryRequirements memRequirements;
-		vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
+			VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
 
-		VkMemoryAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex =
-			VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-				.value();
+			VkMemoryRequirements memRequirements;
+			vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
 
-		VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
+			VkMemoryAllocateInfo allocInfo = {};
+			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			allocInfo.allocationSize = memRequirements.size;
+			allocInfo.memoryTypeIndex =
+				VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
+										 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+					.value();
 
-		VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
+			VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
+			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
-		void *data;
-		VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
-		memcpy(data, vertices.data(), (size_t)bufferInfo.size);
-		vkUnmapMemory(getDevice(), vertexMemory);
+			/*	*/
+			void *data;
+			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
+			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
+			vkUnmapMemory(getDevice(), vertexMemory);
+		}
 
-		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = glm::mat4(1.0f);
-		this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-
-		onResize(width(), height());
+		this->onResize(this->width(), this->height());
 	}
 
 	virtual void onResize(int width, int height) override {
 
 		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-		this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
+		this->uniform_stage_buffer.proj =
+			glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
 
 		/*	Create command buffers.	*/
 		for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
@@ -458,7 +426,7 @@ class SkyboxPanoramic : public VKWindow {
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0,
 									nullptr);
 
-			vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
+			vkCmdDraw(cmd, 10, 1, 0, 0);
 
 			vkCmdEndRenderPass(cmd);
 
@@ -468,15 +436,17 @@ class SkyboxPanoramic : public VKWindow {
 
 	virtual void draw() override {
 
-		this->cameraController.update(getTimer().deltaTime());
+		this->cameraController.update(this->getTimer().deltaTime());
 		glm::mat4 viewMatrix = this->cameraController.getViewMatrix();
 		// TODO add character controller.
-		this->mvp.model = glm::mat4(1.0f);
-		this->mvp.view = viewMatrix;
-		this->mvp.modelViewProjection = this->mvp.model * this->mvp.proj * this->mvp.view;
+
+		this->uniform_stage_buffer.modelViewProjection =
+			(this->uniform_stage_buffer.proj * this->cameraController.getViewMatrix());
 
 		// Setup the range
-		memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
+		memcpy(mapMemory[this->getCurrentFrameIndex()], &uniform_stage_buffer,
+			   (size_t)sizeof(this->uniform_stage_buffer));
+
 		// 	VkMappedMemoryRange stagingRange{};
 		// 	stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 		// 	stagingRange.memory = uniformBuffersMemory[getCurrentFrameIndex()];
@@ -494,9 +464,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		VKSampleWindow<SkyboxPanoramic> skybox(argc, argv, required_device_extensions, {},
-											   required_instance_extensions);
-		skybox.run();
+		VKSample<SkyboxPanoramic> skybox;
+		skybox.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

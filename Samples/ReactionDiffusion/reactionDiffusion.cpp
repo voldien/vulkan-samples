@@ -87,7 +87,8 @@ class ReactionDiffusion : public VKWindow {
 	VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 		VkPipeline pipeline;
 
-		auto compShaderCode = IOUtil::readFile(computeShaderPath.c_str());
+		auto compShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -408,9 +409,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_instance_extensions = {};
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
-		VKSampleWindow<ReactionDiffusion> mandel(argc, argv, required_device_extensions, {},
-												 required_instance_extensions);
-		mandel.run();
+		VKSample<ReactionDiffusion> reactionDiffusionSample;
+		reactionDiffusionSample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

@@ -137,10 +137,10 @@ class BasicTessellation : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile(this->vertexShaderPath);
-		auto fragShaderCode = IOUtil::readFile(this->fragmentShaderPath);
-		auto teseShaderCode = IOUtil::readFile(this->EvoluationShaderPath);
-		auto tescShaderCode = IOUtil::readFile(this->ControlShaderPath);
+		auto vertShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
+		auto teseShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->EvoluationShaderPath, fragcore::FileSystem::getFileSystem());
+		auto tescShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->ControlShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -224,8 +224,8 @@ class BasicTessellation : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -340,8 +340,9 @@ class BasicTessellation : public VKWindow {
 		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
 		/*	Diffuse Texture.	*/
-		ImageImporter::createImage2D(this->diffuseTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
-									 getDefaultGraphicQueue(), physicalDevice(), heightTexture, heightTextureMemory);
+		vksample::ImageImporter imageImporter(fragcore::FileSystem::getFileSystem(), *this->getVKDevice());
+		imageImporter.createImage2D(this->diffuseTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
+									getDefaultGraphicQueue(), physicalDevice(), heightTexture, heightTextureMemory);
 
 		/*	Create random noise texture.	*/
 		heightTextureView = VKHelper::createImageView(getDevice(), heightTexture, VK_IMAGE_VIEW_TYPE_2D,
@@ -558,9 +559,9 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
-		VKSampleWindow<BasicTessellation> tessellation(argc, argv, required_device_extensions, {},
+		VKSample<BasicTessellation> tessellation;
+		tessellation.run(argc, argv, required_device_extensions, {},
 													   required_instance_extensions);
-		tessellation.run();
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

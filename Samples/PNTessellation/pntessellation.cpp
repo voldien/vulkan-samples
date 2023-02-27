@@ -36,6 +36,11 @@ class PNTessellation : public VKWindow {
 	VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
 	bool split;
+	/*	*/
+	const std::string vertexShaderPath = "Shaders/tessellation/tessellation.vert";
+	const std::string fragmentShaderPath = "Shaders/tessellation/tessellation.frag";
+	const std::string ControlShaderPath = "Shaders/tessellation/tessellation.tesc";
+	const std::string EvoluationShaderPath = "Shaders/tessellation/tessellation.tese";
 
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
@@ -124,11 +129,14 @@ class PNTessellation : public VKWindow {
 	};
 
 	VkPipeline createGraphicPipeline() {
-
-		auto vertShaderCode = IOUtil::readFile("shaders/tessellation/base.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/tessellation/base.frag.spv");
-		auto teseShaderCode = IOUtil::readFile("shaders/tessellation/pntriangle.tese.spv");
-		auto tescShaderCode = IOUtil::readFile("shaders/tessellation/pntriangle.tesc.spv");
+		auto vertShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
+		auto teseShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->EvoluationShaderPath, fragcore::FileSystem::getFileSystem());
+		auto tescShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->ControlShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -212,8 +220,8 @@ class PNTessellation : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -518,9 +526,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
-		VKSampleWindow<PNTessellation> tessellation(argc, argv, required_device_extensions, {},
-													required_instance_extensions);
-		tessellation.run();
+		VKSample<PNTessellation> tessellation;
+		tessellation.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

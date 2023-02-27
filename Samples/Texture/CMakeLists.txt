@@ -7,3 +7,5 @@ ADD_DEPENDENCIES(Texture vk-sample-common vk-sample-common-asset-importer)
 
 # Vulkan dependies headers.
 TARGET_INCLUDE_DIRECTORIES(Texture PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
+
+INSTALL(TARGETS Texture DESTINATION bin)

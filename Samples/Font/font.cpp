@@ -19,7 +19,8 @@ class BasicSDFFont : public VKWindow {
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
 
-	vkscommon::Time time;
+	const std::string vertexShaderPath = "Shaders/texture/texture.vert.spv";
+	const std::string fragmentShaderPath = "Shaders/texture/texture.frag.spv";
 
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;
@@ -99,8 +100,10 @@ class BasicSDFFont : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
+		auto vertShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -162,8 +165,8 @@ class BasicSDFFont : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -425,8 +428,7 @@ class BasicSDFFont : public VKWindow {
 
 	virtual void draw() override {
 
-		time.update();
-		float elapsedTime = time.getElapsed();
+		float elapsedTime = this->getTimer().getElapsed();
 
 		std::cout << elapsedTime << std::endl;
 
@@ -455,8 +457,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
-		VKSampleWindow<BasicSDFFont> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		sample.run();
+		VKSample<BasicSDFFont> sample;
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

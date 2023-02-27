@@ -1,7 +1,7 @@
 #include <FPSCounter.h>
 #include <Importer/ImageImport.h>
 #include <OpenALAudioInterface.h>
-#include <VKSampleWindow.h>
+
 #include <VKWindow.h>
 #include <VksCommon.h>
 
@@ -446,9 +446,8 @@ int main(int argc, const char **argv) {
 	// TODO add custom argument options for adding path of the texture and what type.
 
 	try {
-		VKSampleWindow<AVVideoPlayback> skybox(argc, argv, required_device_extensions, {},
-											   required_instance_extensions);
-		skybox.run();
+		VKSample<AVVideoPlayback> videoplaybackSample;
+		videoplaybackSample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;

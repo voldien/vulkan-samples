@@ -4,9 +4,9 @@
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 
-class ShaderInfo : public VKSampleSession {
+class ShaderInfo : public vkscommon::VKSampleSessionBase {
   public:
-	ShaderInfo(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device) : VKSampleSession(core, device) {}
+	ShaderInfo(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device) : VKSampleSessionBase(core, device) {}
 
 	virtual ~ShaderInfo() {}
 
@@ -49,8 +49,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_AMD_SHADER_INFO_EXTENSION_NAME, true}};
 
 	try {
-		VKSampleWindow<ShaderInfo> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		sample.run();
+		VKSample<ShaderInfo> sample;
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

@@ -159,13 +159,16 @@ class Ocean : public VKWindow {
 	// 	result *= kdotwhat < 0.0f ? 0.25f : 1.0f;
 	// 	return (result * damp);
 	// }
+	const std::string vertexShaderPath = "shaders/particle.vert.spv";
+	const std::string fragmentShaderPath = "shaders/particle.frag.spv";
+	const std::string computeShaderPath = "shaders/particle.comp.spv";
 
 	VkPipeline createGraphicPipeline(VkPipelineLayout *layout) {
 
 		VkPipeline graphicsPipeline;
 
-		auto vertShaderCode = IOUtil::readFile("shaders/particle.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/particle.frag.spv");
+		auto vertShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+		auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -235,8 +238,8 @@ class Ocean : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -330,7 +333,7 @@ class Ocean : public VKWindow {
 	VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 		VkPipeline pipeline;
 
-		auto compShaderCode = IOUtil::readFile("shaders/particle.comp.spv");
+		auto compShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
 
 		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -652,8 +655,8 @@ int main(int argc, const char **argv) {
 
 	// TODO add custom argument options for adding path of the texture and what type.
 	try {
-		VKSampleWindow<Ocean> particleSystem(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		particleSystem.run();
+		VKSample<Ocean> oceanSample;
+		oceanSample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

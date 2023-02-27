@@ -1,6 +1,6 @@
 #include "Importer/IOUtil.h"
 #include <SDL2/SDL.h>
-#include <VKSampleWindow.h>
+#include <VKSample.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 #include <iostream>
@@ -11,6 +11,8 @@ class VariableRateShading : public VKWindow {
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+	const std::string vertexShaderPath = "Shaders/tessellation/tessellation.vert";
+	const std::string fragmentShaderPath = "Shaders/tessellation/tessellation.frag";
 
   public:
 	VariableRateShading(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -41,8 +43,10 @@ class VariableRateShading : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle.frag.spv");
+		auto vertShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+		auto fragShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -94,8 +98,8 @@ class VariableRateShading : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -266,7 +270,7 @@ class VariableRateShading : public VKWindow {
 			VkExtent2D fragmentSize = {};
 			VkFragmentShadingRateCombinerOpKHR ops[2] = {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
 														 VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR};
-			//vkCmdSetFragmentShadingRateKHR(cmd, &fragmentSize, ops);
+			// vkCmdSetFragmentShadingRateKHR(cmd, &fragmentSize, ops);
 
 			/*	*/
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
@@ -291,9 +295,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{"VK_KHR_fragment_shading_rate", true}};
 
 	try {
-		VKSampleWindow<VariableRateShading> sample(argc, argv, required_device_extensions, {},
-												   required_instance_extensions);
-		sample.run();
+		VKSample<VariableRateShading> sample;
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;

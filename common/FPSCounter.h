@@ -1,5 +1,6 @@
 #ifndef _VK_SAMPLES_COMMON_FPS_COUNTER_H_
 #define _VK_SAMPLES_COMMON_FPS_COUNTER_H_ 1
+#include <stddef.h>
 
 /**
  * @brief
@@ -12,8 +13,8 @@ template <typename T = double> class FPSCounter {
 		this->fpsSample = nrFPSSample;
 		this->timeResolution = timeResolution;
 
-		averageFPS = 0;
-		totalFPS = 0;
+		this->averageFPS = 0;
+		this->totalFPS = 0;
 	}
 
 	void enabled(bool status) {}
@@ -52,7 +53,7 @@ template <typename T = double> class FPSCounter {
 	}
 
   private:
-	int totalFPS;
+	size_t totalFPS;
 	int fpsSample;
 	unsigned int averageFPS;
 	long int prevTimeSample;
@@ -60,3 +61,4 @@ template <typename T = double> class FPSCounter {
 };
 
 #endif
+

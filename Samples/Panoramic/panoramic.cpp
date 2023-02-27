@@ -1,6 +1,6 @@
 #include "Importer/ImageImport.h"
 #include "Util/Time.hpp"
-#include "VKSampleWindow.h"
+
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <Util/CameraController.h>
@@ -167,8 +167,8 @@ class Panorama : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 

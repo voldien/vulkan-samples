@@ -1,9 +1,9 @@
 #include "Importer/ImageImport.h"
 #include "Util/Time.hpp"
-#include "VKSampleWindow.h"
+
 #include "VksCommon.h"
 #include <Core/SystemInfo.h>
-#include <Core/TaskScheduler/TaskScheduler.h>
+#include <TaskScheduler.h>
 #include <Util/CameraController.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
@@ -27,7 +27,8 @@ class MultiThreading : public VKWindow {
 	std::vector<VkCommandBuffer> secondaryCommandBuffer;
 	vkscommon::Time time;
 	CameraController cameraController;
-
+	const std::string vertexShaderPath = "Shaders/particlesystem/particle.vert.spv";
+	const std::string fragmentShaderPath = "Shaders/particlesystem/particle.frag.spv";
 	fragcore::TaskScheduler *tashSch;
 
 	struct UniformBufferBlock {
@@ -109,8 +110,8 @@ class MultiThreading : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
-		auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
+		auto vertShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+		auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -172,8 +173,8 @@ class MultiThreading : public VKWindow {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)width();
-		viewport.height = (float)height();
+		viewport.width = static_cast<float>(this->width());
+		viewport.height = static_cast<float>(this->height());
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -461,8 +462,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
-		VKSampleWindow<MultiThreading> sample(argc, argv, required_device_extensions, {}, required_instance_extensions);
-		sample.run();
+		VKSample<MultiThreading> sample;
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

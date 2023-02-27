@@ -1,4 +1,4 @@
-#include "VKSampleWindow.h"
+
 #include "VksCommon.h"
 #include <VKWindow.h>
 #include <glm/glm.hpp>
@@ -67,7 +67,8 @@ class MandelBrotWindow : public VKWindow {
 	VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 		VkPipeline pipeline;
 
-		auto compShaderCode = IOUtil::readFile(computeShaderPath);
+		auto compShaderCode =
+			vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, fragcore::FileSystem::getFileSystem());
 
 		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -302,9 +303,8 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
-		VKSampleWindow<MandelBrotWindow> sample(argc, argv, required_device_extensions, {},
-												required_instance_extensions);
-		sample.run();
+		VKSample<MandelBrotWindow> sample;
+		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

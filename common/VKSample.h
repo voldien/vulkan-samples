@@ -1,90 +1,30 @@
-#ifndef _VK_SAMPLE_WINDOW_H_
-#define _VK_SAMPLE_WINDOW_H_ 1
-#include "FPSCounter.h"
-#include "Util/Time.hpp"
-#include "VKWindow.h"
+#pragma once
+#include "Importer/IOUtil.h"
+#include "Util/CameraController.h"
+#include "VKSampleSession.h"
+#include <Core/SystemInfo.h>
+#include <GeometryUtil.h>
+#include <ProceduralGeometry.h>
+#include <SDLDisplay.h>
 #include <cxxopts.hpp>
-#include <iostream>
-#include <map>
 
-using namespace fvkcore;
-
-class VKSampleSession {
+template <class T> class VKSample : public vkscommon::VKSampleSession {
   public:
-	VKSampleSession(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: core(core), device(device) {}
-	virtual void run() {}
-	virtual void release() {}
-	virtual void commandline(cxxopts::Options &options) {}
+	VKSample() {}
 
-	virtual ~VKSampleSession() {}
-
-  public:
-	FPSCounter<float> &getFPSCounter() noexcept { return this->fpsCounter; }
-
-  public:
-	/*	*/
-	VkDevice getDevice() const noexcept { return this->device->getHandle(); }
-
-	uint32_t getGraphicQueueIndex() const;
-	VkQueue getDefaultGraphicQueue() const;
-	VkQueue getDefaultComputeQueue() const;
-
-	const std::shared_ptr<VKDevice> &getVKDevice() const noexcept { return this->device; }
-	const std::shared_ptr<PhysicalDevice> getPhysicalDevice() const noexcept {
-		return this->getVKDevice()->getPhysicalDevice(0);
-	}
-	std::shared_ptr<PhysicalDevice> getPhysicalDevice() noexcept { return this->getVKDevice()->getPhysicalDevice(0); }
-
-	VkPhysicalDevice physicalDevice() const { return this->getPhysicalDevice()->getHandle(); }
-	void setPhysicalDevice(VkPhysicalDevice device);
-	std::vector<VkQueue> getQueues() const noexcept { return {}; }
-	const std::vector<VkPhysicalDevice> &availablePhysicalDevices() const { return core->getPhysicalDevices(); }
-
-	/*	*/
-	VkInstance getInstance() const noexcept { return this->core->getHandle(); }
-
-  protected:
-	std::shared_ptr<VKDevice> device;
-	std::shared_ptr<VulkanCore> core;
-
-	/*  */
-	VkQueue queue; // TODO rename graphicsQueue
-	VkQueue presentQueue;
-
-	/*  */
-	uint32_t graphics_queue_node_index;
-	VkCommandPool cmd_pool;
-	VkCommandPool compute_pool;
-	VkCommandPool transfer_pool;
-
-  protected:
-	FPSCounter<float> fpsCounter;
-	vkscommon::Time time;
-};
-
-class TmpVKSampleWindow : public VKWindow, public VKSampleSession {
-  public:
-};
-/**
- * @brief
- *
- */
-// TODO rename
-template <class T> class VKSampleWindow {
-  public:
-	VKSampleWindow(int argc, const char **argv, std::unordered_map<const char *, bool> required_device_extensions = {},
-				   std::unordered_map<const char *, bool> required_instance_layers = {},
-				   std::unordered_map<const char *, bool> required_instance_extensions = {}) {
+	virtual void run(int argc, const char **argv,
+					 std::unordered_map<const char *, bool> required_device_extensions = {},
+					 std::unordered_map<const char *, bool> required_instance_layers = {},
+					 std::unordered_map<const char *, bool> required_instance_extensions = {}) override {
 
 		/*	Parse argument.	*/
-		const std::string helperInfo = "Vulkan Sample\n"
-									   ""
+		const std::string helperInfo = "Vulkan Sample: " + fragcore::SystemInfo::getApplicationName() +
+									   "\n"
 									   "";
 		/*	*/
-		cxxopts::Options options("Vulkan Sample", helperInfo);
-		options.add_options()("h,help", "helper information.")("d,debug", "Enable Debug View.",
-															   cxxopts::value<bool>()->default_value("true"))(
+		cxxopts::Options options("Vulkan Sample: " + fragcore::SystemInfo::getApplicationName(), helperInfo);
+		cxxopts::OptionAdder &addr = options.add_options()("h,help", "helper information.")(
+			"d,debug", "Enable Debug View.", cxxopts::value<bool>()->default_value("true"))(
 			"t,time", "How long to run sample", cxxopts::value<float>()->default_value("0"))(
 			"i,instance-extensions", "Size of each messages in bytes.", cxxopts::value<uint32_t>()->default_value("5"))(
 			"l,instance-layers", "Size of each messages in bytes.", cxxopts::value<uint32_t>()->default_value("5"))(
@@ -95,10 +35,15 @@ template <class T> class VKSampleWindow {
 			"H,headless", "Headless Renderer", cxxopts::value<bool>()->default_value("false"))(
 			"r,renderdoc", "Enable RenderDoc", cxxopts::value<bool>()->default_value("false"));
 
+		/*	Append command option for the specific sample.	*/
+		this->customOptions(addr);
+
+		/*	Parse the command line input.	*/
 		auto result = options.parse(argc, (char **&)argv);
+
 		/*	If mention help, Display help and exit!	*/
 		if (result.count("help") > 0) {
-			std::cout << options.help();
+			std::cout << options.help(options.groups()) << std::endl;
 			exit(EXIT_SUCCESS);
 		}
 
@@ -106,7 +51,17 @@ template <class T> class VKSampleWindow {
 		bool debug = result["debug"].as<bool>();
 		bool fullscreen = result["fullscreen"].as<bool>();
 		if (result.count("time") > 0) {
+			/*	Create seperate thread that count down.*/
+			if (result["time"].as<float>() > 0) {
+				int64_t timeout_mili = (int64_t)(result["time"].as<float>() * 1000.0f);
+				std::thread timeout_thread = std::thread([&]() {
+					std::this_thread::sleep_for(std::chrono::milliseconds(timeout_mili));
+					exit(EXIT_SUCCESS);
+				});
+				timeout_thread.detach();
+			}
 		}
+
 		if (result.count("gpu-device") > 0) {
 		}
 		bool headless = result["headless"].as<bool>();
@@ -117,6 +72,7 @@ template <class T> class VKSampleWindow {
 		int nr_device_extensions = result["device-extensions"].count();
 		int device_index = result["gpu-device"].as<int32_t>();
 
+		fragcore::FileSystem::createFileSystem();
 		// TODO add surface extension based on platform.
 		std::unordered_map<const char *, bool> use_required_device_extensions = {
 			{VK_KHR_SWAPCHAIN_EXTENSION_NAME, !headless}};
@@ -148,6 +104,7 @@ template <class T> class VKSampleWindow {
 		/*	All physical devices.	*/
 		std::vector<std::shared_ptr<PhysicalDevice>> physical_devices;
 		bool group_device_request = device_index > 1;
+
 		if (device_index >= 0) {
 			// TODO validate if valid device index.
 			if ((uint32_t)device_index > core->getNrPhysicalDevices())
@@ -172,18 +129,18 @@ template <class T> class VKSampleWindow {
 
 		/*	*/
 		this->ref = new T(core, ldevice);
+		this->ref->setCommandResult(result);
+
+		this->ref->run();
 	}
 
-	void run() { this->ref->run(); }
-
-	void screenshot(float scale) {}
-
-	virtual ~VKSampleWindow() { delete ref; }
+	virtual ~VKSample() {
+		// this->ref->Release();
+		delete ref;
+	}
 
   private:
 	T *ref;
 	std::shared_ptr<VulkanCore> core;
 	std::shared_ptr<VKDevice> ldevice;
 };
-
-#endif

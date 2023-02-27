@@ -30,7 +30,7 @@ TARGET_LINK_LIBRARIES(vk-sample-common-window-backend-glfw3  PUBLIC fragcore-rvk
 
 
 ADD_LIBRARY(vk-sample-common ${SOURCE_FILES} ${HEADER_FILES} )
-TARGET_LINK_LIBRARIES(vk-sample-common PUBLIC fmt fragcore-rvk cxxexcept cxxopts vk-sample-common-window-backend-sdl2 spirv-cross-c)
+TARGET_LINK_LIBRARIES(vk-sample-common PUBLIC fmt fragcore-rvk cxxexcept cxxopts vk-sample-common-window-backend-sdl2 spirv-cross-c fragcore-scheduler-tasksch fragcore-geometry-util)
 ADD_DEPENDENCIES(vk-sample-common spirv-cross-c fragcore-rvk cxxopts Shaders)
 
 IF (BUILD_SHARED_LIBS AND CMAKE_SIZEOF_VOID_P EQUAL 8) # -fPIC is only required
