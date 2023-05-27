@@ -137,10 +137,10 @@ class BasicTessellation : public VKWindow {
 
 	VkPipeline createGraphicPipeline() {
 
-		auto vertShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
-		auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
-		auto teseShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->EvoluationShaderPath, fragcore::FileSystem::getFileSystem());
-		auto tescShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->ControlShaderPath, fragcore::FileSystem::getFileSystem());
+		auto vertShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+		auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
+		auto teseShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->EvoluationShaderPath, this->getFileSystem());
+		auto tescShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->ControlShaderPath, this->getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -340,7 +340,7 @@ class BasicTessellation : public VKWindow {
 		vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
 
 		/*	Diffuse Texture.	*/
-		vksample::ImageImporter imageImporter(fragcore::FileSystem::getFileSystem(), *this->getVKDevice());
+		vksample::ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
 		imageImporter.createImage2D(this->diffuseTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
 									getDefaultGraphicQueue(), physicalDevice(), heightTexture, heightTextureMemory);
 

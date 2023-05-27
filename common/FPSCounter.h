@@ -1,5 +1,4 @@
-#ifndef _VK_SAMPLES_COMMON_FPS_COUNTER_H_
-#define _VK_SAMPLES_COMMON_FPS_COUNTER_H_ 1
+#pragma once
 #include <stddef.h>
 
 /**
@@ -59,6 +58,3 @@ template <typename T = double> class FPSCounter {
 	long int prevTimeSample;
 	long int timeResolution;
 };
-
-#endif
-

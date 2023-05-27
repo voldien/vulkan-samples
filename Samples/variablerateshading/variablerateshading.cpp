@@ -44,9 +44,9 @@ class VariableRateShading : public VKWindow {
 	VkPipeline createGraphicPipeline() {
 
 		auto vertShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 		auto fragShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);

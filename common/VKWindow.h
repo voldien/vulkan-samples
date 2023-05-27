@@ -11,6 +11,7 @@
 // TODO use Window based on either fragcore or MIMI.
 using namespace fvkcore;
 
+// TODO rename
 class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
   protected:
 	VKWindow() = default;
@@ -58,6 +59,10 @@ class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
 	 */
 	virtual void draw();
 
+	/**
+	 * @brief
+	 *
+	 */
 	virtual void update();
 
 	/**
@@ -73,6 +78,8 @@ class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
 	virtual void onResize(int width, int height);
 
 	// virtual void createLogisticDevice(VkQueueFlags queues);
+
+	void captureScreenShot();
 
   public: /*	Vulkan methods.	*/
 	/*	*/

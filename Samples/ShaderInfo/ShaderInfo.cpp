@@ -4,44 +4,51 @@
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 
-class ShaderInfo : public vkscommon::VKSampleSessionBase {
-  public:
-	ShaderInfo(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device) : VKSampleSessionBase(core, device) {}
+namespace vksample {
 
-	virtual ~ShaderInfo() {}
+	class ShaderInfo : public vkscommon::VKSampleSessionBase {
+	  public:
+		ShaderInfo(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+			: VKSampleSessionBase(core, device) {}
 
-	VkPipeline loadPipeline() { return VK_NULL_HANDLE; }
+		virtual ~ShaderInfo() {}
 
-	virtual void run() override {
+		VkPipeline loadPipeline() { return VK_NULL_HANDLE; }
 
-		std::vector<VkPipeline> pipelines = {};
+		virtual void run() override {
 
-		PFN_vkGetShaderInfoAMD pfnGetShaderInfoAMD =
-			(PFN_vkGetShaderInfoAMD)vkGetDeviceProcAddr(this->getDevice(), "vkGetShaderInfoAMD");
+			std::vector<VkPipeline> pipelines = {};
 
-		for (size_t i = 0; i < pipelines.size(); i++) {
-			VkPipeline gfxPipeline = pipelines[i];
+			PFN_vkGetShaderInfoAMD pfnGetShaderInfoAMD =
+				(PFN_vkGetShaderInfoAMD)vkGetDeviceProcAddr(this->getDevice(), "vkGetShaderInfoAMD");
 
-			VkShaderStatisticsInfoAMD statistics = {};
-			size_t dataSize = sizeof(statistics);
+			for (size_t i = 0; i < pipelines.size(); i++) {
+				VkPipeline gfxPipeline = pipelines[i];
 
-			if (pfnGetShaderInfoAMD(this->getDevice(), gfxPipeline, VK_SHADER_STAGE_FRAGMENT_BIT,
-									VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD, &dataSize, nullptr) == VK_SUCCESS) {
-				printf("Fragment shader disassembly:\n");
-
-				void *disassembly = malloc(dataSize);
+				VkShaderStatisticsInfoAMD statistics = {};
+				size_t dataSize = sizeof(statistics);
 
 				if (pfnGetShaderInfoAMD(this->getDevice(), gfxPipeline, VK_SHADER_STAGE_FRAGMENT_BIT,
-										VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD, &dataSize, disassembly) == VK_SUCCESS) {
+										VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD, &dataSize, nullptr) == VK_SUCCESS) {
+					printf("Fragment shader disassembly:\n");
 
-					printf((char *)disassembly);
+					void *disassembly = malloc(dataSize);
+
+					if (pfnGetShaderInfoAMD(this->getDevice(), gfxPipeline, VK_SHADER_STAGE_FRAGMENT_BIT,
+											VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD, &dataSize,
+											disassembly) == VK_SUCCESS) {
+
+						printf((char *)disassembly);
+					}
+
+					free(disassembly);
 				}
-
-				free(disassembly);
 			}
 		}
-	}
-};
+	};
+	
+
+} // namespace vksample
 
 int main(int argc, const char **argv) {
 
@@ -49,7 +56,7 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_AMD_SHADER_INFO_EXTENSION_NAME, true}};
 
 	try {
-		VKSample<ShaderInfo> sample;
+		VKSample<vksample::ShaderInfo> sample;
 		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {

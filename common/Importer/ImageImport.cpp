@@ -26,6 +26,7 @@ void ImageImporter::saveTextureData(const char *cfilename, VkDevice device, VkIm
 
 	/*	Download texture data.	*/
 
+	// Seperate thread.
 	/*	Save data to texture.	*/
 	saveTextureData(cfilename, pixelData, width, height, layers, 0);
 }
@@ -74,19 +75,24 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 	case fragcore::TextureFormat::RGBAFloat:
 		vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 		break;
+	case fragcore::TextureFormat::RGBFloat:
+		vk_format = VK_FORMAT_R32G32B32_SFLOAT;
+		break;
 	default:
 		throw fragcore::RuntimeException("None Supported Format: {}", magic_enum::enum_name(image.getFormat()));
 		break;
 	}
 
+	VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+	// TODO fix VK_IMAGE_TILING_LINEAR or tiling
 	/*	TODO check if combination supported.	*/
-	if (!this->device.isFormatSupported(vk_format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
+	if (!this->device.isFormatSupported(vk_format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_LINEAR,
 										VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)) {
 		throw fragcore::RuntimeException("None Supported Image Format on Device: {}", magic_enum::enum_name(vk_format));
 	}
 
 	/*	Create staging buffer.	*/
-	VKHelper::createImage(device, image.width(), image.height(), 1, vk_format, VK_IMAGE_TILING_OPTIMAL,
+	VKHelper::createImage(device, image.width(), image.height(), 1, vk_format, VK_IMAGE_TILING_LINEAR,
 						  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, textureImage, textureImageMemory);
 	/*	*/

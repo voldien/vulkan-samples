@@ -18,7 +18,7 @@ namespace vkscommon {
 		virtual void run() = 0;
 		virtual void release() {}
 
-		virtual ~VKSampleSessionBase() {}
+		virtual ~VKSampleSessionBase() { this->release(); }
 
 	  public: /*	*/
 		FPSCounter<float> &getFPSCounter() noexcept { return this->fpsCounter; }
@@ -30,7 +30,7 @@ namespace vkscommon {
 
 		void setFileSystem(fragcore::IFileSystem *filesystem) { this->filesystem = filesystem; }
 
-	  public: /*	*/
+	  public: /*	Vulkan methods.	*/
 		VkDevice getDevice() const noexcept { return this->device->getHandle(); }
 
 		uint32_t getGraphicQueueIndex() const;

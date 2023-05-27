@@ -1,3 +1,4 @@
+#include <ImageLoader.h>
 #define VK_USE_PLATFORM_XLIB_KHR
 #include "VKWindow.h"
 #include <VKDevice.h>
@@ -10,12 +11,10 @@ using namespace fvkcore;
 
 VKWindow::~VKWindow() {
 
-	/*	Relase*/
-	this->release();
-
-	cleanSwapChain();
-
 	/*	*/
+	this->cleanSwapChain();
+
+	/*	Release sync objets.	*/
 	for (size_t i = 0; i < this->renderFinishedSemaphores.size(); i++) {
 		vkDestroySemaphore(getDevice(), renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(getDevice(), imageAvailableSemaphores[i], nullptr);
@@ -25,10 +24,13 @@ VKWindow::~VKWindow() {
 	/*	*/
 	vkDestroyCommandPool(getDevice(), this->cmd_pool, nullptr);
 
+	/*	*/
 	vkDestroySurfaceKHR(core->getHandle(), this->surface, nullptr);
 
+	/*	*/
 	this->close();
-	delete proxyWindow;
+
+	delete this->proxyWindow;
 }
 
 VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
@@ -53,8 +55,6 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	this->setPosition(x, y);
 
 	/*	*/
-	// this->device = device;
-	// this->core = core;
 	this->swapChain = new SwapchainBuffers();
 
 	/*  Create surface. */
@@ -217,9 +217,14 @@ void VKWindow::createSwapChain() {
 	VKHelper::SwapChainSupportDetails swapChainSupport =
 		VKHelper::querySwapChainSupport(physicalDevice->getHandle(), this->surface);
 
+	const std::vector<VkSurfaceFormatKHR> requestFormat = {
+		///{VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR},
+		{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}};
+
 	/*	TODO add option support.	*/
-	VkSurfaceFormatKHR surfaceFormat = VKHelper::selectSurfaceFormat(swapChainSupport.formats, swapChainSupport.formats,
-																	 VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
+	VkSurfaceFormatKHR surfaceFormat =
+		VKHelper::selectSurfaceFormat(swapChainSupport.formats, requestFormat, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
+
 	// TODO add support to determine which present mode.
 	std::vector<VkPresentModeKHR> requestedPresentModes = {VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR,
 														   VK_PRESENT_MODE_FIFO_KHR};
@@ -530,8 +535,10 @@ void VKWindow::run() {
 			}
 		}
 		if (visible) {
+			this->update();
 			this->draw();
 
+			/*	*/
 			this->swapBuffer();
 			this->getTimer().update();
 			this->fpsCounter.incrementFPS(SDL_GetPerformanceCounter());
@@ -542,7 +549,7 @@ void VKWindow::run() {
 		/*	*/
 		const Uint8 *state = SDL_GetKeyboardState(nullptr);
 		if (state[SDL_SCANCODE_F12]) {
-			// this->captureScreenShot();
+			this->captureScreenShot();
 		}
 
 		/*	Enter fullscreen via short command.	*/
@@ -556,6 +563,34 @@ finished:
 
 	/*	Release all the resources associated with the window application.	*/
 	this->release();
+}
+
+void VKWindow::captureScreenShot() {
+	const int screen_grab_width_size = this->width();
+	const int screen_grab_height_size = this->height();
+
+	void *pixelData = nullptr;
+	/*	offload the image process and saving to filesystem.	*/
+	std::thread process_thread([screen_grab_width_size, screen_grab_height_size, pixelData]() {
+		/*	*/
+		fragcore::Image image(screen_grab_width_size, screen_grab_height_size, fragcore::TextureFormat::RGBA32);
+		image.setPixelData(pixelData, screen_grab_width_size * screen_grab_height_size * 4);
+		fragcore::ImageLoader loader;
+
+		// Application and time
+		time_t rawtime;
+		struct tm *timeinfo;
+		char buffer[80];
+
+		std::time(&rawtime);
+		timeinfo = localtime(&rawtime);
+
+		strftime(buffer, sizeof(buffer), "%d-%m-%Y %H:%M:%S", timeinfo);
+		std::string str(buffer);
+
+		loader.saveImage(fragcore::SystemInfo::getApplicationName() + "-screenshot-" + str + ".png", image);
+	});
+	process_thread.detach();
 }
 
 void VKWindow::show() { proxyWindow->show(); }

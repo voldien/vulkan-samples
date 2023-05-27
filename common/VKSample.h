@@ -26,14 +26,16 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 		cxxopts::OptionAdder &addr = options.add_options()("h,help", "helper information.")(
 			"d,debug", "Enable Debug View.", cxxopts::value<bool>()->default_value("true"))(
 			"t,time", "How long to run sample", cxxopts::value<float>()->default_value("0"))(
-			"i,instance-extensions", "Size of each messages in bytes.", cxxopts::value<uint32_t>()->default_value("5"))(
-			"l,instance-layers", "Size of each messages in bytes.", cxxopts::value<uint32_t>()->default_value("5"))(
-			"D,device-extensions", "Perform Error Correction.", cxxopts::value<bool>()->default_value("false"))(
+			"i,instance-extensions", ".", cxxopts::value<uint32_t>()->default_value("5"))(
+			"l,instance-layers", ".", cxxopts::value<uint32_t>()->default_value("5"))(
+			"D,device-extensions", ".", cxxopts::value<bool>()->default_value("false"))(
 			"g,gpu-device", "GPU Device Select", cxxopts::value<int32_t>()->default_value("-1"))(
 			"p,present-mode", "Present Mode", cxxopts::value<int32_t>()->default_value("-1"))(
 			"f,fullscreen", "FullScreen", cxxopts::value<bool>()->default_value("false"))(
 			"H,headless", "Headless Renderer", cxxopts::value<bool>()->default_value("false"))(
-			"r,renderdoc", "Enable RenderDoc", cxxopts::value<bool>()->default_value("false"));
+			"r,renderdoc", "Enable RenderDoc", cxxopts::value<bool>()->default_value("false"))(
+			"F,filesystem", "FileSystem", cxxopts::value<std::string>()->default_value("."));
+		// TODO add display color space support.
 
 		/*	Append command option for the specific sample.	*/
 		this->customOptions(addr);
@@ -72,7 +74,18 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 		int nr_device_extensions = result["device-extensions"].count();
 		int device_index = result["gpu-device"].as<int32_t>();
 
-		fragcore::FileSystem::createFileSystem();
+		/*	Create filesystem that the asset will be read from.	*/
+		this->activeFileSystem = fragcore::FileSystem::createFileSystem();
+		std::string filesystemPath = result["filesystem"].as<std::string>();
+		if (!this->activeFileSystem->isDirectory(filesystemPath.c_str())) {
+
+			const std::string extension = this->activeFileSystem->getFileExtension(filesystemPath.c_str());
+			if (extension == ".zip") {
+				std::cout << "Found Zip File System: " << filesystemPath << std::endl;
+				this->activeFileSystem = fragcore::ZipFileSystem::createZipFileObject(filesystemPath.c_str());
+			}
+		}
+
 		// TODO add surface extension based on platform.
 		std::unordered_map<const char *, bool> use_required_device_extensions = {
 			{VK_KHR_SWAPCHAIN_EXTENSION_NAME, !headless}};
@@ -122,14 +135,28 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 
 		this->ldevice = std::make_shared<VKDevice>(physical_devices, use_required_device_extensions);
 
-		int width, height;
+		// TODO add support for headless.
+
+		/*	Create Sample Object.	*/
+		this->ref = new T(core, ldevice);
+		/*	Pass custom command options.	*/
+		this->ref->setCommandResult(result);
+
+		/*	Internal initialize.	*/
+		this->ref->setFileSystem(this->activeFileSystem);
+
+		int width = -1;
+		int height = -1;
 		if (fullscreen) {
 			// Display
+			fragcore::SDLDisplay display = fragcore::SDLDisplay::getPrimaryDisplay();
+			width = display.width();
+			height = display.height();
 		}
 
-		/*	*/
-		this->ref = new T(core, ldevice);
-		this->ref->setCommandResult(result);
+		this->ref->setSize(width, height);
+		// this->sampleRef->vsync(vsync);
+		this->ref->setFullScreen(fullscreen);
 
 		this->ref->run();
 	}

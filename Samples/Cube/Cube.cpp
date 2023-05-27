@@ -13,10 +13,12 @@ namespace vksample {
 	class Cube : public VKWindow {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
+		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+
 		VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 		std::vector<VkDescriptorSet> descriptorSets;
@@ -107,9 +109,9 @@ namespace vksample {
 		VkPipeline createGraphicPipeline() {
 
 			auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   fragcore::FileSystem::getFileSystem());
+																		   this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);

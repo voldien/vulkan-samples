@@ -25,9 +25,9 @@ class SilhouetteDetectionWindow : public VKWindow {
 	const std::string fragmentShaderPath = "Shaders/tessellation/tessellation.frag";
 
 	struct UniformBufferBlock {
-		alignas(16) glm::mat4 model;
-		alignas(16) glm::mat4 view;
-		alignas(16) glm::mat4 proj;
+		glm::mat4 model;
+		glm::mat4 view;
+		glm::mat4 proj;
 	} mvp;
 
 	typedef struct _vertex_t {
@@ -103,9 +103,9 @@ class SilhouetteDetectionWindow : public VKWindow {
 	VkPipeline createGraphicPipeline() {
 
 		auto vertShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 		auto fragShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);

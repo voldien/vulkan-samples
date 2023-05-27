@@ -9,13 +9,20 @@
 
 namespace vksample {
 
+	/**
+	 * @brief
+	 *
+	 */
 	class SingleTexture : public VKWindow {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
+		VkDeviceMemory vertexIndicesMemory = VK_NULL_HANDLE;
+		VkDeviceSize indices_offset = 0;
+		size_t nrIndices = 1;
+
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 		VkDescriptorPool descpool = VK_NULL_HANDLE;
 		VkSampler sampler = VK_NULL_HANDLE;
 
@@ -69,7 +76,7 @@ namespace vksample {
 			vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
 			/*	*/
 			vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
-			vkFreeMemory(getDevice(), vertexMemory, nullptr);
+			vkFreeMemory(getDevice(), vertexIndicesMemory, nullptr);
 
 			/*	*/
 			vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
@@ -78,10 +85,11 @@ namespace vksample {
 		}
 
 		VkPipeline createGraphicPipeline() {
+			
 			auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   fragcore::FileSystem::getFileSystem());
+																		   this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -244,11 +252,10 @@ namespace vksample {
 		}
 
 		virtual void Initialize() override {
-
 			/*	*/
 			const std::string texturePath = this->getResult()["texture"].as<std::string>();
 
-			ImageImporter imageImporter(fragcore::FileSystem::getFileSystem(), *this->getVKDevice());
+			ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
 
 			imageImporter.createImage2D(texturePath.c_str(), this->getDevice(), this->getGraphicCommandPool(),
 										this->getDefaultGraphicQueue(), this->physicalDevice(), texture, textureMemory);
@@ -258,7 +265,7 @@ namespace vksample {
 
 			VKHelper::createSampler(getDevice(), sampler);
 
-			// TODO improve memory to align with the required by the driver
+			/*	Allocate uniform buffer.	*/
 			this->uniformBufferSize = sizeof(UniformBufferBlock);
 			const size_t minMapBufferSize =
 				getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
@@ -276,8 +283,8 @@ namespace vksample {
 			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
 
 				void *_data;
-				VKS_VALIDATE(
-					vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, uniformBufferSize, 0, &_data));
+				VKS_VALIDATE(vkMapMemory(getDevice(), this->uniformBufferMemory, this->uniformBufferSize * i,
+										 this->uniformBufferSize, 0, &_data));
 				mapMemory.push_back(_data);
 			}
 
@@ -294,8 +301,9 @@ namespace vksample {
 			descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
 
 			/*	Create pipeline.	*/
-			graphicsPipeline = createGraphicPipeline();
+			this->graphicsPipeline = createGraphicPipeline();
 
+			/*	*/
 			std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 			VkDescriptorSetAllocateInfo allocdescInfo{};
 			allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -339,38 +347,44 @@ namespace vksample {
 									   descriptorWrites.data(), 0, nullptr);
 			}
 
-			/*	Load geometry.	*/
-			std::vector<fragcore::ProceduralGeometry::Vertex> vertices;
-			std::vector<unsigned int> indices;
-			fragcore::ProceduralGeometry::generateCube(1.0f, vertices, indices);
+			{
+				/*	Load geometry.	*/
+				std::vector<fragcore::ProceduralGeometry::Vertex> vertices;
+				std::vector<unsigned int> indices;
+				fragcore::ProceduralGeometry::generateCube(1.0f, vertices, indices);
 
-			VkBufferCreateInfo bufferInfo = {};
-			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			bufferInfo.size = sizeof(vertices[0]) * vertices.size();
-			bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+				VkBufferCreateInfo bufferInfo = {};
+				bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+				bufferInfo.size = sizeof(vertices[0]) * vertices.size() + sizeof(indices[0]) * indices.size();
+				bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+				bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-			VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
+				VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
+				this->indices_offset = sizeof(vertices[0]) * vertices.size();
+				this->nrIndices = indices.size();
 
-			VkMemoryRequirements memRequirements;
-			vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
+				VkMemoryRequirements memRequirements;
+				vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
 
-			VkMemoryAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex =
-				VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-										 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-					.value();
+				VkMemoryAllocateInfo allocInfo = {};
+				allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+				allocInfo.allocationSize = memRequirements.size;
+				allocInfo.memoryTypeIndex =
+					VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
+											 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+						.value();
 
-			VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
+				VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexIndicesMemory));
 
-			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
+				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexIndicesMemory, 0));
 
-			void *data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
-			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
-			vkUnmapMemory(getDevice(), vertexMemory);
+				/*	Upload vertex data.	*/
+				uint8_t *data;
+				VKS_VALIDATE(vkMapMemory(getDevice(), vertexIndicesMemory, 0, bufferInfo.size, 0, (void **)&data));
+				memcpy(data, vertices.data(), (size_t)vertices.size() * sizeof(vertices[0]));
+				memcpy(data + indices_offset, indices.data(), (size_t)indices.size() * sizeof(indices[0]));
+				vkUnmapMemory(getDevice(), vertexIndicesMemory);
+			}
 
 			/*	*/
 			this->uniform_stage_buffer.model = glm::mat4(1.0f);
@@ -420,14 +434,16 @@ namespace vksample {
 				/*	*/
 				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
+				/*	*/
 				VkBuffer vertexBuffers[] = {vertexBuffer};
 				VkDeviceSize offsets[] = {0};
 				vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
+				vkCmdBindIndexBuffer(cmd, vertexBuffer, indices_offset, VK_INDEX_TYPE_UINT32);
 
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i],
 										0, nullptr);
 
-				vkCmdDraw(cmd, 4, 1, 0, 0);
+				vkCmdDrawIndexed(cmd, this->nrIndices, 1, 0, 0, 0);
 
 				vkCmdEndRenderPass(cmd);
 
@@ -438,8 +454,8 @@ namespace vksample {
 		virtual void draw() override {
 
 			/*	*/
-			float elapsedTime = getTimer().getElapsed();
-			camera.update(getTimer().deltaTime());
+			float elapsedTime = this->getTimer().getElapsed();
+			this->camera.update(this->getTimer().deltaTime());
 
 			/*	*/
 			this->uniform_stage_buffer.model = glm::mat4(1.0f);
@@ -451,7 +467,7 @@ namespace vksample {
 
 			this->uniform_stage_buffer.modelView = camera.getViewMatrix();
 
-			memcpy(mapMemory[getCurrentFrameIndex()], &uniform_stage_buffer,
+			memcpy(mapMemory[this->getCurrentFrameIndex()], &uniform_stage_buffer,
 				   (size_t)sizeof(this->uniform_stage_buffer));
 		}
 

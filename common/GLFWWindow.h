@@ -1,6 +1,4 @@
-
-#ifndef _VKCOMMON_GLFW_WINDOW_H_
-#define _VKCOMMON_GLFW_WINDOW_H_ 1
+#pragma once
 #include "IWindow.h"
 #include <GLFW/glfw3.h>
 #include <string>
@@ -61,5 +59,3 @@ class GLFWWindow : public IWindow {
   protected:
 	GLFWwindow *window;
 };
-
-#endif

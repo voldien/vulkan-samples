@@ -2,8 +2,7 @@
 	Vulkan common and core library
 	Copyright (C) 2021  Valdemar Lindberg
 */
-#ifndef _VKCOMMON_SDL_WINDOW_H_
-#define _VKCOMMON_SDL_WINDOW_H_ 1
+#pragma once
 #include "IWindow.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
@@ -70,5 +69,3 @@ class SDLWindow : public IWindow {
   protected:
 	SDL_Window *window;
 };
-
-#endif

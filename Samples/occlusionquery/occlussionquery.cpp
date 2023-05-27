@@ -44,9 +44,9 @@ class OcclusionQuery : public VKWindow {
 	VkPipeline createGraphicPipeline() {
 
 		auto vertShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 		auto fragShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -263,6 +263,16 @@ class OcclusionQuery : public VKWindow {
 			renderPassInfo.clearValueCount = clearValues.size();
 			renderPassInfo.pClearValues = clearValues.data();
 
+			// vkCmdCopyQueryPoolResults
+			//VkConditionalRenderingBeginInfoEXT conditionalRenderingBeginInfo{};
+			//conditionalRenderingBeginInfo.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
+			//conditionalRenderingBeginInfo.buffer = conditionalBuffer.buffer;
+			//conditionalRenderingBeginInfo.offset = 0;
+
+			//vkCmdBeginConditionalRenderingEXT(cmd, &conditionalRenderingBeginInfo);
+//
+			//vkCmdEndConditionalRenderingEXT(cmd);
+//
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 			VkViewport viewport = {

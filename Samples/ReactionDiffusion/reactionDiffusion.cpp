@@ -88,7 +88,7 @@ class ReactionDiffusion : public VKWindow {
 		VkPipeline pipeline;
 
 		auto compShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, fragcore::FileSystem::getFileSystem());
+			vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
 
 		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -224,7 +224,7 @@ class ReactionDiffusion : public VKWindow {
 		/*	Create reaction diffusion image and buffer.	*/
 		reactionDiffuseImage.resize(getSwapChainImageCount());
 		reactionDiffuseImageMemory.resize(getSwapChainImageCount());
-		for (unsigned int i = 0; i < reactionDiffuseImageMemory.size(); i++) {
+		for (size_t i = 0; i < reactionDiffuseImageMemory.size(); i++) {
 
 			VKHelper::createImage(
 				getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
@@ -235,7 +235,7 @@ class ReactionDiffusion : public VKWindow {
 
 		/*	*/
 		computeImageViews.resize(getSwapChainImageCount());
-		for (unsigned int i = 0; i < computeImageViews.size(); i++) {
+		for (size_t i = 0; i < computeImageViews.size(); i++) {
 			if (computeImageViews[i] != nullptr)
 				vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
 			computeImageViews[i] =

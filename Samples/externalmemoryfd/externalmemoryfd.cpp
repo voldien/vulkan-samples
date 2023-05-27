@@ -69,7 +69,9 @@ class ExternalMemoryFD : public vkscommon::VKSampleSessionBase {
 		}
 		close(fd);
 
-		VkMemoryFdPropertiesKHR prop = {.sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR, .pNext = nullptr};
+		VkMemoryFdPropertiesKHR prop;
+		prop.sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR;
+		prop.pNext = nullptr;
 
 		VKS_VALIDATE(
 			vkGetMemoryFdPropertiesKHR(this->getDevice(), VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT, fd, &prop));

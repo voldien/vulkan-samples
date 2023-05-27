@@ -101,9 +101,9 @@ class BasicSDFFont : public VKWindow {
 	VkPipeline createGraphicPipeline() {
 
 		auto vertShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 		auto fragShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, fragcore::FileSystem::getFileSystem());
+			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -388,8 +388,7 @@ class BasicSDFFont : public VKWindow {
 
 			// vkCmdUpdateBuffer(cmd, uniformBuffers[i], 0, sizeof(mvp), &mvp);
 
-			VkBufferMemoryBarrier ub_barrier{};
-
+			VkBufferMemoryBarrier ub_barrier;
 			ub_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 			ub_barrier.pNext = nullptr;
 			ub_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;

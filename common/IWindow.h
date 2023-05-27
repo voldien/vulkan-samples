@@ -1,5 +1,4 @@
-#ifndef _VKSCOMMON_IWINDOW_H_
-#define _VKSCOMMON_IWINDOW_H_ 1
+#pragma once
 #include <VulkanCore.h>
 #include <stdint.h>
 #include <string>
@@ -68,4 +67,3 @@ class IWindow {
   protected:
 	void *userData = nullptr;
 };
-#endif

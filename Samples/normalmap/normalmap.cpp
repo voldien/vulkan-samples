@@ -142,9 +142,9 @@ namespace vksample {
 		VkPipeline createGraphicPipeline() {
 
 			auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, fragcore::FileSystem::getFileSystem());
+				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   fragcore::FileSystem::getFileSystem());
+																		   this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -335,7 +335,7 @@ namespace vksample {
 			beginInfo.flags = 0;
 			VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
 
-			ImageImporter imageImporter(fragcore::FileSystem::getFileSystem(), *this->getVKDevice());
+			ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
 
 			/*	Diffuse Texture.	*/
 			imageImporter.createImage2D(this->diffuseTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
