@@ -15,6 +15,7 @@ namespace vkscommon {
 
 	class FVDECLSPEC VKSampleSession {
 	  public:
+		virtual ~VKSampleSession() = default;
 		virtual void run(int argc, const char **argv,
 						 std::unordered_map<const char *, bool> required_device_extensions = {},
 						 std::unordered_map<const char *, bool> required_instance_layers = {},

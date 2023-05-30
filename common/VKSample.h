@@ -154,16 +154,20 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			height = display.height();
 		}
 
-		this->ref->setSize(width, height);
-		// this->sampleRef->vsync(vsync);
-		this->ref->setFullScreen(fullscreen);
+		IWindow *windowRef = dynamic_cast<IWindow *>(this->ref);
+
+		if (windowRef) {
+			windowRef->setSize(width, height);
+			// this->sampleRef->vsync(vsync);
+			windowRef->setFullScreen(fullscreen);
+		}
 
 		this->ref->run();
 	}
 
 	virtual ~VKSample() {
 		// this->ref->Release();
-		delete ref;
+		delete this->ref;
 	}
 
   private:
