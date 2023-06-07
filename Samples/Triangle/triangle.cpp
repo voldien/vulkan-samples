@@ -14,8 +14,8 @@ namespace vksample {
 		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 
 		/*	Shader source file paths.	*/
-		const std::string vertexShaderPath = "Shaders/triangle/triangle.vert.spv";
-		const std::string fragmentShaderPath = "Shaders/triangle/triangle.frag.spv";
+		const std::string vertexShaderPath = "shaders/triangle/triangle.vert.spv";
+		const std::string fragmentShaderPath = "shaders/triangle/triangle.frag.spv";
 
 	  public:
 		Triangle(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)

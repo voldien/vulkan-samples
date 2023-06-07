@@ -11,8 +11,8 @@ class VariableRateShading : public VKWindow {
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
-	const std::string vertexShaderPath = "Shaders/tessellation/tessellation.vert";
-	const std::string fragmentShaderPath = "Shaders/tessellation/tessellation.frag";
+	const std::string vertexShaderPath = "shaders/tessellation/tessellation.vert";
+	const std::string fragmentShaderPath = "shaders/tessellation/tessellation.frag";
 
   public:
 	VariableRateShading(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)

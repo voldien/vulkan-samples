@@ -63,8 +63,8 @@ namespace vksample {
 		const std::string diffuseTexturePath = "asset/diffuse.png";
 		const std::string normalTexturePath = "asset/normalmap.png";
 
-		const std::string vertexShaderPath = "Shaders/normalmap/normalmap.vert.spv";
-		const std::string fragmentShaderPath = "Shaders/normalmap/normalmap.frag.spv";
+		const std::string vertexShaderPath = "shaders/normalmap/normalmap.vert.spv";
+		const std::string fragmentShaderPath = "shaders/normalmap/normalmap.frag.spv";
 
 	  public:
 		NormalMap(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)

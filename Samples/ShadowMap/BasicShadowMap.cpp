@@ -21,8 +21,8 @@ class BasicShadowMap : public VKWindow {
 	std::vector<void *> mapMemory;
 	long prevTimeCounter;
 
-	const std::string vertexShaderPath = "Shaders/tessellation/tessellation.vert";
-	const std::string fragmentShaderPath = "Shaders/tessellation/tessellation.frag";
+	const std::string vertexShaderPath = "shaders/tessellation/tessellation.vert";
+	const std::string fragmentShaderPath = "shaders/tessellation/tessellation.frag";
 
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;

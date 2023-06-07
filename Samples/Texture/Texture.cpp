@@ -47,8 +47,8 @@ namespace vksample {
 
 		VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
 
-		const std::string vertexShaderPath = "Shaders/texture/texture.vert.spv";
-		const std::string fragmentShaderPath = "Shaders/texture/texture.frag.spv";
+		const std::string vertexShaderPath = "shaders/texture/texture.vert.spv";
+		const std::string fragmentShaderPath = "shaders/texture/texture.frag.spv";
 
 	  public:
 		SingleTexture(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)

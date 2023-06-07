@@ -9,9 +9,9 @@
 
 class ParticleSystem : public VKWindow {
   private:
-	const std::string vertexShaderPath = "Shaders/particlesystem/particle.vert.spv";
-	const std::string fragmentShaderPath = "Shaders/particlesystem/particle.frag.spv";
-	const std::string computeShaderPath = "Shaders/particlesystem/particle.comp.spv";
+	const std::string vertexShaderPath = "shaders/particlesystem/particle.vert.spv";
+	const std::string fragmentShaderPath = "shaders/particlesystem/particle.frag.spv";
+	const std::string computeShaderPath = "shaders/particlesystem/particle.comp.spv";
 
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;

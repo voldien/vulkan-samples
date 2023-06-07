@@ -28,8 +28,8 @@ namespace vksample {
 
 		VkDeviceSize uniformMemSize;
 
-		const std::string vertexShaderPath = "Shaders/triangle-mvp.vert.spv";
-		const std::string fragmentShaderPath = "Shaders/triangle-mvp.frag.spv";
+		const std::string vertexShaderPath = "shaders/triangle-mvp.vert.spv";
+		const std::string fragmentShaderPath = "shaders/triangle-mvp.frag.spv";
 
 		struct UniformBufferBlock {
 			alignas(16) glm::mat4 model;

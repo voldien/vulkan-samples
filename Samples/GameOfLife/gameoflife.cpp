@@ -23,7 +23,7 @@ namespace vksample {
 		VkCommandPool computeCmdPool = VK_NULL_HANDLE;
 		std::vector<VkCommandBuffer> computeCmds;
 
-		const std::string computeGameOfLifeShaderPath = "Shaders/gameoflife/gameoflife.comp.spv";
+		const std::string computeGameOfLifeShaderPath = "shaders/gameoflife/gameoflife.comp.spv";
 
 	  public:
 		GameOfLife(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)

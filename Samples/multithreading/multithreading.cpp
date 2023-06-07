@@ -27,8 +27,8 @@ class MultiThreading : public VKWindow {
 	std::vector<VkCommandBuffer> secondaryCommandBuffer;
 	vkscommon::Time time;
 	CameraController cameraController;
-	const std::string vertexShaderPath = "Shaders/particlesystem/particle.vert.spv";
-	const std::string fragmentShaderPath = "Shaders/particlesystem/particle.frag.spv";
+	const std::string vertexShaderPath = "shaders/particlesystem/particle.vert.spv";
+	const std::string fragmentShaderPath = "shaders/particlesystem/particle.frag.spv";
 	fragcore::TaskScheduler *tashSch;
 
 	struct UniformBufferBlock {

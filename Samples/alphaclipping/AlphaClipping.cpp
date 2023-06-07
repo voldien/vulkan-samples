@@ -47,8 +47,8 @@ namespace vksample {
 
 		VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
 
-		const std::string vertexShaderPath = "Shaders/alphaclipping/alphaclipping.vert.spv";
-		const std::string fragmentShaderPath = "Shaders/alphaclipping/alphaclipping.frag.spv";
+		const std::string vertexShaderPath = "shaders/alphaclipping/alphaclipping.vert.spv";
+		const std::string fragmentShaderPath = "shaders/alphaclipping/alphaclipping.frag.spv";
 
 	  public:
 		AlphaClipping(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)

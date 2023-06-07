@@ -23,7 +23,7 @@ namespace vksample {
 		VkCommandPool computeCmdPool = VK_NULL_HANDLE;
 		std::vector<VkCommandBuffer> computeCmds;
 
-		const std::string computeShaderPath = "Shaders/mandelbrot/mandelbrot.comp.spv";
+		const std::string computeShaderPath = "shaders/mandelbrot/mandelbrot.comp.spv";
 
 		struct mandelbrot_param_t {
 			float posX, posY;

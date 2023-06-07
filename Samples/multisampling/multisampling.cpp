@@ -12,8 +12,8 @@ class MultiSampling : public VKWindow {
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 
-	const std::string vertexShaderPath = "Shaders/particlesystem/particle.vert.spv";
-	const std::string fragmentShaderPath = "Shaders/particlesystem/particle.frag.spv";
+	const std::string vertexShaderPath = "shaders/particlesystem/particle.vert.spv";
+	const std::string fragmentShaderPath = "shaders/particlesystem/particle.frag.spv";
 
   public:
 	MultiSampling(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)

@@ -29,11 +29,8 @@ namespace vksample {
 
 			vkBeginCommandBuffer(cmd, &cmdBufBeginInfo);
 			vkCmdResetQueryPool(cmd, queryPool, 0, 2);
-			vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, queryPool, 0);
+			vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, queryPool, 0);
 			vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1, &bufferCopy);
-			VKHelper::bufferBarrier(cmd, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, dstBuffer,
-									sampleMemorySize, 0, VK_PIPELINE_STAGE_TRANSFER_BIT,
-									VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
 			vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 1);
 			vkEndCommandBuffer(cmd);
 

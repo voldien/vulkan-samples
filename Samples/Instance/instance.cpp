@@ -49,8 +49,8 @@ namespace vksample {
 
 		CameraController camera;
 
-		const std::string vertexInstanceShaderPath = "Shaders/instance/instance.vert.spv";
-		const std::string fragmentInstanceShaderPath = "Shaders/instance/instance.frag.spv";
+		const std::string vertexInstanceShaderPath = "shaders/instance/instance.vert.spv";
+		const std::string fragmentInstanceShaderPath = "shaders/instance/instance.frag.spv";
 
 	  public:
 		Instance(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)

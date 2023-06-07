@@ -19,8 +19,8 @@ class BasicSDFFont : public VKWindow {
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void *> mapMemory;
 
-	const std::string vertexShaderPath = "Shaders/texture/texture.vert.spv";
-	const std::string fragmentShaderPath = "Shaders/texture/texture.frag.spv";
+	const std::string vertexShaderPath = "shaders/texture/texture.vert.spv";
+	const std::string fragmentShaderPath = "shaders/texture/texture.frag.spv";
 
 	struct UniformBufferBlock {
 		alignas(16) glm::mat4 model;

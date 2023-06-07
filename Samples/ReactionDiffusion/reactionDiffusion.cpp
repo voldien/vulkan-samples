@@ -49,7 +49,7 @@ class ReactionDiffusion : public VKWindow {
 
 	unsigned int paramMemSize = sizeof(params);
 
-	const std::string computeShaderPath = "Shaders/reactiondiffusion/reactiondiffusion.comp.spv";
+	const std::string computeShaderPath = "shaders/reactiondiffusion/reactiondiffusion.comp.spv";
 
   public:
 	ReactionDiffusion(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)

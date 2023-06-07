@@ -73,10 +73,10 @@ class BasicTessellation : public VKWindow {
 	const std::string diffuseTexturePath = "asset/tessellation_diffusemap.png";
 	const std::string heightTexturePath = "asset/tessellation_heightmap.png";
 	/*	*/
-	const std::string vertexShaderPath = "Shaders/tessellation/tessellation.vert";
-	const std::string fragmentShaderPath = "Shaders/tessellation/tessellation.frag";
-	const std::string ControlShaderPath = "Shaders/tessellation/tessellation.tesc";
-	const std::string EvoluationShaderPath = "Shaders/tessellation/tessellation.tese";
+	const std::string vertexShaderPath = "shaders/tessellation/tessellation.vert";
+	const std::string fragmentShaderPath = "shaders/tessellation/tessellation.frag";
+	const std::string ControlShaderPath = "shaders/tessellation/tessellation.tesc";
+	const std::string EvoluationShaderPath = "shaders/tessellation/tessellation.tese";
 
   public:
 	BasicTessellation(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
