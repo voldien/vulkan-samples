@@ -64,6 +64,9 @@ class IWindow {
 
 	virtual VkSurfaceKHR createSurface(const std::shared_ptr<fvkcore::VulkanCore> &instance) = 0;
 
+  public:
+	virtual ~IWindow() = default;
+
   protected:
 	void *userData = nullptr;
 };

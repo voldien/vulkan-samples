@@ -11,9 +11,6 @@ using namespace fvkcore;
 
 VKWindow::~VKWindow() {
 
-	/*	*/
-	this->cleanSwapChain();
-
 	/*	Release sync objets.	*/
 	for (size_t i = 0; i < this->renderFinishedSemaphores.size(); i++) {
 		vkDestroySemaphore(getDevice(), renderFinishedSemaphores[i], nullptr);
@@ -22,7 +19,7 @@ VKWindow::~VKWindow() {
 	}
 
 	/*	*/
-	vkDestroyCommandPool(getDevice(), this->cmd_pool, nullptr);
+	vkDestroyCommandPool(getDevice(), this->graphic_pool, nullptr);
 
 	/*	*/
 	vkDestroySurfaceKHR(core->getHandle(), this->surface, nullptr);
@@ -60,14 +57,7 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	/*  Create surface. */
 	this->surface = this->createSurface(this->core);
 
-	/*  Create command pool.    */
-	VkCommandPoolCreateInfo cmdPoolCreateInfo = {};
-	cmdPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	cmdPoolCreateInfo.queueFamilyIndex = device->getDefaultGraphicQueueIndex();
-	cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-	/*  Create command pool.    */
-	VKS_VALIDATE(vkCreateCommandPool(getDevice(), &cmdPoolCreateInfo, NULL, &this->cmd_pool));
+	this->createQueueAndCommandPool();
 
 	/*	Create swap chain.	*/
 	createSwapChain();
@@ -106,17 +96,12 @@ VkFramebuffer VKWindow::getDefaultFrameBuffer() const noexcept {
 }
 
 VkRenderPass VKWindow::getDefaultRenderPass() const noexcept { return this->swapChain->renderPass; }
-VkCommandPool VKWindow::getGraphicCommandPool() const noexcept { return this->cmd_pool; }
 VkImage VKWindow::getDefaultImage() const { return this->swapChain->swapChainImages[this->swapChain->currentFrame]; }
 VkImageView VKWindow::getDefaultImageView() const {
 	return this->swapChain->swapChainImageViews[this->swapChain->currentFrame];
 }
 
 VkFormat VKWindow::getDefaultImageFormat() const noexcept { return this->swapChain->swapChainImageFormat; }
-
-VkQueue VKWindow::getDefaultGraphicQueue() const { return this->device->getDefaultGraphicQueue(); }
-
-VkQueue VKWindow::getDefaultComputeQueue() const { return this->device->getDefaultCompute(); }
 
 const std::vector<VkImage> &VKWindow::getSwapChainImages() const noexcept { return this->swapChain->swapChainImages; }
 const std::vector<VkImageView> &VKWindow::getSwapChainImageViews() const noexcept {
@@ -130,10 +115,9 @@ const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice() const noexce
 
 VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
 
-void VKWindow::setPhysicalDevice(VkPhysicalDevice device) {}
-std::vector<VkQueue> VKWindow::getQueues() const noexcept {}
-
-const std::vector<VkPhysicalDevice> &VKWindow::availablePhysicalDevices() const { return {}; }
+void VKWindow::setPhysicalDevice(VkPhysicalDevice device) { /*	*/
+}
+std::vector<VkQueue> VKWindow::getQueues() const noexcept { return {}; }
 
 VkCommandBuffer VKWindow::getCurrentCommandBuffer() const noexcept {
 	return this->swapChain->commandBuffers[getCurrentFrameIndex()];
@@ -151,7 +135,7 @@ VkFramebuffer VKWindow::getFrameBuffer(unsigned int index) const noexcept {
 void VKWindow::swapBuffer() {
 	VkResult result;
 
-	vkWaitForFences(getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame], VK_TRUE, UINT64_MAX);
+	vkWaitForFences(this->getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame], VK_TRUE, UINT64_MAX);
 
 	/*  */
 	uint32_t imageIndex;
@@ -176,7 +160,7 @@ void VKWindow::swapBuffer() {
 
 	vkResetFences(getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame]);
 
-	this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), {this->swapChain->commandBuffers[imageIndex]},
+	this->getVKDevice()->submitCommands(this->getDefaultGraphicQueue(), {this->swapChain->commandBuffers[imageIndex]},
 										{this->imageAvailableSemaphores[this->swapChain->currentFrame]},
 										{this->renderFinishedSemaphores[this->swapChain->currentFrame]},
 										this->inFlightFences[this->swapChain->currentFrame],
@@ -196,10 +180,10 @@ void VKWindow::swapBuffer() {
 	/*	*/
 	presentInfo.pImageIndices = &imageIndex;
 
-	result = vkQueuePresentKHR(this->device->getDefaultPresent(), &presentInfo);
+	result = vkQueuePresentKHR(this->getDefaultGraphicQueue(), &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		// framebufferResized = false;
-		recreateSwapChain();
+		this->recreateSwapChain();
 	} else if (result != VK_SUCCESS) {
 		throw cxxexcept::RuntimeException("failed to present swap chain image!");
 	}
@@ -207,6 +191,32 @@ void VKWindow::swapBuffer() {
 	/*  Compute current frame.  */
 	this->swapChain->currentFrame =
 		(this->swapChain->currentFrame + 1) % std::min((uint32_t)this->inFlightFences.size(), getSwapChainImageCount());
+}
+
+void VKWindow::createQueueAndCommandPool() {
+
+	const std::vector<VkQueueFamilyProperties> &queueFamilies = this->getPhysicalDevice()->getQueueFamilyProperties();
+
+	this->graphics_queue_node_index = 0;
+	this->compute_queue_node_index = 0;
+	this->transfer_queue_node_index = 0;
+
+	this->graphic_queue = this->device->getQueue(this->graphics_queue_node_index, 0);
+	this->compute_queue = this->device->getQueue(this->compute_queue_node_index, 0);
+	this->transfer_queue = this->device->getQueue(this->transfer_queue_node_index, 0);
+
+	/*  Create command pool.    */
+	VkCommandPoolCreateInfo cmdPoolCreateInfo = {};
+	cmdPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	cmdPoolCreateInfo.queueFamilyIndex = this->getDefaultGraphicQueueIndex();
+	cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	/*  Create command pool.    */
+	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, NULL, &this->graphic_pool));
+
+	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, NULL, &this->compute_pool));
+	/*  Create command pool.    */
+	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, NULL, &this->transfer_pool));
 }
 
 void VKWindow::createSwapChain() {
@@ -262,7 +272,7 @@ void VKWindow::createSwapChain() {
 	createSwapChainInfo.imageColorSpace = surfaceFormat.colorSpace;
 	createSwapChainInfo.imageExtent = extent;
 	createSwapChainInfo.imageArrayLayers = 1;
-	createSwapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	createSwapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	/*  */
 	if (indices.graphicsFamily != indices.presentFamily) {
@@ -413,7 +423,7 @@ void VKWindow::createSwapChain() {
 	this->swapChain->commandBuffers.resize(this->swapChain->swapChainFramebuffers.size());
 	VkCommandBufferAllocateInfo cmdBufAllocInfo = {};
 	cmdBufAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmdBufAllocInfo.commandPool = this->cmd_pool;
+	cmdBufAllocInfo.commandPool = this->graphic_pool;
 	cmdBufAllocInfo.commandBufferCount = this->swapChain->swapChainImages.size();
 	cmdBufAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
@@ -436,7 +446,7 @@ void VKWindow::cleanSwapChain() {
 	swapChain->swapChainFramebuffers.clear();
 
 	/*	*/
-	vkFreeCommandBuffers(getDevice(), this->cmd_pool, static_cast<uint32_t>(swapChain->commandBuffers.size()),
+	vkFreeCommandBuffers(getDevice(), this->graphic_pool, static_cast<uint32_t>(swapChain->commandBuffers.size()),
 						 swapChain->commandBuffers.data());
 	swapChain->commandBuffers.clear();
 
@@ -538,6 +548,8 @@ void VKWindow::run() {
 			this->update();
 			this->draw();
 
+			/*	ImGui.	*/
+
 			/*	*/
 			this->swapBuffer();
 			this->getTimer().update();
@@ -563,6 +575,7 @@ finished:
 
 	/*	Release all the resources associated with the window application.	*/
 	this->release();
+	this->cleanSwapChain();
 }
 
 void VKWindow::captureScreenShot() {
@@ -652,23 +665,27 @@ VkSurfaceKHR VKWindow::createSurface(const std::shared_ptr<VulkanCore> &instance
 	return proxyWindow->createSurface(instance);
 }
 
+#include <SDL2/SDL_vulkan.h>
+
 std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
 
 	std::vector<const char *> usedInstanceExtensionNames;
 
 	// TODO be replace with own code!
-	// SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
-	// if (tmpWindow == NULL)
-	// 	throw cxxexcept::RuntimeException("Failed to create Tmp Vulkan window - {}", SDL_GetError());
-	// /*	*/
-	// unsigned int count;
-	// if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, nullptr))
-	// 	throw cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions");
-	// unsigned int additional_extension_count = (unsigned int)usedInstanceExtensionNames.size();
-	// usedInstanceExtensionNames.resize((size_t)(additional_extension_count + count));
-	// if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count,
-	// &usedInstanceExtensionNames[additional_extension_count])) 	throw
-	// cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions"); SDL_DestroyWindow(tmpWindow);
+	SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
+	if (tmpWindow == NULL)
+		throw cxxexcept::RuntimeException("Failed to create Tmp Vulkan window - {}", SDL_GetError());
+	/*	*/
+	unsigned int count;
+	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, nullptr)) {
+		throw cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions");
+	}
+	unsigned int additional_extension_count = (unsigned int)usedInstanceExtensionNames.size();
+	usedInstanceExtensionNames.resize((size_t)(additional_extension_count + count));
+	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, &usedInstanceExtensionNames[additional_extension_count])) {
+		throw cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions");
+	}
+	SDL_DestroyWindow(tmpWindow);
 
 	return usedInstanceExtensionNames;
 }

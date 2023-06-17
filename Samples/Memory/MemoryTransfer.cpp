@@ -1,7 +1,9 @@
+#include "vulkan/vulkan_core.h"
 #include <Importer/ImageImport.h>
 #include <VKSample.h>
 #include <VKSampleBase.h>
 #include <VKUtil.h>
+#include <cstdint>
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 
@@ -41,8 +43,12 @@ namespace vksample {
 			VKS_VALIDATE(vkQueueWaitIdle(transferQueue));
 
 			uint64_t buffer[2];
-			VkResult result = vkGetQueryPoolResults(device->getHandle(), queryPool, 0, 2, sizeof(uint64_t) * 2, buffer,
-													sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+			VkResult result =
+				vkGetQueryPoolResults(device->getHandle(), queryPool, 0, 2, sizeof(uint64_t) * 2, buffer,
+									  sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+			if (!(result == VK_SUCCESS || result == VK_NOT_READY)) {
+				VKS_VALIDATE(result);
+			}
 
 			/*	Last - First Timestamp, multiplied by timstamp period time.	*/
 			timeSampleNanoSeconds[n] = (buffer[1] - buffer[0]) * timestampPeriod;
@@ -86,12 +92,16 @@ namespace vksample {
 
 	  public:
 		MemoryTransfer(std::shared_ptr<fvkcore::VulkanCore> &core, std::shared_ptr<fvkcore::VKDevice> &device)
-			: VKSampleSessionBase(core, device) {}
+			: VKSampleSessionBase(core, device) {
+			this->transfer_queue = device->getQueue(0, 0);
+		}
 
 		virtual void release() override {
 			this->releaseMemory();
 			vkDestroyQueryPool(this->getDevice(), this->queryPool, nullptr);
 		}
+
+		virtual void loadDefaultQueue() override {}
 
 		void releaseMemory() {
 
@@ -130,13 +140,13 @@ namespace vksample {
 			// TODO add support to look at the heap.
 
 			try {
-				VkQueue transfer = this->getVKDevice()->getDefaultTransfer();
+				VkQueue transfer = this->getDefaultTransferQueue();
 
 				const VkPhysicalDeviceMemoryProperties &memProp =
 					this->getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties();
 
 				VkCommandPool commandPool =
-					this->getVKDevice()->createCommandPool(device->getDefaultTransferQueueIndex());
+					this->getVKDevice()->createCommandPool(this->getDefaultTransferQueueIndex());
 				std::vector<VkCommandBuffer> cmds =
 					device->allocateCommandBuffers(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 
@@ -236,6 +246,34 @@ namespace vksample {
 		MemoryTransferVKSample() : VKSample<MemoryTransfer>() {}
 		virtual void customOptions(cxxopts::OptionAdder &options) override {
 			// options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/texture.png"));
+		}
+
+		std::vector<VkDeviceQueueCreateInfo>
+		OnSelectQueue(std::vector<std::shared_ptr<PhysicalDevice>> &physical_devices) override {
+			std::vector<VkDeviceQueueCreateInfo> queues;
+
+			uint32_t timestampvalid = 0;
+			int queueIndex = -1;
+			for (size_t j = 0; j < physical_devices[0]->getQueueFamilyProperties().size(); j++) {
+				/*  */
+				const VkQueueFamilyProperties &familyProp = physical_devices[0]->getQueueFamilyProperties()[j];
+				if ((familyProp.queueFlags & VK_QUEUE_TRANSFER_BIT) && familyProp.timestampValidBits > timestampvalid) {
+					timestampvalid = familyProp.timestampValidBits;
+					queueIndex = j;
+				}
+			}
+			std::vector<float> queuePriorities(1, 1.0f);
+
+			VkDeviceQueueCreateInfo queueCreateInfo;
+			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queueCreateInfo.pNext = nullptr;
+			queueCreateInfo.flags = 0;
+			queueCreateInfo.queueFamilyIndex = queueIndex;
+			queueCreateInfo.queueCount = 1;
+			queueCreateInfo.pQueuePriorities = queuePriorities.data();
+
+			queues.push_back(queueCreateInfo);
+			return queues;
 		}
 	};
 } // namespace vksample

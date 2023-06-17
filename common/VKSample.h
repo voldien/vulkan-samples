@@ -2,11 +2,14 @@
 #include "Importer/IOUtil.h"
 #include "Util/CameraController.h"
 #include "VKSampleSession.h"
+#include "VkPhysicalDevice.h"
+#include "vulkan/vulkan_core.h"
 #include <Core/SystemInfo.h>
 #include <GeometryUtil.h>
 #include <ProceduralGeometry.h>
 #include <SDLDisplay.h>
 #include <cxxopts.hpp>
+#include <memory>
 
 template <class T> class VKSample : public vkscommon::VKSampleSession {
   public:
@@ -34,8 +37,8 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			"f,fullscreen", "FullScreen", cxxopts::value<bool>()->default_value("false"))(
 			"H,headless", "Headless Renderer", cxxopts::value<bool>()->default_value("false"))(
 			"r,renderdoc", "Enable RenderDoc", cxxopts::value<bool>()->default_value("false"))(
-			"F,filesystem", "FileSystem", cxxopts::value<std::string>()->default_value("."));
-		// TODO add display color space support.
+			"F,filesystem", "FileSystem", cxxopts::value<std::string>()->default_value("."))(
+			"C,color-space", "Display ColorSpace", cxxopts::value<std::string>()->default_value(""));
 
 		/*	Append command option for the specific sample.	*/
 		this->customOptions(addr);
@@ -69,6 +72,7 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 		bool headless = result["headless"].as<bool>();
 
 		/*	*/
+		// TODO add support to integrate
 		int nr_instance_extensions = result["instance-extensions"].count();
 		int nr_instance_layers = result["instance-layers"].count();
 		int nr_device_extensions = result["device-extensions"].count();
@@ -106,63 +110,107 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 		use_required_instance_extensions.merge(required_instance_extensions);
 
 		/*	*/
-		std::vector<const char *> required_extension = VKWindow::getRequiredDeviceExtensions();
-		for (auto it = required_extension.cbegin(); it != required_extension.cend(); it++) {
+		std::vector<const char *> required_window_device_extensions = VKWindow::getRequiredDeviceExtensions();
+		for (auto it = required_window_device_extensions.cbegin(); it != required_window_device_extensions.cend();
+			 it++) {
 			required_device_extensions[(*it)] = true;
 		}
 
 		/*	Vulkan core.	*/
 		this->core = std::make_shared<VulkanCore>(use_required_instance_extensions, use_required_instance_layers);
 
+		if (device_index >= this->core->getNrPhysicalDevices()) {
+			throw cxxexcept::RuntimeException("Must be valid physical device {} greater than {}", device_index,
+											  core->getNrPhysicalDevices());
+		}
+
 		/*	All physical devices.	*/
-		std::vector<std::shared_ptr<PhysicalDevice>> physical_devices;
-		bool group_device_request = device_index > 1;
+		std::vector<std::shared_ptr<PhysicalDevice>> selected_physical_devices;
+		bool group_device_request = result.count("gpu-device") > 1;
 
 		if (device_index >= 0) {
-			// TODO validate if valid device index.
-			if ((uint32_t)device_index > core->getNrPhysicalDevices())
-				throw cxxexcept::RuntimeException("Must be valid physical device {} greater than {}", device_index,
-												  core->getNrPhysicalDevices());
-			physical_devices.push_back(core->createPhysicalDevice(device_index));
+			selected_physical_devices.push_back(core->createPhysicalDevice(device_index));
 		} else {
-			physical_devices = core->createPhysicalDevices();
+			// physical_devices.push_back(std::shared_ptr<PhysicalDevice>(core->getPhysicalDevices()[0]));
+		}
+
+		for (size_t i = 0; i < selected_physical_devices.size(); i++) {
+			for (auto it = use_required_device_extensions.cbegin(); it != use_required_device_extensions.cend(); it++) {
+				if (!selected_physical_devices[i]->isExtensionSupported((*it).first)) {
+					throw cxxexcept::RuntimeException("Device: {} Does not support {}",
+													  selected_physical_devices[i]->getDeviceName(), (*it).first);
+				}
+			}
 		}
 
 		/*	*/
-		for (size_t i = 0; i < physical_devices.size(); i++) {
-			std::cout << physical_devices[i]->getDeviceName() << std::endl;
+		for (size_t i = 0; i < selected_physical_devices.size(); i++) {
+			std::cout << selected_physical_devices[i]->getDeviceName() << std::endl;
 		}
 
-		this->ldevice = std::make_shared<VKDevice>(physical_devices, use_required_device_extensions);
+		/*Select All Queue and Create Device.	*/
+		{
+			std::vector<std::vector<float>> global_queuePriorities;
+			std::vector<VkDeviceQueueCreateInfo> queues = this->OnSelectQueue(selected_physical_devices);
 
-		// TODO add support for headless.
+			if (queues.size() == 0) {
+				for (size_t j = 0; j < selected_physical_devices[0]->getQueueFamilyProperties().size(); j++) {
+					/*  */
+					const VkQueueFamilyProperties &familyProp =
+						selected_physical_devices[0]->getQueueFamilyProperties()[j];
+					std::vector<float> queuePriorities(familyProp.queueCount, 1.0f);
+					global_queuePriorities.push_back(queuePriorities);
 
-		/*	Create Sample Object.	*/
-		this->ref = new T(core, ldevice);
-		/*	Pass custom command options.	*/
-		this->ref->setCommandResult(result);
+					VkDeviceQueueCreateInfo queueCreateInfo;
+					queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+					queueCreateInfo.pNext = nullptr;
+					queueCreateInfo.flags = 0;
+					queueCreateInfo.queueFamilyIndex = j;
+					queueCreateInfo.queueCount = familyProp.queueCount;
+					queueCreateInfo.pQueuePriorities = global_queuePriorities.back().data();
 
-		/*	Internal initialize.	*/
-		this->ref->setFileSystem(this->activeFileSystem);
+					queues.push_back(queueCreateInfo);
+				}
+			}
 
-		int width = -1;
-		int height = -1;
-		if (fullscreen) {
-			// Display
-			fragcore::SDLDisplay display = fragcore::SDLDisplay::getPrimaryDisplay();
-			width = display.width();
-			height = display.height();
+			this->ldevice =
+				std::make_shared<VKDevice>(selected_physical_devices, use_required_device_extensions, queues);
 		}
 
-		IWindow *windowRef = dynamic_cast<IWindow *>(this->ref);
+		/*	*/
+		{
+			/*	Create Sample Object.	*/
+			this->ref = new T(core, ldevice);
+			/*	Pass custom command options.	*/
+			this->ref->setCommandResult(result);
 
-		if (windowRef) {
-			windowRef->setSize(width, height);
-			// this->sampleRef->vsync(vsync);
-			windowRef->setFullScreen(fullscreen);
+			/*	Internal initialize.	*/
+			this->ref->setFileSystem(this->activeFileSystem);
+
+			int width = -1;
+			int height = -1;
+			if (fullscreen) {
+				// Display,
+				fragcore::SDLDisplay display = fragcore::SDLDisplay::getPrimaryDisplay();
+				width = display.width();
+				height = display.height();
+			}
+
+			/*	Only if sample is a window type.	*/
+			IWindow *windowRef = dynamic_cast<IWindow *>(this->ref);
+			if (windowRef) {
+				windowRef->setSize(width, height);
+				// this->sampleRef->vsync(vsync);
+				windowRef->setFullScreen(fullscreen);
+			}
+
+			this->ref->run();
 		}
+	}
 
-		this->ref->run();
+	virtual std::vector<VkDeviceQueueCreateInfo> OnSelectQueue([
+		[maybe_unused]] std::vector<std::shared_ptr<PhysicalDevice>> &physical_devices) {
+		return {};
 	}
 
 	virtual ~VKSample() {

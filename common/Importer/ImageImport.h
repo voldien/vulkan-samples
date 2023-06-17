@@ -36,6 +36,10 @@ namespace vksample {
 								  VkQueue queue, VkPhysicalDevice physicalDevice, VkImage &textureImage,
 								  VkDeviceMemory &textureImageMemory);
 
+		void generateMipmaps(VkDevice device, VkCommandPool commandPool, VkQueue queue,
+						   VkPhysicalDevice physicalDevice, VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight,
+							 uint32_t mipLevels);
+
 	  private:
 		fragcore::IFileSystem *filesystem;
 		fvkcore::VKDevice &device;

@@ -1,3 +1,4 @@
+#include "vulkan/vulkan_core.h"
 #include <Importer/ImageImport.h>
 #include <SDL2/SDL.h>
 #include <Util/CameraController.h>
@@ -97,11 +98,11 @@ namespace vksample {
 
 			auto vertShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   this->getFileSystem());
+			auto fragShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
-			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
-			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
+			VkShaderModule vertShaderModule = VKHelper::createShaderModule(this->getDevice(), vertShaderCode);
+			VkShaderModule fragShaderModule = VKHelper::createShaderModule(this->getDevice(), fragShaderCode);
 
 			VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 			vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -152,7 +153,7 @@ namespace vksample {
 			samplerLayoutBinding.pImmutableSamplers = nullptr;
 			samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout,
+			VKHelper::createDescriptorSetLayout(this->getDevice(), descriptorSetLayout,
 												{uboLayoutBinding, samplerLayoutBinding});
 
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -259,15 +260,13 @@ namespace vksample {
 
 			const std::string panoramicPath = this->getResult()["skybox-texture"].as<std::string>();
 
-			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-
 			/*	Load and Create Texture.	*/
 			vksample::ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
-			imageImporter.createImage2D(panoramicPath.c_str(), this->getDevice(), getGraphicCommandPool(),
-										getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
+			imageImporter.createImage2D(panoramicPath.c_str(), this->getDevice(), getTransferCommandPool(),
+										this->getDefaultTransferQueue(), physicalDevice(), texture, textureMemory);
 
 			skyboxTextureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D,
-														  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+														  VK_FORMAT_R8G8B8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 			VKHelper::createSampler(getDevice(), sampler);
 
@@ -313,7 +312,7 @@ namespace vksample {
 			allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
 			allocdescInfo.pSetLayouts = layouts.data();
 
-			descriptorSets.resize(getSwapChainImageCount());
+			descriptorSets.resize(this->getSwapChainImageCount());
 			VKS_VALIDATE(vkAllocateDescriptorSets(this->getDevice(), &allocdescInfo, descriptorSets.data()));
 
 			for (size_t i = 0; i < getSwapChainImageCount(); i++) {
@@ -393,6 +392,7 @@ namespace vksample {
 
 		virtual void onResize(int width, int height) override {
 
+			VKS_VALIDATE(vkQueueWaitIdle(this->getDefaultTransferQueue()));
 			VKS_VALIDATE(vkQueueWaitIdle(this->getDefaultGraphicQueue()));
 			this->uniform_stage_buffer.proj =
 				glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
@@ -416,7 +416,7 @@ namespace vksample {
 				renderPassInfo.renderArea.extent.height = height;
 
 				std::array<VkClearValue, 2> clearValues{};
-				clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
+				clearValues[0].color = {{0.1f, 0.1f, 0.1f, 1.0f}};
 				clearValues[1].depthStencil = {1.0f, 0};
 
 				renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -469,7 +469,7 @@ namespace vksample {
 			// 	vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 		}
 
-		virtual void update() {}
+		virtual void update() override {}
 	};
 
 	class SkyBoxPanoramicVKSample : public VKSample<SkyboxPanoramic> {

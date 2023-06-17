@@ -14,7 +14,7 @@ using namespace fvkcore;
 // TODO rename
 class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
   protected:
-	VKWindow() = default;
+	VKWindow() = delete;
 
   public:
 	/**
@@ -52,7 +52,7 @@ class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
 	 * @brief
 	 *
 	 */
-	virtual void release();
+	virtual void release() override;
 	/**
 	 * @brief
 	 *
@@ -109,16 +109,10 @@ class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
 	VkCommandBuffer getCurrentCommandBuffer() const noexcept;
 	size_t getNrCommandBuffers() const noexcept;
 	VkCommandBuffer getCommandBuffers(unsigned int index) const noexcept;
-	VkCommandPool getGraphicCommandPool() const noexcept;
 
   public:
 	// VkCommandPool getComputeCommandPool() const noexcept;
 	const VkPhysicalDeviceProperties &physicalDeviceProperties() const noexcept;
-
-	/*	*/
-	uint32_t getGraphicQueueIndex() const;
-	VkQueue getDefaultGraphicQueue() const;
-	VkQueue getDefaultComputeQueue() const;
 
 	const std::vector<VkImage> &getSwapChainImages() const noexcept;
 	const std::vector<VkImageView> &getSwapChainImageViews() const noexcept;
@@ -137,6 +131,7 @@ class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
 	static std::vector<const char *> getRequiredDeviceExtensions();
 
   protected: /*	Internal method for creating swapchains.	*/
+	void createQueueAndCommandPool();
 	virtual void createSwapChain();
 	virtual void recreateSwapChain();
 	virtual void cleanSwapChain();
@@ -176,15 +171,15 @@ class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
 
 	virtual void getSize(int *width, int *height) const override;
 
-	virtual void resizable(bool resizable) noexcept;
+	virtual void resizable(bool resizable) noexcept override;
 
 	virtual void vsync(bool state);
 
-	virtual void setFullScreen(bool fullscreen);
+	virtual void setFullScreen(bool fullscreen) override;
 
 	virtual bool isFullScreen() const override;
 
-	virtual void setBordered(bool boarded);
+	virtual void setBordered(bool boarded) override;
 
 	virtual float getGamma() const override;
 
@@ -232,7 +227,7 @@ class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
 	VkSurfaceKHR surface;
 	/*  Collection of swap chain variables. */
 	SwapchainBuffers *swapChain; // TODO remove as pointer
-
+	VkQueue presentQueue;
 	/*  Synchronization.	*/
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;

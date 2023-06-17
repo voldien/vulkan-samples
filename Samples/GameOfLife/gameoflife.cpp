@@ -34,34 +34,39 @@ namespace vksample {
 		virtual ~GameOfLife() {}
 
 		virtual void release() override {
+			/*	*/
 			vkDestroyCommandPool(this->getDevice(), this->computeCmdPool, nullptr);
 
+			/*	*/
 			VKS_VALIDATE(
 				vkFreeDescriptorSets(this->getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
 			vkDestroyDescriptorPool(this->getDevice(), descpool, nullptr);
 			vkDestroyDescriptorSetLayout(this->getDevice(), descriptorSetLayout, nullptr);
 
-			for (size_t i = 0; i < computeRenderImageViews.size(); i++) {
-				vkDestroyImageView(this->getDevice(), computeRenderImageViews[i], nullptr);
-				vkDestroyImage(this->getDevice(), gameoflifeRenderImage[i], nullptr);
-				vkFreeMemory(this->getDevice(), gameoflifeRenderImageMemory[i], nullptr);
+			/*	*/
+			for (size_t i = 0; i < this->computeRenderImageViews.size(); i++) {
+				vkDestroyImageView(this->getDevice(), this->computeRenderImageViews[i], nullptr);
+				vkDestroyImage(this->getDevice(), this->gameoflifeRenderImage[i], nullptr);
+				vkFreeMemory(this->getDevice(), this->gameoflifeRenderImageMemory[i], nullptr);
 			}
 
+			/*	*/
 			for (size_t i = 0; i < computeCellImageViews.size(); i++) {
-				vkDestroyImageView(this->getDevice(), computeCellImageViews[i], nullptr);
-				vkDestroyImage(this->getDevice(), gameoflifeCellImage[i], nullptr);
-				vkFreeMemory(this->getDevice(), gameoflifeCellImageMemory[i], nullptr);
+				vkDestroyImageView(this->getDevice(), this->computeCellImageViews[i], nullptr);
+				vkDestroyImage(this->getDevice(), this->gameoflifeCellImage[i], nullptr);
+				vkFreeMemory(this->getDevice(), this->gameoflifeCellImageMemory[i], nullptr);
 			}
 
-			vkDestroyPipeline(this->getDevice(), computePipeline, nullptr);
-			vkDestroyPipelineLayout(this->getDevice(), computePipelineLayout, nullptr);
+			/*	*/
+			vkDestroyPipeline(this->getDevice(), this->computePipeline, nullptr);
+			vkDestroyPipelineLayout(this->getDevice(), this->computePipelineLayout, nullptr);
 		}
 
 		VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 			VkPipeline pipeline;
 
-			auto compShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->computeGameOfLifeShaderPath,
-																		   this->getFileSystem());
+			auto compShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->computeGameOfLifeShaderPath, this->getFileSystem());
 
 			VkShaderModule compShaderModule = VKHelper::createShaderModule(this->getDevice(), compShaderCode);
 
@@ -133,13 +138,13 @@ namespace vksample {
 
 		virtual void onResize(int width, int height) override {
 
-			/*	*/
+			/*	Wait in till the resources are not used.	*/
 			VKS_VALIDATE(vkQueueWaitIdle(this->getDefaultGraphicQueue()));
 
 			/*	Create render images.	*/
 			for (size_t i = 0; i < this->gameoflifeRenderImageMemory.size(); i++) {
 				if (gameoflifeRenderImage[i] != nullptr) {
-					// vkDestroyImageView(getDevice(), computeRenderImageViews[i], nullptr);
+					vkDestroyImage(this->getDevice(), gameoflifeRenderImage[i], nullptr);
 				}
 				VKHelper::createImage(
 					this->getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM,
@@ -151,32 +156,68 @@ namespace vksample {
 
 			for (size_t i = 0; i < this->gameoflifeCellImage.size(); i++) {
 				if (gameoflifeCellImage[i] != nullptr) {
-					// vkDestroyImageView(getDevice(), computeRenderImageViews[i], nullptr);
+					vkDestroyImage(this->getDevice(), gameoflifeCellImage[i], nullptr);
 				}
 				VKHelper::createImage(
 					this->getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8_UINT, VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
-					this->gameoflifeCellImage[i], this->gameoflifeCellImageMemory[i]);
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+					this->getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(), this->gameoflifeCellImage[i],
+					this->gameoflifeCellImageMemory[i]);
 			}
 
-			// TODO create the default buffer.
-			std::vector<uint8_t> textureData(width * height * sizeof(uint8_t));
+			// Upload init random data.
+			{
+				// TODO create the default buffer.
+				std::vector<uint8_t> textureData(width * height * sizeof(uint8_t));
 
-			/*	Generate random game state.	*/
-			for (size_t j = 0; j < height; j++) {
-				for (size_t i = 0; i < width; i++) {
-					/*	Random value between dead and alive cells.	*/
-					textureData[width * j + i] = fragcore::Random::range(0, 2);
+				/*	Generate random game state.	*/
+				for (int j = 0; j < height; j++) {
+					for (int i = 0; i < width; i++) {
+						/*	Random value between dead and alive cells.	*/
+						textureData[width * j + i] = fragcore::Random::range(0, 2);
+					}
 				}
+
+				/*	*/
+				VkCommandPool commandPool = this->getGraphicCommandPool();
+				VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(this->getDevice(), commandPool);
+				VkBuffer stagingBuffer;
+				VkDeviceMemory stagingBufferMemory;
+
+				VkPhysicalDeviceMemoryProperties memProperties;
+
+				vkGetPhysicalDeviceMemoryProperties(this->getVKDevice()->getPhysicalDevice(0)->getHandle(),
+													&memProperties);
+
+				VKHelper::createBuffer(this->getDevice(), textureData.size(), memProperties,
+									   VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+									   stagingBuffer, stagingBufferMemory);
+
+				void *stageData;
+				vkMapMemory(this->getDevice(), stagingBufferMemory, 0, textureData.size(), 0, &stageData);
+				memcpy(stageData, textureData.data(), static_cast<size_t>(textureData.size()));
+				vkUnmapMemory(this->getDevice(), stagingBufferMemory);
+
+				VKHelper::copyBufferToImageCmd(
+					cmd, stagingBuffer, this->gameoflifeCellImage[0],
+					{static_cast<uint32_t>(this->width()), static_cast<uint32_t>(this->height()), 1});
+				// for (size_t i = 0; i < this->gameoflifeRenderImage.size(); i++) {
+				//	VKHelper::transitionImageLayout(cmd, this->gameoflifeRenderImage[i], VK_IMAGE_LAYOUT_UNDEFINED,
+				//									VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+				//}
+
+				VKHelper::endSingleTimeCommands(this->getDevice(), this->getDefaultTransferQueue(), cmd, commandPool);
+
+				vkDestroyBuffer(this->getDevice(), stagingBuffer, nullptr);
+				vkFreeMemory(this->getDevice(), stagingBufferMemory, nullptr);
 			}
-			// TODO upload data.
 
 			/*	*/
 			this->computeRenderImageViews.resize(this->getSwapChainImageCount());
-			for (size_t i = 0; i < computeRenderImageViews.size(); i++) {
-				if (computeRenderImageViews[i] != nullptr) {
-					vkDestroyImageView(getDevice(), computeRenderImageViews[i], nullptr);
+			for (size_t i = 0; i < this->computeRenderImageViews.size(); i++) {
+				if (this->computeRenderImageViews[i] != nullptr) {
+					vkDestroyImageView(this->getDevice(), this->computeRenderImageViews[i], nullptr);
 				}
 				/*	*/
 				computeRenderImageViews[i] =
@@ -266,6 +307,8 @@ namespace vksample {
 
 				VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
+				/*	Sync */
+
 				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, this->computePipeline);
 
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, this->computePipelineLayout, 0, 1,
@@ -276,22 +319,37 @@ namespace vksample {
 				vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
 
 				/*	*/
-				VkImageMemoryBarrier dispatchBarrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-				dispatchBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-				dispatchBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-				dispatchBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				dispatchBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				dispatchBarrier.image = gameoflifeRenderImage[i];
-				dispatchBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				dispatchBarrier.subresourceRange.baseMipLevel = 0;
-				dispatchBarrier.subresourceRange.levelCount = 1;
-				dispatchBarrier.subresourceRange.baseArrayLayer = 0;
-				dispatchBarrier.subresourceRange.layerCount = 1;
-				dispatchBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-				dispatchBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+				std::vector<VkImageMemoryBarrier> dispatchBarrier(2);
+				dispatchBarrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				dispatchBarrier[0].oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+				dispatchBarrier[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+				dispatchBarrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				dispatchBarrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				dispatchBarrier[0].image = this->gameoflifeRenderImage[i];
+				dispatchBarrier[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				dispatchBarrier[0].subresourceRange.baseMipLevel = 0;
+				dispatchBarrier[0].subresourceRange.levelCount = 1;
+				dispatchBarrier[0].subresourceRange.baseArrayLayer = 0;
+				dispatchBarrier[0].subresourceRange.layerCount = 1;
+				dispatchBarrier[0].srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+				dispatchBarrier[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+				dispatchBarrier[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				dispatchBarrier[1].oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+				dispatchBarrier[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				dispatchBarrier[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				dispatchBarrier[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				dispatchBarrier[1].image = this->getSwapChainImages()[i];
+				dispatchBarrier[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				dispatchBarrier[1].subresourceRange.baseMipLevel = 0;
+				dispatchBarrier[1].subresourceRange.levelCount = 1;
+				dispatchBarrier[1].subresourceRange.baseArrayLayer = 0;
+				dispatchBarrier[1].subresourceRange.layerCount = 1;
+				dispatchBarrier[1].srcAccessMask = 0;
+				dispatchBarrier[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
 				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
-									 nullptr, 0, nullptr, 1, &dispatchBarrier);
+									 nullptr, 0, nullptr, 2, dispatchBarrier.data());
 
 				/*	*/
 				VkImageBlit blitRegion{};
@@ -334,14 +392,14 @@ namespace vksample {
 				blitBarriers[1].newLayout = VK_IMAGE_LAYOUT_GENERAL;
 				blitBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				blitBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				blitBarriers[1].image = gameoflifeRenderImage[i];
+				blitBarriers[1].image = this->gameoflifeRenderImage[i];
 				blitBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 				blitBarriers[1].subresourceRange.baseMipLevel = 0;
 				blitBarriers[1].subresourceRange.levelCount = 1;
 				blitBarriers[1].subresourceRange.baseArrayLayer = 0;
 				blitBarriers[1].subresourceRange.layerCount = 1;
-				blitBarriers[1].srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-				blitBarriers[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+				blitBarriers[1].srcAccessMask = 0;
+				blitBarriers[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
 				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr,
 									 0, nullptr, blitBarriers.size(), blitBarriers.data());

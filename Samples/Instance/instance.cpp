@@ -2,6 +2,7 @@
 #include <VKWindow.h>
 #include <VksCommon.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace vksample {
 
@@ -23,11 +24,11 @@ namespace vksample {
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 
 		struct UniformBufferBlock {
-			glm::mat4 model;
-			glm::mat4 view;
-			glm::mat4 proj;
-			glm::mat4 modelView;
-			glm::mat4 modelViewProjection;
+			alignas(16) glm::mat4 model;
+			alignas(16) glm::mat4 view;
+			alignas(16) glm::mat4 proj;
+			alignas(16) glm::mat4 modelView;
+			alignas(16) glm::mat4 modelViewProjection;
 
 			/*	Light source.	*/
 			glm::vec4 direction = glm::vec4(1.0f / sqrt(2.0f), -1.0f / sqrt(2.0f), 0.0f, 0.0f);
@@ -113,13 +114,13 @@ namespace vksample {
 			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[0].offset = 0;
 
-			attributeDescriptions[1].binding = 1;
+			attributeDescriptions[1].binding = 0;
 			attributeDescriptions[1].location = 1;
 			attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
 			attributeDescriptions[1].offset = 12;
 
-			attributeDescriptions[2].binding = 2;
-			attributeDescriptions[2].location = 1;
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2;
 			attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[2].offset = 20;
 
@@ -150,8 +151,10 @@ namespace vksample {
 			samplerDiffuseLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 			VKHelper::createDescriptorSetLayout(
-				getDevice(), descriptorSetLayout,
+				this->getDevice(), descriptorSetLayout,
 				{uboLayoutBinding, uboInstanceLayoutBinding, samplerDiffuseLayoutBinding});
+
+			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
 
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -184,7 +187,7 @@ namespace vksample {
 			rasterizer.rasterizerDiscardEnable = VK_FALSE;
 			rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 			rasterizer.lineWidth = 1.0f;
-			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+			rasterizer.cullMode = VK_CULL_MODE_NONE;
 			rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 			rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -209,13 +212,13 @@ namespace vksample {
 			colorBlending.blendConstants[2] = 0.0f;
 			colorBlending.blendConstants[3] = 0.0f;
 
-			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			pipelineLayoutInfo.setLayoutCount = 1;
-			pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-			pipelineLayoutInfo.pushConstantRangeCount = 0;
-
-			VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
+			VkPipelineDepthStencilStateCreateInfo depthStencil{};
+			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			depthStencil.depthTestEnable = VK_TRUE;
+			depthStencil.depthWriteEnable = VK_TRUE;
+			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+			depthStencil.depthBoundsTestEnable = VK_FALSE;
+			depthStencil.stencilTestEnable = VK_FALSE;
 
 			VkDynamicState dynamicStateEnables[1];
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
@@ -234,6 +237,7 @@ namespace vksample {
 			pipelineInfo.pViewportState = &viewportState;
 			pipelineInfo.pRasterizationState = &rasterizer;
 			pipelineInfo.pMultisampleState = &multisampling;
+			pipelineInfo.pDepthStencilState = &depthStencil;
 			pipelineInfo.pColorBlendState = &colorBlending;
 			pipelineInfo.layout = pipelineLayout;
 			pipelineInfo.renderPass = getDefaultRenderPass();
@@ -330,9 +334,51 @@ namespace vksample {
 			}
 		}
 
-		virtual void draw() {}
+		virtual void draw() override {}
 
-		virtual void update() {}
+		virtual void update() override {
+			/*	*/
+			float elapsedTime = this->getTimer().getElapsed();
+			this->camera.update(this->getTimer().deltaTime());
+
+			/*	Update instance model matrix.	*/
+			for (size_t i = 0; i < rows; i++) {
+				for (size_t j = 0; j < cols; j++) {
+					const size_t index = i * cols + j;
+
+					glm::mat4 model = glm::translate(glm::mat4(1.0), glm::vec3(i * 10.0f, 0, j * 10.0f));
+					model = glm::rotate(model, glm::radians(elapsedTime * 45.0f + index * 11.5f),
+										glm::vec3(0.0f, 1.0f, 0.0f));
+					model = glm::scale(model, glm::vec3(1.95f));
+
+					instance_model_matrices[index] = model;
+				}
+			}
+
+			/*	*/
+			this->uniformData.model = glm::mat4(1.0f);
+			this->uniformData.view = camera.getViewMatrix();
+			this->uniformData.modelViewProjection = this->uniformData.model * camera.getViewMatrix();
+			this->uniformData.viewPos = glm::vec4(this->camera.getPosition(), 0);
+
+			/*	Update uniform.	*/
+			// glBindBuffer(GL_UNIFORM_BUFFER, this->uniform_mvp_buffer);
+			// void *uniformMVP = glMapBufferRange(
+			// GL_UNIFORM_BUFFER, ((this->getFrameCount() + 1) % this->nrUniformBuffers) * this->uniformSize,
+			// this->uniformSize, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+			// memcpy(uniformMVP, &this->uniformData, sizeof(this->uniformData));
+			// glUnmapBuffer(GL_UNIFORM_BUFFER);
+
+			// /*	Update instance buffer.	*/
+			// glBindBuffer(GL_UNIFORM_BUFFER, this->uniform_instance_buffer);
+			// void *uniformInstance = glMapBufferRange(
+			// GL_UNIFORM_BUFFER, ((this->getFrameCount() + 1) % this->nrUniformBuffers) * this->uniformInstanceSize,
+			// this->uniformInstanceSize, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+			// memcpy(uniformInstance, this->instance_model_matrices.data(),
+			//    sizeof(this->instance_model_matrices[0]) * this->instance_model_matrices.size());
+
+			// glUnmapBuffer(GL_UNIFORM_BUFFER);
+		}
 	};
 
 	class InstanceVKSample : public VKSample<Instance> {

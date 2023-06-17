@@ -29,10 +29,8 @@ class CachePipeline : public vkscommon::VKSampleSessionBase {
 		int width = 512;
 		int height = 512;
 
-		auto vertShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-		auto fragShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
+		auto vertShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+		auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 		VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 		VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -177,15 +175,18 @@ class CachePipeline : public vkscommon::VKSampleSessionBase {
 			vkCreateGraphicsPipelines(getDevice(), cachepipline, 1, &pipelineInfo, nullptr, &graphicsPipeline));
 
 		// TODO save cache pipeline.
-		size_t cache_size;
-		VKS_VALIDATE(vkGetPipelineCacheData(this->getDevice(), cachepipline, &cache_size, nullptr));
-		std::vector<uint8_t> cacheData(cache_size);
-		VKS_VALIDATE(vkGetPipelineCacheData(this->getDevice(), cachepipline, &cache_size, &cacheData[0]));
+		{
+			size_t cache_size;
+			VKS_VALIDATE(vkGetPipelineCacheData(this->getDevice(), cachepipline, &cache_size, nullptr));
+			std::vector<uint8_t> cacheData(cache_size);
+			VKS_VALIDATE(vkGetPipelineCacheData(this->getDevice(), cachepipline, &cache_size, &cacheData[0]));
+			// Save
+		}
 
 		// vkMergePipelineCaches()
 
-		vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
-		vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
+		vkDestroyShaderModule(this->getDevice(), fragShaderModule, nullptr);
+		vkDestroyShaderModule(this->getDevice(), vertShaderModule, nullptr);
 	}
 
   protected:

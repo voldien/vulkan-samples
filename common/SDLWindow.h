@@ -45,13 +45,13 @@ class SDLWindow : public IWindow {
 
 	virtual void getSize(int *width, int *height) const override;
 
-	virtual void resizable(bool resizable) noexcept;
+	virtual void resizable(bool resizable) noexcept override;
 
-	virtual void setFullScreen(bool fullscreen);
+	virtual void setFullScreen(bool fullscreen) override;
 
-	virtual bool isFullScreen() const;
+	virtual bool isFullScreen() const override;
 
-	virtual void setBordered(bool borded);
+	virtual void setBordered(bool borded) override;
 
 	virtual float getGamma() const override;
 
@@ -65,6 +65,7 @@ class SDLWindow : public IWindow {
 	virtual intptr_t getNativePtr() const override; /*  Get native window reference object. */
 
 	virtual VkSurfaceKHR createSurface(const std::shared_ptr<fvkcore::VulkanCore> &instance) override;
+	//virtual std::vector<const char*> requiredVulkanExtensions();
 
   protected:
 	SDL_Window *window;
