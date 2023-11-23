@@ -56,9 +56,8 @@ namespace vksample {
 			this->setTitle("Texture");
 			this->show();
 		}
-		virtual ~SingleTexture() {}
 
-		virtual void release() override {
+		void release() override {
 
 			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
@@ -85,11 +84,11 @@ namespace vksample {
 		}
 
 		VkPipeline createGraphicPipeline() {
-			
-			auto vertShaderCode =
+
+			const auto vertShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   this->getFileSystem());
+			const auto fragShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -173,8 +172,6 @@ namespace vksample {
 			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportState.viewportCount = 1;
 			viewportState.pViewports = &viewport;
-			viewportState.scissorCount = 1;
-			viewportState.pScissors = &scissor;
 
 			VkPipelineRasterizationStateCreateInfo rasterizer{};
 			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -255,15 +252,17 @@ namespace vksample {
 			/*	*/
 			const std::string texturePath = this->getResult()["texture"].as<std::string>();
 
-			ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
+			{
+				ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
+				imageImporter.createImage2D(texturePath.c_str(), this->getDevice(), this->getGraphicCommandPool(),
+											this->getDefaultGraphicQueue(), this->physicalDevice(), texture,
+											textureMemory);
 
-			imageImporter.createImage2D(texturePath.c_str(), this->getDevice(), this->getGraphicCommandPool(),
-										this->getDefaultGraphicQueue(), this->physicalDevice(), texture, textureMemory);
+				this->textureView = VKHelper::createImageView(getDevice(), this->texture, VK_IMAGE_VIEW_TYPE_2D,
+															  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
-			this->textureView = VKHelper::createImageView(getDevice(), this->texture, VK_IMAGE_VIEW_TYPE_2D,
-														  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-
-			VKHelper::createSampler(getDevice(), sampler);
+				VKHelper::createSampler(getDevice(), sampler);
+			}
 
 			/*	Allocate uniform buffer.	*/
 			this->uniformBufferSize = sizeof(UniformBufferBlock);
@@ -397,8 +396,6 @@ namespace vksample {
 		virtual void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-			this->uniform_stage_buffer.proj =
-				glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 1000.0f);
 
 			/*	*/
 			for (size_t i = 0; i < getNrCommandBuffers(); i++) {
@@ -419,7 +416,7 @@ namespace vksample {
 				renderPassInfo.renderArea.extent.height = height;
 
 				std::array<VkClearValue, 2> clearValues{};
-				clearValues[0].color = {0.05f, 0.05f, 0.05f, 1.0f};
+				clearValues[0].color = {{0.05f, 0.05f, 0.05f, 1.0f}};
 				clearValues[1].depthStencil = {1.0f, 0};
 
 				renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -449,6 +446,8 @@ namespace vksample {
 
 				VKS_VALIDATE(vkEndCommandBuffer(cmd));
 			}
+
+			this->camera.setAspect((float)width / (float)height);
 		}
 
 		virtual void draw() override {
@@ -458,6 +457,7 @@ namespace vksample {
 			this->camera.update(this->getTimer().deltaTime());
 
 			/*	*/
+			this->uniform_stage_buffer.proj = this->camera.getProjectionMatrix();
 			this->uniform_stage_buffer.model = glm::mat4(1.0f);
 			this->uniform_stage_buffer.model =
 				glm::translate(this->uniform_stage_buffer.model, glm::vec3(0.0f, 0.0f, 5.0f));
@@ -471,7 +471,7 @@ namespace vksample {
 				   (size_t)sizeof(this->uniform_stage_buffer));
 		}
 
-		virtual void update() {}
+		void update() override {}
 	};
 
 	class SingleTextureVKSample : public VKSample<SingleTexture> {

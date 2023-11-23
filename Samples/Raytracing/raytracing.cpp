@@ -1,6 +1,6 @@
 
 #include <VksCommon.h>
-
+namespace vksample{
 /**
  *
  */
@@ -78,7 +78,16 @@ class RayTracing : public VKWindow {
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
 		}
 	}
+
 };
+	class RayTracingVKSample : public VKSample<RayTracing> {
+	  public:
+		RayTracingVKSample() : VKSample<RayTracing>() {}
+		virtual void customOptions(cxxopts::OptionAdder &options) override {
+			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/uv-texture.png"));
+		}
+	};
+	}
 
 int main(int argc, const char **argv) {
 
@@ -87,7 +96,7 @@ int main(int argc, const char **argv) {
 																		 {"VK_KHR_acceleration_structure", true}};
 
 	try {
-		VKSample<RayTracing> sample;
+		vksample::RayTracingVKSample sample;
 		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

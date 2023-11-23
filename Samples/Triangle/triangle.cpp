@@ -5,6 +5,10 @@
 
 namespace vksample {
 
+	/**
+	 * @brief
+	 *
+	 */
 	class Triangle : public VKWindow {
 	  private:
 		/*	*/
@@ -24,14 +28,12 @@ namespace vksample {
 			this->setTitle("Triangle");
 		}
 
-		virtual ~Triangle() {}
-
-		typedef struct _vertex_t {
+		typedef struct vertex_t {
 			float pos[2];
 			float color[3];
 		} Vertex;
 
-		virtual void release() override {
+		void release() override {
 
 			/*	*/
 			vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -43,16 +45,17 @@ namespace vksample {
 		}
 
 		/*	{vertex(3)|uv(2)}	*/
-		const std::vector<Vertex> vertices = {
-			{0.0f, -0.5f, 1.0f, 1.0f, 1.0f}, {0.5f, 0.5f, 0.0f, 1.0f, 0.0f}, {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f}};
+		const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+											  {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+											  {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
 		VkPipeline createGraphicPipeline() {
 
 			/*	*/
-			auto vertShaderCode =
+			const auto vertShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   this->getFileSystem());
+			const auto fragShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -118,8 +121,6 @@ namespace vksample {
 			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportState.viewportCount = 1;
 			viewportState.pViewports = &viewport;
-			viewportState.scissorCount = 1;
-			viewportState.pScissors = &scissor;
 
 			VkPipelineRasterizationStateCreateInfo rasterizer{};
 			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -242,7 +243,7 @@ namespace vksample {
 			onResize(width(), height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
@@ -266,7 +267,7 @@ namespace vksample {
 
 				/*	*/
 				std::array<VkClearValue, 2> clearValues{};
-				clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
+				clearValues[0].color = {{0.1f, 0.1f, 0.1f, 1.0f}};
 				clearValues[1].depthStencil = {1.0f, 0};
 				renderPassInfo.clearValueCount = clearValues.size();
 				renderPassInfo.pClearValues = clearValues.data();
@@ -297,7 +298,7 @@ namespace vksample {
 			}
 		}
 
-		virtual void update() {}
+		void update() override {}
 	};
 } // namespace vksample
 
@@ -308,6 +309,7 @@ int main(int argc, const char **argv) {
 	try {
 		VKSample<vksample::Triangle> sample;
 		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
+
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;
 		return EXIT_FAILURE;

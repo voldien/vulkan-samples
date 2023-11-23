@@ -1,5 +1,4 @@
 #include "Util/Time.hpp"
-
 #include "VksCommon.h"
 #include <Importer/ImageImport.h>
 #include <SDL2/SDL.h>
@@ -11,13 +10,22 @@
 
 namespace vksample {
 
+	/**
+	 * @brief
+	 *
+	 */
 	class NormalMap : public VKWindow {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
+		VkDeviceMemory vertexIndicesMemory = VK_NULL_HANDLE;
+		VkDeviceSize indices_offset = 0;
+		size_t nrIndices = 1;
+		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+
 		VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 		VkSampler sampler = VK_NULL_HANDLE;
@@ -37,7 +45,7 @@ namespace vksample {
 		std::vector<void *> mapMemory;
 		VkDeviceSize uniformBufferSize;
 
-		CameraController cameraController;
+		CameraController camera;
 
 		struct UniformBufferBlock {
 			glm::mat4 model;
@@ -143,8 +151,8 @@ namespace vksample {
 
 			auto vertShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   this->getFileSystem());
+			auto fragShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -237,17 +245,10 @@ namespace vksample {
 			viewport.minDepth = 0.0f;
 			viewport.maxDepth = 1.0f;
 
-			VkRect2D scissor{};
-			scissor.offset = {0, 0};
-			scissor.extent.width = width();
-			scissor.extent.height = height();
-
 			VkPipelineViewportStateCreateInfo viewportState{};
 			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportState.viewportCount = 1;
 			viewportState.pViewports = &viewport;
-			viewportState.scissorCount = 1;
-			viewportState.pScissors = &scissor;
 
 			VkPipelineRasterizationStateCreateInfo rasterizer{};
 			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -324,7 +325,11 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
+
+			const std::string modelPath = this->getResult()["model"].as<std::string>();
+			const std::string diffuseTexturePath = this->getResult()["texture"].as<std::string>();
+			const std::string normalTexturePath = this->getResult()["normal-texture"].as<std::string>();
 
 			/*	Load and Create Texture.	*/
 			VkCommandBuffer cmd;
@@ -457,42 +462,51 @@ namespace vksample {
 									   descriptorWrites.data(), 0, nullptr);
 			}
 
-			/*	*/
-			VkBufferCreateInfo bufferInfo = {};
-			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			bufferInfo.size = sizeof(vertices[0]) * vertices.size();
-			bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			{
+				/*	Load geometry.	*/
+				std::vector<fragcore::ProceduralGeometry::Vertex> vertices;
+				std::vector<unsigned int> indices;
+				fragcore::ProceduralGeometry::generateCube(1.0f, vertices, indices);
 
-			VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
+				VkBufferCreateInfo bufferInfo = {};
+				bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+				bufferInfo.size = sizeof(vertices[0]) * vertices.size() + sizeof(indices[0]) * indices.size();
+				bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+				bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-			VkMemoryRequirements memRequirements;
-			vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
+				VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
+				this->indices_offset = sizeof(vertices[0]) * vertices.size();
+				this->nrIndices = indices.size();
 
-			VkMemoryAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex =
-				VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-										 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-					.value();
+				VkMemoryRequirements memRequirements;
+				vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
 
-			VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
+				VkMemoryAllocateInfo allocInfo = {};
+				allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+				allocInfo.allocationSize = memRequirements.size;
+				allocInfo.memoryTypeIndex =
+					VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
+											 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+						.value();
 
-			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
+				VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexIndicesMemory));
 
-			void *data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
-			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
-			vkUnmapMemory(getDevice(), vertexMemory);
+				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexIndicesMemory, 0));
 
-			onResize(width(), height());
+				/*	Upload vertex data.	*/
+				uint8_t *data;
+				VKS_VALIDATE(vkMapMemory(getDevice(), vertexIndicesMemory, 0, bufferInfo.size, 0, (void **)&data));
+				memcpy(data, vertices.data(), (size_t)vertices.size() * sizeof(vertices[0]));
+				memcpy(data + indices_offset, indices.data(), (size_t)indices.size() * sizeof(indices[0]));
+				vkUnmapMemory(getDevice(), vertexIndicesMemory);
+			}
+
+			this->onResize(this->width(), this->height());
 		}
 
 		virtual void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-			this->mvp.proj = glm::perspective(glm::radians(60.0f), (float)width / (float)height, 0.15f, 100.0f);
 
 			/*	Create command buffers.	*/
 			for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
@@ -541,19 +555,22 @@ namespace vksample {
 
 				VKS_VALIDATE(vkEndCommandBuffer(cmd));
 			}
+
+			this->camera.setAspect((float)width / (float)height);
 		}
 
 		virtual void draw() override {
 			/*	Update Camera.	*/
 			float elapsedTime = this->getTimer().getElapsed();
-			this->cameraController.update(getTimer().deltaTime());
+			this->camera.update(getTimer().deltaTime());
 
 			/*	*/
+			this->mvp.proj = this->camera.getProjectionMatrix();
 			this->mvp.model = glm::mat4(1.0f);
 			this->mvp.model =
 				glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 			this->mvp.model = glm::scale(this->mvp.model, glm::vec3(10.95f));
-			this->mvp.view = this->cameraController.getViewMatrix();
+			this->mvp.view = this->camera.getViewMatrix();
 			this->mvp.modelViewProjection = this->mvp.proj * this->mvp.view * this->mvp.model;
 			this->mvp.ViewProj = this->mvp.proj * this->mvp.view;
 
@@ -563,15 +580,27 @@ namespace vksample {
 
 		virtual void update() {}
 	};
+
+	class NormalMapVKSample : public VKSample<NormalMap> {
+	  public:
+		NormalMapVKSample() : VKSample<NormalMap>() {}
+		virtual void customOptions(cxxopts::OptionAdder &options) override {
+			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/diffuse.png"))(
+				"N,normal-texture", "NormalMap Path",
+				cxxopts::value<std::string>()->default_value("asset/normalmap.png"))(
+				"M,model", "Model Path", cxxopts::value<std::string>()->default_value("asset/bunny.obj"));
+		}
+	};
+
 } // namespace vksample
 
 int main(int argc, const char **argv) {
 
-	std::unordered_map<const char *, bool> required_instance_extensions = {};
-	std::unordered_map<const char *, bool> required_device_extensions = {};
-	// TODO add custom argument options for adding path of the texture and what type.
+	const std::unordered_map<const char *, bool> required_instance_extensions = {};
+	const std::unordered_map<const char *, bool> required_device_extensions = {};
+
 	try {
-		VKSample<vksample::NormalMap> sample;
+		vksample::NormalMapVKSample sample;
 		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {

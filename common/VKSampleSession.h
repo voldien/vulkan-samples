@@ -22,7 +22,7 @@ namespace vkscommon {
 						 std::unordered_map<const char *, bool> required_instance_extensions = {}) = 0;
 		virtual void customOptions([[maybe_unused]] cxxopts::OptionAdder &options) {}
 
-		fragcore::IFileSystem *getFileSystem() noexcept { return this->activeFileSystem; }
+		fragcore::IFileSystem *getFileSystem() const noexcept { return this->activeFileSystem; }
 
 	  protected:
 		fragcore::IFileSystem *activeFileSystem;

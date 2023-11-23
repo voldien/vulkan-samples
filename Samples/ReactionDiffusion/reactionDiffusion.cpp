@@ -4,403 +4,417 @@
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 
-class ReactionDiffusion : public VKWindow {
-  private:
-	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-	VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
-	VkPipeline computePipeline = VK_NULL_HANDLE;
-	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+namespace vksample {
 
-	std::vector<VkImage> reactionDiffuseImage;
-	std::vector<VkDeviceMemory> reactionDiffuseImageMemory;
+	class ReactionDiffusion : public VKWindow {
+	  private:
+		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
+		VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
+		VkPipeline computePipeline = VK_NULL_HANDLE;
+		VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
 
-	std::vector<VkImageView> computeImageViews;
+		std::vector<VkImage> reactionDiffuseImage;
+		std::vector<VkDeviceMemory> reactionDiffuseImageMemory;
 
-	/*	*/
-	VkBuffer cellsBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory cellsMemory = VK_NULL_HANDLE;
-	size_t nrCellBuffers = 2;
-
-	/*	*/
-	VkDeviceMemory paramMemory = VK_NULL_HANDLE;
-	VkBuffer paramBuffer = VK_NULL_HANDLE;
-
-	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-	VkDescriptorPool descpool = VK_NULL_HANDLE;
-	std::vector<VkDescriptorSet> descriptorSets;
-
-	const uint32_t nrChemicalComponents = 2;
-
-	struct reaction_diffusion_param_t {
-		float kernelA[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
-		float kernelB[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
-		float feedRate = 0.055f;
-		float killRate = .062f;
-		float diffuseRateA = 1.0f;
-		float diffuseRateB = .5f;
-		float delta = 10.1f;
-
-		/**/
-		float posX, posY;
-		float mousePosX, mousePosY;
-		float zoom; /*  */
-		float c;	/*  */
-	} params = {};
-
-	unsigned int paramMemSize = sizeof(params);
-
-	const std::string computeShaderPath = "shaders/reactiondiffusion/reactiondiffusion.comp.spv";
-
-  public:
-	ReactionDiffusion(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-		: VKWindow(core, device, -1, -1, -1, -1) {
-		this->setTitle(std::string("ReactionDiffusion Algorithm - Compute"));
-		this->show();
-	}
-	virtual ~ReactionDiffusion() {}
-
-	virtual void release() override {
-		vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
-		vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
-
-		for (size_t i = 0; i < reactionDiffuseImage.size(); i++) {
-			vkDestroyImage(getDevice(), reactionDiffuseImage[i], nullptr);
-		}
-		for (size_t i = 0; i < reactionDiffuseImageMemory.size(); i++) {
-			vkFreeMemory(getDevice(), reactionDiffuseImageMemory[i], nullptr);
-		}
-
-		for (size_t i = 0; i < computeImageViews.size(); i++) {
-			vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
-		}
-
-		vkDestroyBuffer(this->getDevice(), cellsBuffer, nullptr);
-		vkFreeMemory(getDevice(), cellsMemory, nullptr);
-
-		vkDestroyBuffer(getDevice(), paramBuffer, nullptr);
-		vkFreeMemory(getDevice(), paramMemory, nullptr);
-
-		vkDestroyPipeline(getDevice(), computePipeline, nullptr);
-		vkDestroyPipelineLayout(getDevice(), computePipelineLayout, nullptr);
-	}
-
-	VkPipeline createComputePipeline(VkPipelineLayout *layout) {
-		VkPipeline pipeline;
-
-		auto compShaderCode =
-			vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
-
-		VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
-
-		VkPipelineShaderStageCreateInfo compShaderStageInfo{};
-		compShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		compShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-		compShaderStageInfo.module = compShaderModule;
-		compShaderStageInfo.pName = "main";
-
-		std::array<VkDescriptorSetLayoutBinding, 4> uboLayoutBindings;
+		std::vector<VkImageView> computeImageViews;
 
 		/*	*/
-		uboLayoutBindings[0].binding = 0;
-		uboLayoutBindings[0].descriptorCount = 1;
-		uboLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		uboLayoutBindings[0].pImmutableSamplers = nullptr;
-		uboLayoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		VkBuffer cellsBuffer = VK_NULL_HANDLE;
+		VkDeviceMemory cellsMemory = VK_NULL_HANDLE;
+		size_t nrCellBuffers = 2;
 
-		uboLayoutBindings[1].binding = 1;
-		uboLayoutBindings[1].descriptorCount = 1;
-		uboLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		uboLayoutBindings[1].pImmutableSamplers = nullptr;
-		uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		/*	*/
+		VkDeviceMemory paramMemory = VK_NULL_HANDLE;
+		VkBuffer paramBuffer = VK_NULL_HANDLE;
 
-		uboLayoutBindings[2].binding = 2;
-		uboLayoutBindings[2].descriptorCount = 1;
-		uboLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		uboLayoutBindings[2].pImmutableSamplers = nullptr;
-		uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+		VkDescriptorPool descpool = VK_NULL_HANDLE;
+		std::vector<VkDescriptorSet> descriptorSets;
 
-		uboLayoutBindings[3].binding = 3;
-		uboLayoutBindings[3].descriptorCount = 1;
-		uboLayoutBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBindings[3].pImmutableSamplers = nullptr;
-		uboLayoutBindings[3].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		const uint32_t nrChemicalComponents = 2;
 
-		VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings);
+		struct reaction_diffusion_param_t {
+			float kernelA[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
+			float kernelB[4][4] = {{0.1, 0.5, 0.1, 0}, {0.5, -1, 0.5, 0}, {0.1, 0.5, 0.1, 0}, {0, 0, 0, 0}};
+			float feedRate = 0.055f;
+			float killRate = .062f;
+			float diffuseRateA = 1.0f;
+			float diffuseRateB = .5f;
+			float delta = 10.1f;
 
-		VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
+			/**/
+			float posX, posY;
+			float mousePosX, mousePosY;
+			float zoom; /*  */
+			float c;	/*  */
+		} params = {};
 
-		VkComputePipelineCreateInfo pipelineCreateInfo = {};
-		pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-		pipelineCreateInfo.stage = compShaderStageInfo;
-		pipelineCreateInfo.layout = *layout;
+		unsigned int paramMemSize = sizeof(params);
 
-		VKS_VALIDATE(vkCreateComputePipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
-		vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
+		const std::string computeShaderPath = "shaders/reactiondiffusion/reactiondiffusion.comp.spv";
 
-		return pipeline;
-	}
+	  public:
+		ReactionDiffusion(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+			: VKWindow(core, device, -1, -1, -1, -1) {
+			this->setTitle(std::string("ReactionDiffusion Algorithm - Compute"));
+			this->show();
+		}
+		virtual ~ReactionDiffusion() {}
 
-	virtual void Initialize() override {
+		virtual void release() override {
+			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
+			vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 
-		paramMemSize = sizeof(params);
-		size_t minMapBufferSize =
-			getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
-		paramMemSize += minMapBufferSize - (paramMemSize % minMapBufferSize);
+			for (size_t i = 0; i < reactionDiffuseImage.size(); i++) {
+				vkDestroyImage(getDevice(), reactionDiffuseImage[i], nullptr);
+			}
+			for (size_t i = 0; i < reactionDiffuseImageMemory.size(); i++) {
+				vkFreeMemory(getDevice(), reactionDiffuseImageMemory[i], nullptr);
+			}
 
-		/*	Create pipeline.	*/
-		computePipeline = createComputePipeline(&computePipelineLayout);
+			for (size_t i = 0; i < computeImageViews.size(); i++) {
+				vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
+			}
 
-		/*	Create params.	*/
-		VkDeviceSize paramMemoryBufferSize = paramMemSize * getSwapChainImageCount();
+			vkDestroyBuffer(this->getDevice(), cellsBuffer, nullptr);
+			vkFreeMemory(this->getDevice(), cellsMemory, nullptr);
 
-		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
+			vkDestroyBuffer(this->getDevice(), paramBuffer, nullptr);
+			vkFreeMemory(this->getDevice(), paramMemory, nullptr);
 
-		VKHelper::createBuffer(getDevice(), paramMemoryBufferSize, memProperties,
-							   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-							   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-							   paramBuffer, paramMemory);
+			vkDestroyPipeline(this->getDevice(), computePipeline, nullptr);
+			vkDestroyPipelineLayout(this->getDevice(), computePipelineLayout, nullptr);
+		}
 
-		/*	Allocate descriptor set.	*/
-		std::vector<VkDescriptorPoolSize> poolSize = {
-			{
-				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				static_cast<uint32_t>(getSwapChainImageCount() * nrChemicalComponents),
-			},
+		VkPipeline createComputePipeline(VkPipelineLayout *layout) {
+			VkPipeline pipeline;
 
-			{
-				VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				static_cast<uint32_t>(getSwapChainImageCount()),
-			},
-			{
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				static_cast<uint32_t>(getSwapChainImageCount()),
-			}};
+			auto compShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
 
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = poolSize.size();
-		poolInfo.pPoolSizes = poolSize.data();
-		poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount() * 4);
+			VkShaderModule compShaderModule = VKHelper::createShaderModule(this->getDevice(), compShaderCode);
 
-		vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
+			VkPipelineShaderStageCreateInfo compShaderStageInfo{};
+			compShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			compShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+			compShaderStageInfo.module = compShaderModule;
+			compShaderStageInfo.pName = "main";
 
-		onResize(width(), height());
-	}
+			std::array<VkDescriptorSetLayoutBinding, 4> uboLayoutBindings;
 
-	virtual void onResize(int width, int height) override {
+			/*	*/
+			uboLayoutBindings[0].binding = 0;
+			uboLayoutBindings[0].descriptorCount = 1;
+			uboLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			uboLayoutBindings[0].pImmutableSamplers = nullptr;
+			uboLayoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
+			uboLayoutBindings[1].binding = 1;
+			uboLayoutBindings[1].descriptorCount = 1;
+			uboLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			uboLayoutBindings[1].pImmutableSamplers = nullptr;
+			uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		/*	Compute the total cell buffer size.	*/
-		const VkDeviceSize cellBufferSize = width * height * sizeof(float) * nrChemicalComponents;
+			uboLayoutBindings[2].binding = 2;
+			uboLayoutBindings[2].descriptorCount = 1;
+			uboLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			uboLayoutBindings[2].pImmutableSamplers = nullptr;
+			uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		// TODO fix get correct physical device.
-		VKHelper::createBuffer(getDevice(), cellBufferSize * nrCellBuffers,
-							   getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
-							   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-							   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-								   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-							   cellsBuffer, cellsMemory);
+			uboLayoutBindings[3].binding = 3;
+			uboLayoutBindings[3].descriptorCount = 1;
+			uboLayoutBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			uboLayoutBindings[3].pImmutableSamplers = nullptr;
+			uboLayoutBindings[3].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-		/*	Write perlin noise to buffer data as init data.	*/
-		float *cellData;
-		VKS_VALIDATE(vkMapMemory(getDevice(), cellsMemory, 0, cellBufferSize * nrCellBuffers, 0, (void **)&cellData));
-		for (size_t nthBuffer = 0; nthBuffer < nrCellBuffers; nthBuffer++) {
-			for (int h = 0; h < height; h++) {
-				for (int w = 0; w < width; w++) {
-					for (int c = 0; c < nrChemicalComponents; c++) {
-						/*	*/
-						cellData[nthBuffer * (cellBufferSize / 4) +
-								 (h * height * nrChemicalComponents + w * nrChemicalComponents + c)] =
-							fragcore::Math::PerlinNoise((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
+			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings);
+
+			VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
+
+			VkComputePipelineCreateInfo pipelineCreateInfo = {};
+			pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+			pipelineCreateInfo.stage = compShaderStageInfo;
+			pipelineCreateInfo.layout = *layout;
+
+			VKS_VALIDATE(
+				vkCreateComputePipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
+			vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
+
+			return pipeline;
+		}
+
+		virtual void Initialize() override {
+
+			paramMemSize = sizeof(params);
+			size_t minMapBufferSize =
+				getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+			paramMemSize += minMapBufferSize - (paramMemSize % minMapBufferSize);
+
+			/*	Create pipeline.	*/
+			computePipeline = createComputePipeline(&computePipelineLayout);
+
+			/*	Create params.	*/
+			VkDeviceSize paramMemoryBufferSize = paramMemSize * getSwapChainImageCount();
+
+			VkPhysicalDeviceMemoryProperties memProperties;
+			vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
+
+			VKHelper::createBuffer(getDevice(), paramMemoryBufferSize, memProperties,
+								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+								   paramBuffer, paramMemory);
+
+			/*	Allocate descriptor set.	*/
+			std::vector<VkDescriptorPoolSize> poolSize = {
+				{
+					VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+					static_cast<uint32_t>(getSwapChainImageCount() * nrChemicalComponents),
+				},
+
+				{
+					VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+					static_cast<uint32_t>(getSwapChainImageCount()),
+				},
+				{
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+					static_cast<uint32_t>(getSwapChainImageCount()),
+				}};
+
+			VkDescriptorPoolCreateInfo poolInfo{};
+			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			poolInfo.poolSizeCount = poolSize.size();
+			poolInfo.pPoolSizes = poolSize.data();
+			poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount() * 4);
+
+			vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
+
+			onResize(width(), height());
+		}
+
+		virtual void onResize(int width, int height) override {
+
+			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
+
+			/*	Compute the total cell buffer size.	*/
+			const VkDeviceSize cellBufferSize = width * height * sizeof(float) * nrChemicalComponents;
+
+			// TODO fix get correct physical device.
+			VKHelper::createBuffer(getDevice(), cellBufferSize * nrCellBuffers,
+								   getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
+								   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+									   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+								   cellsBuffer, cellsMemory);
+
+			/*	Write perlin noise to buffer data as init data.	*/
+			float *cellData;
+			VKS_VALIDATE(
+				vkMapMemory(getDevice(), cellsMemory, 0, cellBufferSize * nrCellBuffers, 0, (void **)&cellData));
+			for (size_t nthBuffer = 0; nthBuffer < nrCellBuffers; nthBuffer++) {
+				for (int h = 0; h < height; h++) {
+					for (int w = 0; w < width; w++) {
+						for (int c = 0; c < nrChemicalComponents; c++) {
+							/*	*/
+							cellData[nthBuffer * (cellBufferSize / 4) +
+									 (h * height * nrChemicalComponents + w * nrChemicalComponents + c)] =
+								fragcore::Math::PerlinNoise((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
+						}
 					}
 				}
 			}
+			vkUnmapMemory(getDevice(), cellsMemory);
+
+			/*	Create reaction diffusion image and buffer.	*/
+			reactionDiffuseImage.resize(getSwapChainImageCount());
+			reactionDiffuseImageMemory.resize(getSwapChainImageCount());
+			for (size_t i = 0; i < reactionDiffuseImageMemory.size(); i++) {
+
+				VKHelper::createImage(
+					getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+					reactionDiffuseImage[i], reactionDiffuseImageMemory[i]);
+			}
+
+			/*	*/
+			computeImageViews.resize(getSwapChainImageCount());
+			for (size_t i = 0; i < computeImageViews.size(); i++) {
+				if (computeImageViews[i] != nullptr)
+					vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
+				computeImageViews[i] =
+					VKHelper::createImageView(getDevice(), reactionDiffuseImage[i], VK_IMAGE_VIEW_TYPE_2D,
+											  getDefaultImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
+			}
+
+			/*	*/
+			vkResetDescriptorPool(getDevice(), descpool, 0);
+
+			std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
+			VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
+			descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
+			descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
+			descriptorSetAllocateInfo.pSetLayouts = layouts.data();
+
+			/* allocate descriptor set.	*/
+			descriptorSets.resize(getSwapChainImageCount());
+			VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
+
+			for (unsigned int i = 0; i < descriptorSets.size(); i++) {
+
+				VkDescriptorBufferInfo writeCellBufferInfo{};
+				writeCellBufferInfo.buffer = cellsBuffer;
+				writeCellBufferInfo.offset = ((i * nrCellBuffers + 0) % nrCellBuffers) * cellBufferSize;
+				writeCellBufferInfo.range = cellBufferSize;
+
+				VkDescriptorBufferInfo readCellBufferInfo{};
+				readCellBufferInfo.buffer = cellsBuffer;
+				readCellBufferInfo.offset = ((i * nrCellBuffers + 1) % nrCellBuffers) * cellBufferSize;
+				readCellBufferInfo.range = cellBufferSize;
+
+				VkDescriptorImageInfo imageInfo{};
+				imageInfo.imageView = computeImageViews[i];
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+				VkDescriptorBufferInfo paramBufferInfo{};
+				paramBufferInfo.buffer = paramBuffer;
+				paramBufferInfo.offset = paramMemSize * i;
+				paramBufferInfo.range = paramMemSize;
+
+				std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
+
+				descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrites[0].dstSet = descriptorSets[i];
+				descriptorWrites[0].dstBinding = 0;
+				descriptorWrites[0].dstArrayElement = 0;
+				descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				descriptorWrites[0].descriptorCount = 1;
+				descriptorWrites[0].pImageInfo = nullptr;
+				descriptorWrites[0].pBufferInfo = &writeCellBufferInfo;
+
+				descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrites[1].dstSet = descriptorSets[i];
+				descriptorWrites[1].dstBinding = 1;
+				descriptorWrites[1].dstArrayElement = 0;
+				descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				descriptorWrites[1].descriptorCount = 1;
+				descriptorWrites[1].pImageInfo = nullptr;
+				descriptorWrites[1].pBufferInfo = &readCellBufferInfo;
+
+				descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrites[2].dstSet = descriptorSets[i];
+				descriptorWrites[2].dstBinding = 2;
+				descriptorWrites[2].dstArrayElement = 0;
+				descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+				descriptorWrites[2].descriptorCount = 1;
+				descriptorWrites[2].pImageInfo = &imageInfo;
+				descriptorWrites[2].pBufferInfo = nullptr;
+
+				descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrites[3].dstSet = descriptorSets[i];
+				descriptorWrites[3].dstBinding = 3;
+				descriptorWrites[3].dstArrayElement = 0;
+				descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				descriptorWrites[3].descriptorCount = 1;
+				descriptorWrites[3].pImageInfo = nullptr;
+				descriptorWrites[3].pBufferInfo = &paramBufferInfo;
+
+				vkUpdateDescriptorSets(getDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+			}
+
+			/*	Construct render command queues.	*/
+			for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
+				VkCommandBuffer cmd = this->getCommandBuffers(i);
+
+				VkCommandBufferBeginInfo beginInfo = {};
+				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+				beginInfo.flags = 0;
+
+				VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
+
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
+										&descriptorSets[i], 0, nullptr);
+
+				const int localInvokation = 16;
+
+				vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
+
+				/*	Invoke sync.	*/
+				VkImageMemoryBarrier imageMemoryBarrier = {};
+				imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+				imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+				imageMemoryBarrier.image = reactionDiffuseImage[i];
+				imageMemoryBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+				imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+				imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
+									 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+				VkImageBlit blitRegion{};
+				blitRegion.srcOffsets[1].x = this->width();
+				blitRegion.srcOffsets[1].y = this->height();
+				blitRegion.srcOffsets[1].z = 1;
+				blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				blitRegion.srcSubresource.layerCount = 1;
+				blitRegion.srcSubresource.mipLevel = 0;
+				blitRegion.dstOffsets[1].x = this->width();
+				blitRegion.dstOffsets[1].y = this->height();
+				blitRegion.dstOffsets[1].z = 1;
+				blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				blitRegion.dstSubresource.layerCount = 1;
+				blitRegion.dstSubresource.mipLevel = 0;
+
+				// TOOD fix the layout transition, based on the errors.
+				VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_GENERAL,
+												VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+				/*	Transfer image directly to swapchain images.	*/
+				vkCmdBlitImage(cmd, reactionDiffuseImage[i], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+							   getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion,
+							   VK_FILTER_NEAREST);
+				VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+												VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+				VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+												VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+				VKS_VALIDATE(vkEndCommandBuffer(cmd));
+			}
 		}
-		vkUnmapMemory(getDevice(), cellsMemory);
 
-		/*	Create reaction diffusion image and buffer.	*/
-		reactionDiffuseImage.resize(getSwapChainImageCount());
-		reactionDiffuseImageMemory.resize(getSwapChainImageCount());
-		for (size_t i = 0; i < reactionDiffuseImageMemory.size(); i++) {
+		virtual void draw() override {
 
-			VKHelper::createImage(
-				getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
-				reactionDiffuseImage[i], reactionDiffuseImageMemory[i]);
+			/*	Update uniform variables.	*/
+			void *data;
+			VKS_VALIDATE(
+				vkMapMemory(getDevice(), paramMemory, paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
+			memcpy(data, &params, paramMemSize);
+			vkUnmapMemory(getDevice(), paramMemory);
+
+			int x, y;
+			SDL_GetMouseState(&x, &y);
+			params.mousePosX = x;
+			params.mousePosY = y;
+			params.delta = getTimer().deltaTime();
+			params.posX = 0;
+			params.posY = 0;
+			params.zoom = 1.0f;
 		}
+	};
 
-		/*	*/
-		computeImageViews.resize(getSwapChainImageCount());
-		for (size_t i = 0; i < computeImageViews.size(); i++) {
-			if (computeImageViews[i] != nullptr)
-				vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
-			computeImageViews[i] =
-				VKHelper::createImageView(getDevice(), reactionDiffuseImage[i], VK_IMAGE_VIEW_TYPE_2D,
-										  getDefaultImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		class ReactionDiffusionVKSample : public VKSample<ReactionDiffusion> {
+	  public:
+		ReactionDiffusionVKSample() : VKSample<ReactionDiffusion>() {}
+		virtual void customOptions(cxxopts::OptionAdder &options) override {
+			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/uv-texture.png"));
 		}
-
-		/*	*/
-		vkResetDescriptorPool(getDevice(), descpool, 0);
-
-		std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
-		VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
-		descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
-		descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
-		descriptorSetAllocateInfo.pSetLayouts = layouts.data();
-
-		/* allocate descriptor set.	*/
-		descriptorSets.resize(getSwapChainImageCount());
-		VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
-
-		for (unsigned int i = 0; i < descriptorSets.size(); i++) {
-
-			VkDescriptorBufferInfo writeCellBufferInfo{};
-			writeCellBufferInfo.buffer = cellsBuffer;
-			writeCellBufferInfo.offset = ((i * nrCellBuffers + 0) % nrCellBuffers) * cellBufferSize;
-			writeCellBufferInfo.range = cellBufferSize;
-
-			VkDescriptorBufferInfo readCellBufferInfo{};
-			readCellBufferInfo.buffer = cellsBuffer;
-			readCellBufferInfo.offset = ((i * nrCellBuffers + 1) % nrCellBuffers) * cellBufferSize;
-			readCellBufferInfo.range = cellBufferSize;
-
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageView = computeImageViews[i];
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-			VkDescriptorBufferInfo paramBufferInfo{};
-			paramBufferInfo.buffer = paramBuffer;
-			paramBufferInfo.offset = paramMemSize * i;
-			paramBufferInfo.range = paramMemSize;
-
-			std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
-
-			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = descriptorSets[i];
-			descriptorWrites[0].dstBinding = 0;
-			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pImageInfo = nullptr;
-			descriptorWrites[0].pBufferInfo = &writeCellBufferInfo;
-
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = descriptorSets[i];
-			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = nullptr;
-			descriptorWrites[1].pBufferInfo = &readCellBufferInfo;
-
-			descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[2].dstSet = descriptorSets[i];
-			descriptorWrites[2].dstBinding = 2;
-			descriptorWrites[2].dstArrayElement = 0;
-			descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			descriptorWrites[2].descriptorCount = 1;
-			descriptorWrites[2].pImageInfo = &imageInfo;
-			descriptorWrites[2].pBufferInfo = nullptr;
-
-			descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[3].dstSet = descriptorSets[i];
-			descriptorWrites[3].dstBinding = 3;
-			descriptorWrites[3].dstArrayElement = 0;
-			descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrites[3].descriptorCount = 1;
-			descriptorWrites[3].pImageInfo = nullptr;
-			descriptorWrites[3].pBufferInfo = &paramBufferInfo;
-
-			vkUpdateDescriptorSets(getDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
-		}
-
-		/*	Construct render command queues.	*/
-		for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
-			VkCommandBuffer cmd = this->getCommandBuffers(i);
-
-			VkCommandBufferBeginInfo beginInfo = {};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = 0;
-
-			VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
-
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
-									&descriptorSets[i], 0, nullptr);
-
-			const int localInvokation = 16;
-
-			vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
-
-			/*	Invoke sync.	*/
-			VkImageMemoryBarrier imageMemoryBarrier = {};
-			imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			imageMemoryBarrier.image = reactionDiffuseImage[i];
-			imageMemoryBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-			imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-			imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-
-			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,
-								 nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-
-			VkImageBlit blitRegion{};
-			blitRegion.srcOffsets[1].x = this->width();
-			blitRegion.srcOffsets[1].y = this->height();
-			blitRegion.srcOffsets[1].z = 1;
-			blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			blitRegion.srcSubresource.layerCount = 1;
-			blitRegion.srcSubresource.mipLevel = 0;
-			blitRegion.dstOffsets[1].x = this->width();
-			blitRegion.dstOffsets[1].y = this->height();
-			blitRegion.dstOffsets[1].z = 1;
-			blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			blitRegion.dstSubresource.layerCount = 1;
-			blitRegion.dstSubresource.mipLevel = 0;
-
-			// TOOD fix the layout transition, based on the errors.
-			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_GENERAL,
-											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-			/*	Transfer image directly to swapchain images.	*/
-			vkCmdBlitImage(cmd, reactionDiffuseImage[i], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, getSwapChainImages()[i],
-						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion, VK_FILTER_NEAREST);
-			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-											VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-			VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-											VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-
-			VKS_VALIDATE(vkEndCommandBuffer(cmd));
-		}
-	}
-
-	virtual void draw() override {
-
-		/*	Update uniform variables.	*/
-		void *data;
-		VKS_VALIDATE(
-			vkMapMemory(getDevice(), paramMemory, paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
-		memcpy(data, &params, paramMemSize);
-		vkUnmapMemory(getDevice(), paramMemory);
-
-		int x, y;
-		SDL_GetMouseState(&x, &y);
-		params.mousePosX = x;
-		params.mousePosY = y;
-		params.delta = getTimer().deltaTime();
-		params.posX = 0;
-		params.posY = 0;
-		params.zoom = 1.0f;
-	}
-};
+	};
+} // namespace vksample
 
 // TODO Add seed argument.
 
@@ -409,7 +423,7 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_instance_extensions = {};
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 	try {
-		VKSample<ReactionDiffusion> reactionDiffusionSample;
+		vksample::ReactionDiffusionVKSample reactionDiffusionSample;
 		reactionDiffusionSample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {

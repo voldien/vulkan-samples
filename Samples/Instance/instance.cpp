@@ -10,25 +10,28 @@ namespace vksample {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexMemory;
-
-		std::vector<VkDescriptorSet> descriptorSets;
+		VkDeviceSize indices_offset = 0;
+		size_t nrIndices = 1;
 
 		/*	*/
+		std::vector<VkDescriptorSet> descriptorSets;
+
 		VkBuffer uniformBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory uniformBufferMemory = VK_NULL_HANDLE;
 		std::vector<void *> mapMemory;
-		VkDeviceSize uniformBufferSize;
 
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+		VkDescriptorPool descpool = VK_NULL_HANDLE;
+		VkSampler sampler = VK_NULL_HANDLE;
 
 		struct UniformBufferBlock {
-			alignas(16) glm::mat4 model;
-			alignas(16) glm::mat4 view;
-			alignas(16) glm::mat4 proj;
-			alignas(16) glm::mat4 modelView;
-			alignas(16) glm::mat4 modelViewProjection;
+			glm::mat4 model;
+			glm::mat4 view;
+			glm::mat4 proj;
+			glm::mat4 modelView;
+			glm::mat4 modelViewProjection;
 
 			/*	Light source.	*/
 			glm::vec4 direction = glm::vec4(1.0f / sqrt(2.0f), -1.0f / sqrt(2.0f), 0.0f, 0.0f);
@@ -82,8 +85,8 @@ namespace vksample {
 			auto fragShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->fragmentInstanceShaderPath, this->getFileSystem());
 
-			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
-			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
+			VkShaderModule vertShaderModule = VKHelper::createShaderModule(this->getDevice(), vertShaderCode);
+			VkShaderModule fragShaderModule = VKHelper::createShaderModule(this->getDevice(), fragShaderCode);
 
 			VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 			vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -240,7 +243,7 @@ namespace vksample {
 			pipelineInfo.pDepthStencilState = &depthStencil;
 			pipelineInfo.pColorBlendState = &colorBlending;
 			pipelineInfo.layout = pipelineLayout;
-			pipelineInfo.renderPass = getDefaultRenderPass();
+			pipelineInfo.renderPass = this->getDefaultRenderPass();
 			pipelineInfo.subpass = 0;
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 			pipelineInfo.pDynamicState = &dynamicStateInfo;
@@ -314,9 +317,16 @@ namespace vksample {
 				renderPassInfo.renderArea.extent.width = width;
 				renderPassInfo.renderArea.extent.height = height;
 
-				VkClearValue clearColor = {0.1f, 0.1f, 0.1f, 1.0f};
-				renderPassInfo.clearValueCount = 1;
-				renderPassInfo.pClearValues = &clearColor;
+				std::array<VkClearValue, 2> clearValues{};
+				clearValues[0].color = {0.05f, 0.05f, 0.05f, 1.0f};
+				clearValues[1].depthStencil = {1.0f, 0};
+
+				renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+				renderPassInfo.pClearValues = clearValues.data();
+
+				VkViewport viewport = {
+					.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
+				vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 				vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 				/*	*/

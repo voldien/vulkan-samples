@@ -11,6 +11,13 @@ using namespace fvkcore;
 
 VKWindow::~VKWindow() {
 
+	/*	Wait intill all gpu tasks has been finished before terminate.	*/
+	vkDeviceWaitIdle(this->getDevice());
+
+	/*	Release all the resources associated with the window application.	*/
+	this->release();
+	this->cleanSwapChain();
+
 	/*	Release sync objets.	*/
 	for (size_t i = 0; i < this->renderFinishedSemaphores.size(); i++) {
 		vkDestroySemaphore(getDevice(), renderFinishedSemaphores[i], nullptr);
@@ -434,36 +441,36 @@ void VKWindow::recreateSwapChain() {
 
 	vkDeviceWaitIdle(getDevice());
 
-	cleanSwapChain();
+	this->cleanSwapChain();
 
-	createSwapChain();
+	this->createSwapChain();
 }
 
 void VKWindow::cleanSwapChain() {
 	for (auto framebuffer : swapChain->swapChainFramebuffers) {
-		vkDestroyFramebuffer(getDevice(), framebuffer, nullptr);
+		vkDestroyFramebuffer(this->getDevice(), framebuffer, nullptr);
 	}
-	swapChain->swapChainFramebuffers.clear();
+	this->swapChain->swapChainFramebuffers.clear();
 
 	/*	*/
-	vkFreeCommandBuffers(getDevice(), this->graphic_pool, static_cast<uint32_t>(swapChain->commandBuffers.size()),
-						 swapChain->commandBuffers.data());
-	swapChain->commandBuffers.clear();
+	vkFreeCommandBuffers(this->getDevice(), this->graphic_pool, static_cast<uint32_t>(swapChain->commandBuffers.size()),
+						 this->swapChain->commandBuffers.data());
+	this->swapChain->commandBuffers.clear();
 
-	vkDestroyRenderPass(getDevice(), swapChain->renderPass, nullptr);
+	vkDestroyRenderPass(this->getDevice(), swapChain->renderPass, nullptr);
 
 	/*	*/
 	for (auto imageView : swapChain->swapChainImageViews) {
-		vkDestroyImageView(getDevice(), imageView, nullptr);
+		vkDestroyImageView(this->getDevice(), imageView, nullptr);
 	}
 	swapChain->swapChainImageViews.clear();
 
 	/*	Release depth/stencil.	*/
-	vkDestroyImageView(getDevice(), swapChain->depthImageView, nullptr);
-	vkDestroyImage(getDevice(), swapChain->depthImage, nullptr);
-	vkFreeMemory(getDevice(), swapChain->depthImageMemory, nullptr);
+	vkDestroyImageView(this->getDevice(), swapChain->depthImageView, nullptr);
+	vkDestroyImage(this->getDevice(), swapChain->depthImage, nullptr);
+	vkFreeMemory(this->getDevice(), swapChain->depthImageMemory, nullptr);
 
-	vkDestroySwapchainKHR(getDevice(), this->swapChain->swapchain, nullptr);
+	vkDestroySwapchainKHR(this->getDevice(), this->swapChain->swapchain, nullptr);
 }
 VkFormat VKWindow::findDepthFormat() {
 	return VKHelper::findSupportedFormat(
@@ -526,8 +533,8 @@ void VKWindow::run() {
 					goto finished;
 				case SDL_WINDOWEVENT_SIZE_CHANGED:
 				case SDL_WINDOWEVENT_RESIZED:
-					recreateSwapChain();
-					onResize(event.window.data1, event.window.data2);
+					this->recreateSwapChain();
+					this->onResize(event.window.data1, event.window.data2);
 					break;
 				case SDL_WINDOWEVENT_HIDDEN:
 				case SDL_WINDOWEVENT_MINIMIZED:
@@ -574,8 +581,8 @@ finished:
 	vkDeviceWaitIdle(this->getDevice());
 
 	/*	Release all the resources associated with the window application.	*/
-	this->release();
-	this->cleanSwapChain();
+	// this->release();
+	// this->cleanSwapChain();
 }
 
 void VKWindow::captureScreenShot() {
@@ -583,6 +590,7 @@ void VKWindow::captureScreenShot() {
 	const int screen_grab_height_size = this->height();
 
 	void *pixelData = nullptr;
+
 	/*	offload the image process and saving to filesystem.	*/
 	std::thread process_thread([screen_grab_width_size, screen_grab_height_size, pixelData]() {
 		/*	*/

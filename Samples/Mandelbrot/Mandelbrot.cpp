@@ -4,6 +4,10 @@
 
 namespace vksample {
 
+	/**
+	 * @brief 
+	 * 
+	 */
 	class MandelBrotWindow : public VKWindow {
 	  private:
 		VkPipeline computePipeline = VK_NULL_HANDLE;
@@ -297,6 +301,9 @@ namespace vksample {
 			params.nrSamples = 128;
 		}
 	};
+
+	/*	*/
+	
 } // namespace vksample
 
 int main(int argc, const char **argv) {

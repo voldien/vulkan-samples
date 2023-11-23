@@ -11,6 +11,11 @@
 #include <cxxopts.hpp>
 #include <memory>
 
+/**
+ * @brief
+ *
+ * @tparam T
+ */
 template <class T> class VKSample : public vkscommon::VKSampleSession {
   public:
 	VKSample() {}
@@ -35,10 +40,12 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			"g,gpu-device", "GPU Device Select", cxxopts::value<int32_t>()->default_value("-1"))(
 			"p,present-mode", "Present Mode", cxxopts::value<int32_t>()->default_value("-1"))(
 			"f,fullscreen", "FullScreen", cxxopts::value<bool>()->default_value("false"))(
-			"H,headless", "Headless Renderer", cxxopts::value<bool>()->default_value("false"))(
+			"a,headless", "Headless Renderer", cxxopts::value<bool>()->default_value("false"))(
 			"r,renderdoc", "Enable RenderDoc", cxxopts::value<bool>()->default_value("false"))(
 			"F,filesystem", "FileSystem", cxxopts::value<std::string>()->default_value("."))(
-			"C,color-space", "Display ColorSpace", cxxopts::value<std::string>()->default_value(""));
+			"C,color-space", "Display ColorSpace", cxxopts::value<std::string>()->default_value(""))(
+			"W,width", "Set Window Width", cxxopts::value<int>()->default_value("-1"))(
+			"H,height", "Set Window Height", cxxopts::value<int>()->default_value("-1"));
 
 		/*	Append command option for the specific sample.	*/
 		this->customOptions(addr);
@@ -67,8 +74,6 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			}
 		}
 
-		if (result.count("gpu-device") > 0) {
-		}
 		bool headless = result["headless"].as<bool>();
 
 		/*	*/
@@ -124,9 +129,14 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 											  core->getNrPhysicalDevices());
 		}
 
+		if (device_index == -1) {
+			/*	Select best gpu.	*/
+			const std::vector<VkPhysicalDevice> &physical_devices = this->core->getPhysicalDevices();
+		}
+
 		/*	All physical devices.	*/
 		std::vector<std::shared_ptr<PhysicalDevice>> selected_physical_devices;
-		bool group_device_request = result.count("gpu-device") > 1;
+		const bool group_device_request = result.count("gpu-device") > 1;
 
 		if (device_index >= 0) {
 			selected_physical_devices.push_back(core->createPhysicalDevice(device_index));
@@ -134,6 +144,7 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			// physical_devices.push_back(std::shared_ptr<PhysicalDevice>(core->getPhysicalDevices()[0]));
 		}
 
+		/*	Check if device extensions are supported.	*/
 		for (size_t i = 0; i < selected_physical_devices.size(); i++) {
 			for (auto it = use_required_device_extensions.cbegin(); it != use_required_device_extensions.cend(); it++) {
 				if (!selected_physical_devices[i]->isExtensionSupported((*it).first)) {
@@ -153,6 +164,8 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			std::vector<std::vector<float>> global_queuePriorities;
 			std::vector<VkDeviceQueueCreateInfo> queues = this->OnSelectQueue(selected_physical_devices);
 
+			/*	Select */
+			// TODO move to default OnSelectQueue
 			if (queues.size() == 0) {
 				for (size_t j = 0; j < selected_physical_devices[0]->getQueueFamilyProperties().size(); j++) {
 					/*  */
@@ -187,10 +200,10 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			/*	Internal initialize.	*/
 			this->ref->setFileSystem(this->activeFileSystem);
 
-			int width = -1;
-			int height = -1;
+			int width = result["width"].as<int>();
+			int height = result["height"].as<int>();
 			if (fullscreen) {
-				// Display,
+				/*	*/
 				fragcore::SDLDisplay display = fragcore::SDLDisplay::getPrimaryDisplay();
 				width = display.width();
 				height = display.height();
@@ -209,7 +222,26 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 	}
 
 	virtual std::vector<VkDeviceQueueCreateInfo> OnSelectQueue([
-		[maybe_unused]] std::vector<std::shared_ptr<PhysicalDevice>> &physical_devices) {
+		[maybe_unused]] const std::vector<std::shared_ptr<PhysicalDevice>> &physical_selected_devices) {
+		std::vector<std::vector<float>> global_queuePriorities;
+		std::vector<VkDeviceQueueCreateInfo> queues;
+		for (size_t j = 0; j < physical_selected_devices[0]->getQueueFamilyProperties().size(); j++) {
+			/*  */
+			const VkQueueFamilyProperties &familyProp = physical_selected_devices[0]->getQueueFamilyProperties()[j];
+			std::vector<float> queuePriorities(familyProp.queueCount, 1.0f);
+			global_queuePriorities.push_back(queuePriorities);
+
+			VkDeviceQueueCreateInfo queueCreateInfo;
+			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queueCreateInfo.pNext = nullptr;
+			queueCreateInfo.flags = 0;
+			queueCreateInfo.queueFamilyIndex = j;
+			queueCreateInfo.queueCount = familyProp.queueCount;
+			queueCreateInfo.pQueuePriorities = global_queuePriorities.back().data();
+
+			queues.push_back(queueCreateInfo);
+		}
+
 		return {};
 	}
 

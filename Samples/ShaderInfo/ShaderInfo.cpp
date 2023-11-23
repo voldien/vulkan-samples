@@ -15,8 +15,10 @@ namespace vksample {
 
 		VkPipeline loadPipeline() { return VK_NULL_HANDLE; }
 
+	
 		virtual void run() override {
-
+			
+			//TODO add 
 			std::vector<VkPipeline> pipelines = {};
 
 			PFN_vkGetShaderInfoAMD pfnGetShaderInfoAMD =
@@ -38,7 +40,7 @@ namespace vksample {
 											VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD, &dataSize,
 											disassembly) == VK_SUCCESS) {
 
-						printf((char *)disassembly);
+						printf("%s", (char *)disassembly);
 					}
 
 					free(disassembly);
@@ -46,7 +48,15 @@ namespace vksample {
 			}
 		}
 	};
-	
+
+
+	class ShaderInfoVKSample : public VKSample<ShaderInfo> {
+	  public:
+		ShaderInfoVKSample() : VKSample<ShaderInfo>() {}
+		virtual void customOptions(cxxopts::OptionAdder &options) override {
+			options("S,shader", "Texture Path", cxxopts::value<std::string>()->default_value("Shaders/gameoflife/gameoflife.comp.spv"));
+		}
+	};
 
 } // namespace vksample
 
@@ -56,7 +66,7 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {{VK_AMD_SHADER_INFO_EXTENSION_NAME, true}};
 
 	try {
-		VKSample<vksample::ShaderInfo> sample;
+		vksample::ShaderInfoVKSample sample;
 		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {

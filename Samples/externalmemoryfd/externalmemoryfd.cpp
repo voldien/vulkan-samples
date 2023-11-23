@@ -5,6 +5,10 @@
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 
+/**
+ * @brief
+ *
+ */
 class ExternalMemoryFD : public vkscommon::VKSampleSessionBase {
   public:
 	ExternalMemoryFD(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -17,7 +21,7 @@ class ExternalMemoryFD : public vkscommon::VKSampleSessionBase {
 		vkDestroyBuffer(this->getDevice(), buffer, nullptr);
 	}
 
-	virtual void run() override {
+	void run() override {
 
 		const VkDeviceSize bufferSize = sizeof(float) * 1024 * 1024;
 

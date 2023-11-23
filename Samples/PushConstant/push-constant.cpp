@@ -6,8 +6,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
+
 namespace vksample {
 
+	/**
+	 * @brief
+	 *
+	 */
 	class PushConstant : public VKWindow {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
@@ -48,22 +53,21 @@ namespace vksample {
 			this->setTitle("Push Constant");
 			this->show();
 		}
-		virtual ~PushConstant() {}
 
-		virtual void release() override {
+		void release() override {
 
-			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
+			vkDestroyDescriptorPool(this->getDevice(), descpool, nullptr);
 
-			vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
-			vkFreeMemory(getDevice(), vertexIndicesMemory, nullptr);
+			vkDestroyBuffer(this->getDevice(), vertexBuffer, nullptr);
+			vkFreeMemory(this->getDevice(), vertexIndicesMemory, nullptr);
 
-			vkUnmapMemory(getDevice(), uniformBufferMemory);
-			vkDestroyBuffer(getDevice(), uniformBuffer, nullptr);
-			vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
+			vkUnmapMemory(this->getDevice(), uniformBufferMemory);
+			vkDestroyBuffer(this->getDevice(), uniformBuffer, nullptr);
+			vkFreeMemory(this->getDevice(), uniformBufferMemory, nullptr);
 
-			vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
-			vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
-			vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
+			vkDestroyDescriptorSetLayout(this->getDevice(), descriptorSetLayout, nullptr);
+			vkDestroyPipeline(this->getDevice(), graphicsPipeline, nullptr);
+			vkDestroyPipelineLayout(this->getDevice(), pipelineLayout, nullptr);
 		}
 
 		VkPipeline createGraphicPipeline() {
@@ -127,17 +131,10 @@ namespace vksample {
 			viewport.minDepth = 0.0f;
 			viewport.maxDepth = 1.0f;
 
-			VkRect2D scissor{};
-			scissor.offset = {0, 0};
-			scissor.extent.width = width();
-			scissor.extent.height = height();
-
 			VkPipelineViewportStateCreateInfo viewportState{};
 			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportState.viewportCount = 1;
 			viewportState.pViewports = &viewport;
-			viewportState.scissorCount = 1;
-			viewportState.pScissors = &scissor;
 
 			VkPipelineRasterizationStateCreateInfo rasterizer{};
 			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -329,10 +326,10 @@ namespace vksample {
 				vkUnmapMemory(getDevice(), vertexIndicesMemory);
 			}
 
-			onResize(width(), height());
+			this->onResize(this->width(), this->height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 			this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
@@ -341,14 +338,7 @@ namespace vksample {
 			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 		}
 
-		virtual void draw() override {
-
-			this->mvp.model = glm::mat4(1.0f);
-			this->mvp.view = glm::mat4(1.0f);
-			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-			this->mvp.model =
-				glm::rotate(this->mvp.model, glm::radians(getTimer().getElapsed() * 45), glm::vec3(0.0f, 1.0f, 0.0f));
-			this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
+		void draw() override {
 
 			VkCommandBuffer cmd = getCommandBuffers(getCurrentFrameIndex());
 
@@ -390,11 +380,20 @@ namespace vksample {
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
 									&descriptorSets[getCurrentFrameIndex()], 0, nullptr);
 
-			vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
+			vkCmdDrawIndexed(cmd, this->nrIndices, 1, 0, 0, 0);
 
 			vkCmdEndRenderPass(cmd);
 
 			VKS_VALIDATE(vkEndCommandBuffer(cmd));
+		}
+
+		void update() override {
+			this->mvp.model = glm::mat4(1.0f);
+			this->mvp.view = glm::mat4(1.0f);
+			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
+			this->mvp.model =
+				glm::rotate(this->mvp.model, glm::radians(getTimer().getElapsed() * 45), glm::vec3(0.0f, 1.0f, 0.0f));
+			this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 		}
 	};
 

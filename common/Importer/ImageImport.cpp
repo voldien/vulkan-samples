@@ -39,7 +39,8 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 	fragcore::ImageLoader imageLoader;
 	fragcore::Image image = imageLoader.loadImage(filename);
 
-	uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(image.width(), image.height())))) + 1;
+	uint32_t mipLevels = std::min(
+		static_cast<uint32_t>(std::floor(std::log2(std::max(image.width(), image.height())))) + 1, (uint32_t)8);
 
 	const VkDeviceSize imageSize = image.getSize();
 	VkPhysicalDeviceMemoryProperties memProperties;
@@ -90,13 +91,15 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 	// TODO fix VK_IMAGE_TILING_LINEAR or tiling
 	/*	TODO check if combination supported.	*/
 	if (!this->device.isFormatSupported(vk_format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_LINEAR,
-										VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)) {
+										VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+											VK_IMAGE_USAGE_SAMPLED_BIT)) {
 		throw fragcore::RuntimeException("None Supported Image Format on Device: {}", magic_enum::enum_name(vk_format));
 	}
 
 	/*	Create staging buffer.	*/
 	VKHelper::createImage(device, image.width(), image.height(), mipLevels, vk_format, VK_IMAGE_TILING_LINEAR,
-						  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+						  VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+							  VK_IMAGE_USAGE_SAMPLED_BIT,
 						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, textureImage, textureImageMemory);
 	/*	*/
 	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -104,10 +107,6 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 	VKHelper::copyBufferToImageCmd(
 		cmd, stagingBuffer, textureImage,
 		{static_cast<uint32_t>(image.width()), static_cast<uint32_t>(image.height()), image.layers()});
-
-	/*	*/
-	// VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-	//								VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	/*	*/
 	VKHelper::endSingleTimeCommands(device, queue, cmd, commandPool);

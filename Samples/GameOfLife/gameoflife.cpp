@@ -4,6 +4,10 @@
 
 namespace vksample {
 
+	/**
+	 * @brief
+	 *
+	 */
 	class GameOfLife : public VKWindow {
 	  private:
 		VkPipeline computePipeline = VK_NULL_HANDLE;
@@ -29,9 +33,9 @@ namespace vksample {
 		GameOfLife(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 			: VKWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle(std::string("Game Of Life"));
+
 			this->show();
 		}
-		virtual ~GameOfLife() {}
 
 		virtual void release() override {
 			/*	*/
@@ -114,7 +118,7 @@ namespace vksample {
 		virtual void Initialize() override {
 
 			/*	Create pipeline.	*/
-			computePipeline = createComputePipeline(&computePipelineLayout);
+			this->computePipeline = createComputePipeline(&computePipelineLayout);
 
 			/*	Allocate descriptor set.	*/
 			const std::vector<VkDescriptorPoolSize> poolSize = {{
@@ -123,7 +127,7 @@ namespace vksample {
 			}};
 
 			/*	*/
-			descpool = VKHelper::createDescPool(getDevice(), poolSize, this->getSwapChainImageCount() * 3);
+			this->descpool = VKHelper::createDescPool(getDevice(), poolSize, this->getSwapChainImageCount() * 3);
 
 			/*	Create game of life render image.	*/
 			this->gameoflifeRenderImage.resize(this->getSwapChainImageCount());
@@ -143,8 +147,8 @@ namespace vksample {
 
 			/*	Create render images.	*/
 			for (size_t i = 0; i < this->gameoflifeRenderImageMemory.size(); i++) {
-				if (gameoflifeRenderImage[i] != nullptr) {
-					vkDestroyImage(this->getDevice(), gameoflifeRenderImage[i], nullptr);
+				if (this->gameoflifeRenderImage[i] != nullptr) {
+					vkDestroyImage(this->getDevice(), this->gameoflifeRenderImage[i], nullptr);
 				}
 				VKHelper::createImage(
 					this->getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM,
@@ -154,9 +158,10 @@ namespace vksample {
 					this->gameoflifeRenderImage[i], this->gameoflifeRenderImageMemory[i]);
 			}
 
+			/*	Create cell state image.	*/
 			for (size_t i = 0; i < this->gameoflifeCellImage.size(); i++) {
 				if (gameoflifeCellImage[i] != nullptr) {
-					vkDestroyImage(this->getDevice(), gameoflifeCellImage[i], nullptr);
+					vkDestroyImage(this->getDevice(), this->gameoflifeCellImage[i], nullptr);
 				}
 				VKHelper::createImage(
 					this->getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8_UINT, VK_IMAGE_TILING_OPTIMAL,
@@ -298,6 +303,7 @@ namespace vksample {
 			}
 
 			// TODO resolve for if compute queue is not part of graphic queue.
+			/*	Create command queue.	*/
 			for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
 				VkCommandBuffer cmd = this->getCommandBuffers(i);
 

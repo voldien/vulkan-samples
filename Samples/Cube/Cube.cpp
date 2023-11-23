@@ -1,15 +1,20 @@
 #include "Importer/ImageImport.h"
 #include "Util/Time.hpp"
 #include "VksCommon.h"
+#include "vulkan/vulkan_core.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
 namespace vksample {
 
-	// TODO fix UV of the cube!
+	/**
+	 * @brief
+	 *
+	 */
 	class Cube : public VKWindow {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
@@ -27,14 +32,15 @@ namespace vksample {
 		std::vector<void *> mapMemory;
 
 		VkDeviceSize uniformMemSize;
+		CameraController camera;
 
 		const std::string vertexShaderPath = "shaders/triangle-mvp.vert.spv";
 		const std::string fragmentShaderPath = "shaders/triangle-mvp.frag.spv";
 
 		struct UniformBufferBlock {
-			alignas(16) glm::mat4 model;
-			alignas(16) glm::mat4 view;
-			alignas(16) glm::mat4 proj;
+			glm::mat4 model;
+			glm::mat4 view;
+			glm::mat4 proj;
 		} mvp;
 
 		typedef struct _vertex_t {
@@ -47,46 +53,47 @@ namespace vksample {
 			: VKWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle("Cube");
 			this->show();
-		}
-		virtual ~Cube() {}
 
-		virtual void release() override {
-
-			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
-
-			vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
-			vkFreeMemory(getDevice(), vertexMemory, nullptr);
-
-			vkUnmapMemory(getDevice(), uniformBufferMemory);
-			vkDestroyBuffer(getDevice(), uniformBuffer, nullptr);
-
-			vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
-
-			vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
-			vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
-			vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
+			this->camera.enableNavigation(false);
 		}
 
-		const std::vector<Vertex> vertices = {{-1.0f, -1.0f, -1.0f, 0, 0}, // triangle 1 : begin
-											  {-1.0f, -1.0f, 1.0f, 0, 1},
-											  {-1.0f, 1.0f, 1.0f, 1, 1}, // triangle 1 : end
-											  {1.0f, 1.0f, -1.0f, 1, 1}, // triangle 2 : begin
-											  {-1.0f, -1.0f, -1.0f, 1, 0},
-											  {-1.0f, 1.0f, -1.0f, 0, 0}, // triangle 2 : end
-											  {1.0f, -1.0f, 1.0f, 0, 0},
-											  {-1.0f, -1.0f, -1.0f, 0, 1},
-											  {1.0f, -1.0f, -1.0f, 1, 1},
-											  {1.0f, 1.0f, -1.0f, 0, 0},
-											  {1.0f, -1.0f, -1.0f, 1, 1},
-											  {-1.0f, -1.0f, -1.0f, 1, 0},
-											  {-1.0f, -1.0f, -1.0f, 0, 0},
-											  {-1.0f, 1.0f, 1.0f, 0, 1},
-											  {-1.0f, 1.0f, -1.0f, 1, 1},
-											  {1.0f, -1.0f, 1.0f, 0, 0},
-											  {-1.0f, -1.0f, 1.0f, 1, 1},
-											  {-1.0f, -1.0f, -1.0f, 0, 1},
-											  {-1.0f, 1.0f, 1.0f, 0, 0},
-											  {-1.0f, -1.0f, 1.0f, 0, 1},
+		void release() override {
+
+			vkDestroyDescriptorPool(getDevice(), this->descpool, nullptr);
+
+			vkDestroyBuffer(getDevice(), this->vertexBuffer, nullptr);
+			vkFreeMemory(getDevice(), this->vertexMemory, nullptr);
+
+			vkUnmapMemory(getDevice(), this->uniformBufferMemory);
+			vkDestroyBuffer(getDevice(), this->uniformBuffer, nullptr);
+			vkFreeMemory(getDevice(), this->uniformBufferMemory, nullptr);
+
+			/*	*/
+			vkDestroyDescriptorSetLayout(this->getDevice(), this->descriptorSetLayout, nullptr);
+			vkDestroyPipeline(this->getDevice(), this->graphicsPipeline, nullptr);
+			vkDestroyPipelineLayout(this->getDevice(), this->pipelineLayout, nullptr);
+		}
+
+		const std::vector<Vertex> vertices = {{{-1.0f, -1.0f, -1.0f}, {0, 0}}, // triangle 1 : begin
+											  {{-1.0f, -1.0f, 1.0f}, {0, 1}},
+											  {{-1.0f, 1.0f, 1.0f}, {1, 1}}, // triangle 1 : end
+											  {{1.0f, 1.0f, -1.0f}, {1, 1}}, // triangle 2 : begin
+											  {{-1.0f, -1.0f, -1.0f}, {1, 0}},
+											  {{-1.0f, 1.0f, -1.0f}, {0, 0}}, // triangle 2 : end
+											  {{1.0f, -1.0f, 1.0f}, {0, 0}},
+											  {{-1.0f, -1.0f, -1.0f}, {0, 1}},
+											  {{1.0f, -1.0f, -1.0f}, {1, 1}},
+											  {{1.0f, 1.0f, -1.0f}, {0, 0}},
+											  {{1.0f, -1.0f, -1.0f}, {1, 1}},
+											  {{-1.0f, -1.0f, -1.0f}, {1, 0}},
+											  {{-1.0f, -1.0f, -1.0f}, {0, 0}},
+											  {{-1.0f, 1.0f, 1.0f}, {0, 1}},
+											  {{-1.0f, 1.0f, -1.0f}, {1, 1}},
+											  {{1.0f, -1.0f, 1.0f}, {0, 0}},
+											  {{-1.0f, -1.0f, 1.0f}, {1, 1}},
+											  {{-1.0f, -1.0f, -1.0f}, {0, 1}},
+											  {{-1.0f, 1.0f, 1.0f}, {0, 0}},
+											  {{-1.0f, -1.0f, 1.0f}, 0, 1},
 											  {1.0f, -1.0f, 1.0f, 1, 1},
 											  {1.0f, 1.0f, 1.0f, 0, 0},
 											  {1.0f, -1.0f, -1.0f, 1, 1},
@@ -108,10 +115,10 @@ namespace vksample {
 
 		VkPipeline createGraphicPipeline() {
 
-			auto vertShaderCode =
+			const auto vertShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   this->getFileSystem());
+			const auto fragShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -163,7 +170,7 @@ namespace vksample {
 			uboLayoutBinding.pImmutableSamplers = nullptr;
 			uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, {uboLayoutBinding});
+			VKHelper::createDescriptorSetLayout(this->getDevice(), descriptorSetLayout, {uboLayoutBinding});
 
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -180,8 +187,8 @@ namespace vksample {
 
 			VkRect2D scissor{};
 			scissor.offset = {0, 0};
-			scissor.extent.width = width();
-			scissor.extent.height = height();
+			scissor.extent.width = this->width();
+			scissor.extent.height = this->height();
 
 			VkPipelineViewportStateCreateInfo viewportState{};
 			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -251,7 +258,7 @@ namespace vksample {
 			pipelineInfo.pDepthStencilState = &depthStencil;
 			pipelineInfo.pColorBlendState = &colorBlending;
 			pipelineInfo.layout = pipelineLayout;
-			pipelineInfo.renderPass = getDefaultRenderPass();
+			pipelineInfo.renderPass = this->getDefaultRenderPass();
 			pipelineInfo.subpass = 0;
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 			pipelineInfo.pDynamicState = &dynamicStateInfo;
@@ -281,7 +288,7 @@ namespace vksample {
 								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffer, uniformBufferMemory);
+								   this->uniformBuffer, this->uniformBufferMemory);
 
 			this->mapMemory.resize(this->getSwapChainImageCount());
 			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
@@ -304,7 +311,7 @@ namespace vksample {
 			VKS_VALIDATE(vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool));
 
 			/*	Create pipeline.	*/
-			graphicsPipeline = createGraphicPipeline();
+			this->graphicsPipeline = createGraphicPipeline();
 
 			/*	*/
 			std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
@@ -332,58 +339,55 @@ namespace vksample {
 				descriptorWrite.descriptorCount = 1;
 				descriptorWrite.pBufferInfo = &bufferInfo;
 
-				vkUpdateDescriptorSets(getDevice(), 1, &descriptorWrite, 0, nullptr);
+				vkUpdateDescriptorSets(this->getDevice(), 1, &descriptorWrite, 0, nullptr);
+			}
+			{
+				VkBufferCreateInfo bufferInfo = {};
+				bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+				bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+				bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+				bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+				VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
+
+				VkMemoryRequirements memRequirements;
+				vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
+
+				VkMemoryAllocateInfo allocInfo = {};
+				allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+				allocInfo.allocationSize = memRequirements.size;
+				allocInfo.memoryTypeIndex =
+					VKHelper::findMemoryType(this->physicalDevice(), memRequirements.memoryTypeBits,
+											 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+						.value();
+
+				VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
+
+				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
+
+				void *data;
+				VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
+				memcpy(data, vertices.data(), (size_t)bufferInfo.size);
+				vkUnmapMemory(getDevice(), vertexMemory);
+
+				// Setup the range
+				VkMappedMemoryRange stagingRange{};
+				stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+				stagingRange.memory = vertexMemory;
+				stagingRange.offset = 0;
+				stagingRange.size = bufferInfo.size;
+				VKS_VALIDATE(vkFlushMappedMemoryRanges(this->getDevice(), 1, &stagingRange));
 			}
 
-			VkBufferCreateInfo bufferInfo = {};
-			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			bufferInfo.size = sizeof(vertices[0]) * vertices.size();
-			bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-			VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
-
-			VkMemoryRequirements memRequirements;
-			vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
-
-			VkMemoryAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex =
-				VKHelper::findMemoryType(this->physicalDevice(), memRequirements.memoryTypeBits,
-										 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-					.value();
-
-			VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
-
-			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
-
-			void *data;
-			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
-			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
-			vkUnmapMemory(getDevice(), vertexMemory);
-
-			// Setup the range
-			VkMappedMemoryRange stagingRange{};
-			stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-			stagingRange.memory = vertexMemory;
-			stagingRange.offset = 0;
-			stagingRange.size = bufferInfo.size;
-			VKS_VALIDATE(vkFlushMappedMemoryRanges(this->getDevice(), 1, &stagingRange));
-
-			onResize(width(), height());
+			this->onResize(this->width(), this->height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
-			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-			this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
-			this->mvp.model = glm::mat4(1.0f);
-			this->mvp.view = glm::mat4(1.0f);
-			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
+			VKS_VALIDATE(vkQueueWaitIdle(this->getDefaultGraphicQueue()));
 
-			for (size_t i = 0; i < getNrCommandBuffers(); i++) {
-				VkCommandBuffer cmd = getCommandBuffers(i);
+			for (size_t i = 0; i < this->getNrCommandBuffers(); i++) {
+				VkCommandBuffer cmd = this->getCommandBuffers(i);
 
 				VkCommandBufferBeginInfo beginInfo = {};
 				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -429,12 +433,19 @@ namespace vksample {
 
 				VKS_VALIDATE(vkEndCommandBuffer(cmd));
 			}
+
+			this->camera.setAspect((float)width / (float)height);
 		}
 
-		virtual void draw() override {
+		void draw() override {}
 
-			float elapsedTime = getTimer().getElapsed();
+		void update() override {
+			/*	*/
+			this->camera.update(this->getTimer().deltaTime());
 
+			const float elapsedTime = this->getTimer().getElapsed();
+
+			this->mvp.proj = this->camera.getProjectionMatrix();
 			this->mvp.model = glm::mat4(1.0f);
 			this->mvp.view = glm::mat4(1.0f);
 			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
@@ -443,7 +454,7 @@ namespace vksample {
 			this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 
 			/*	Copy new uniform data.	*/
-			memcpy(mapMemory[getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
+			memcpy(this->mapMemory[this->getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
 
 			// Setup the range
 			VkMappedMemoryRange stagingRange{};
@@ -453,8 +464,15 @@ namespace vksample {
 			stagingRange.size = this->uniformMemSize;
 			// vkFlushMappedMemoryRanges(this->getDevice(), 1, &stagingRange);
 		}
+	};
 
-		virtual void update() {}
+	class CubeGLSample : public VKSample<Cube> {
+	  public:
+		CubeGLSample() : VKSample<Cube>() {}
+
+		virtual void customOptions(cxxopts::OptionAdder &options) override {
+			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/texture.png"));
+		}
 	};
 } // namespace vksample
 
@@ -464,7 +482,7 @@ int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_device_extensions = {};
 
 	try {
-		VKSample<vksample::Cube> sample;
+		vksample::CubeGLSample sample;
 		sample.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
