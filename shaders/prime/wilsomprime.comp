@@ -1,0 +1,42 @@
+#version 460 core
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_compute_shader : enable
+#extension GL_ARB_gpu_shader_int64 : enable
+
+layout(local_size_x = 128, local_size_y = 1) in;
+
+// Contains the cells information.
+layout(std430, set = 0, binding = 0) writeonly buffer PrimeResult { uint64_t prime[]; }
+ValueBuffer;
+
+layout(push_constant) uniform UniformBufferBlock {
+	layout(offset = 0) uint len;
+	layout(offset = 4) uint offset;
+	layout(offset = 8) uint p;
+}
+ubo;
+
+void main() {
+
+	/*	*/
+	// if (any(greaterThan(gl_GlobalInvocationID.xy, imageSize(img_output)))) {
+	//	return;
+	//}
+
+	/*	*/
+	uint gidi = gl_GlobalInvocationID.x;
+	uint gid = (gidi + ubo.offset);
+
+	/*	*/
+	uint i = (gid * ubo.len) + 1;
+	uint end = (i) + ubo.len;
+
+	uint64_t factori = 1;
+	const uint64_t prime_candidate = ubo.p;
+	for (; i < end; i++) {
+		factori *= uint64_t(i);
+		factori %= prime_candidate;
+	}
+
+	ValueBuffer.prime[gid] = factori;
+}

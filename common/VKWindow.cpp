@@ -1,10 +1,11 @@
 #include <ImageLoader.h>
+#include <thread>
 #define VK_USE_PLATFORM_XLIB_KHR
 #include "VKWindow.h"
+#include <SDL2/SDL.h>
 #include <VKDevice.h>
 #include <VKHelper.h>
 #include <cassert>
-#include <stdexcept>
 #include <vulkan/vulkan.h>
 
 using namespace fvkcore;
@@ -559,10 +560,11 @@ void VKWindow::run() {
 
 			/*	*/
 			this->swapBuffer();
-			this->getTimer().update();
-			this->fpsCounter.incrementFPS(SDL_GetPerformanceCounter());
+			this->fpsCounter.update(this->getTimer().deltaTime<float>());
 
-			std::cout << "FPS " << getFPSCounter().getFPS() << " Elapsed Time: " << getTimer().getElapsed()
+			this->getTimer().update();
+
+			std::cout << "FPS " << getFPSCounter().getFPS() << " Elapsed Time: " << getTimer().getElapsed<float>()
 					  << std::endl;
 		}
 		/*	*/
@@ -594,7 +596,7 @@ void VKWindow::captureScreenShot() {
 	/*	offload the image process and saving to filesystem.	*/
 	std::thread process_thread([screen_grab_width_size, screen_grab_height_size, pixelData]() {
 		/*	*/
-		fragcore::Image image(screen_grab_width_size, screen_grab_height_size, fragcore::TextureFormat::RGBA32);
+		fragcore::Image image(screen_grab_width_size, screen_grab_height_size, fragcore::ImageFormat::RGBA32);
 		image.setPixelData(pixelData, screen_grab_width_size * screen_grab_height_size * 4);
 		fragcore::ImageLoader loader;
 

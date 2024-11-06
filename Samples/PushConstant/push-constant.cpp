@@ -1,5 +1,5 @@
 #include "FPSCounter.h"
-#include "Util/Time.hpp"
+
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
@@ -392,7 +392,7 @@ namespace vksample {
 			this->mvp.view = glm::mat4(1.0f);
 			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
 			this->mvp.model =
-				glm::rotate(this->mvp.model, glm::radians(getTimer().getElapsed() * 45), glm::vec3(0.0f, 1.0f, 0.0f));
+				glm::rotate(this->mvp.model, glm::radians(getTimer().getElapsed<float>() * 45), glm::vec3(0.0f, 1.0f, 0.0f));
 			this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 		}
 	};

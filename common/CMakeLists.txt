@@ -1,26 +1,11 @@
-FILE(GLOB VKS_CORE_SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Core/*.cpp)
-FILE(GLOB VKS_CORE_HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Core/*.h )
+FILE(GLOB SOURCE_FILES  ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+						${CMAKE_CURRENT_SOURCE_DIR}/Util/*.cpp)
+FILE(GLOB HEADER_FILES  ${CMAKE_CURRENT_SOURCE_DIR}/*.h
+						${CMAKE_CURRENT_SOURCE_DIR}/Util/*.h)
 
-FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
-FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
-
-#
-IF(PKG_CONFIG_FOUND)
-	MESSAGE(STATUS "Found pkg-config: ${PKG_CONFIG_EXECUTABLE} -- version ${PKG_CONFIG_VERSION_STRING}.")
-	PKG_CHECK_MODULES(SDL2 QUIET sdl2)
-	PKG_CHECK_MODULES(GLFW3 QUIET glfw3)
-ELSE()
-	# TODO add logic for handling if pkg-config not available.
-ENDIF()
-
-IF(SDL2_FOUND)
-	MESSAGE(STATUS "Found sdl2: ${SDL2_LIBRARIES} -- version ${SDL2_VERSION}.")
-ENDIF()
-
-IF(GLFW3_FOUND)
-	MESSAGE(STATUS "Found glfw3: ${GLFW3_LIBRARIES} -- version ${GLFW3_VERSION}.")
-ENDIF()
-
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" )
+INCLUDE(assimp)
+INCLUDE(libcxxopts)
 
 ADD_LIBRARY(vk-sample-common-window-backend-sdl2 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/SDLWindow.cpp)
 ADD_LIBRARY(vk-sample-common-window-backend-glfw3 OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/WindowBackend/GLFW3Window.cpp)
@@ -31,6 +16,13 @@ TARGET_LINK_LIBRARIES(vk-sample-common-window-backend-glfw3  PUBLIC fragcore-rvk
 ADD_LIBRARY(vk-sample-common ${SOURCE_FILES} ${HEADER_FILES} )
 TARGET_LINK_LIBRARIES(vk-sample-common PUBLIC fmt fragcore-rvk cxxexcept cxxopts vk-sample-common-window-backend-sdl2 spirv-cross-c fragcore-scheduler-tasksch fragcore-geometry-util fragcore-imageloader)
 ADD_DEPENDENCIES(vk-sample-common spirv-cross-c fragcore-rvk cxxopts Shaders fragcore-imageloader)
+
+TARGET_COMPILE_DEFINITIONS(vk-sample-common PRIVATE FLYTHROUGH_CAMERA_IMPLEMENTATION=1)
+
+IF(OpenMP_FOUND AND OpenMP_CXX_FOUND)
+	TARGET_LINK_LIBRARIES(vk-sample-common PRIVATE m pthread PUBLIC OpenMP::OpenMP_CXX)
+	TARGET_COMPILE_OPTIONS(vk-sample-common PUBLIC ${OpenMP_CXX_FLAGS})
+ENDIF()
 
 IF (BUILD_SHARED_LIBS AND CMAKE_SIZEOF_VOID_P EQUAL 8) # -fPIC is only required
 	SET_PROPERTY(TARGET vk-sample-common PROPERTY POSITION_INDEPENDENT_CODE ON)

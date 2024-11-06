@@ -1,4 +1,5 @@
 #pragma once
+#include "Exception.hpp"
 #include "Importer/IOUtil.h"
 #include "Util/CameraController.h"
 #include "VKSampleSession.h"
@@ -10,6 +11,7 @@
 #include <SDLDisplay.h>
 #include <cxxopts.hpp>
 #include <memory>
+#include <thread>
 
 /**
  * @brief
@@ -129,9 +131,10 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 											  core->getNrPhysicalDevices());
 		}
 
+		const std::vector<VkPhysicalDevice> *physical_devices;
 		if (device_index == -1) {
 			/*	Select best gpu.	*/
-			const std::vector<VkPhysicalDevice> &physical_devices = this->core->getPhysicalDevices();
+			physical_devices = &this->core->getPhysicalDevices();
 		}
 
 		/*	All physical devices.	*/
@@ -140,8 +143,11 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 
 		if (device_index >= 0) {
 			selected_physical_devices.push_back(core->createPhysicalDevice(device_index));
+		} else if (physical_devices != nullptr) {
+			selected_physical_devices.push_back(
+				std::make_shared<PhysicalDevice>(*this->core.get(), physical_devices->at(0)));
 		} else {
-			// physical_devices.push_back(std::shared_ptr<PhysicalDevice>(core->getPhysicalDevices()[0]));
+			throw cxxexcept::RuntimeException("Failed to find physical device");
 		}
 
 		/*	Check if device extensions are supported.	*/

@@ -348,8 +348,8 @@ namespace vksample {
 
 		virtual void update() override {
 			/*	*/
-			float elapsedTime = this->getTimer().getElapsed();
-			this->camera.update(this->getTimer().deltaTime());
+			float elapsedTime = this->getTimer().getElapsed<float>();
+			this->camera.update(this->getTimer().deltaTime<float>());
 
 			/*	Update instance model matrix.	*/
 			for (size_t i = 0; i < rows; i++) {

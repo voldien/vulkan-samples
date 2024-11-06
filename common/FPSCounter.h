@@ -21,9 +21,9 @@
  *
  * @tparam T
  */
-template <typename T = double> class FPSCounter {
+template <typename T = float> class FPSCounter {
   public:
-	FPSCounter(const int nrFPSSample = 50, const long int timeResolution = 1000000000) {
+	FPSCounter(const unsigned int nrFPSSample = 50, const size_t timeResolution = 1000000000) {
 		this->fpsSample = nrFPSSample;
 		this->timeResolution = timeResolution;
 
@@ -31,45 +31,28 @@ template <typename T = double> class FPSCounter {
 		this->totalFPS = 0;
 	}
 
-	void enabled(const bool status) noexcept {}
+	void update(const float elapsedTime) noexcept { this->incrementFPS(elapsedTime); }
 
-	void incrementFPS(const long int timeSample) noexcept {
-
-		if (totalFPS % fpsSample == 0) {
-			/*  Compute number average FPS.  */
-			long int deltaTime = timeSample - prevTimeSample;
-			T sec = static_cast<T>(deltaTime) / static_cast<T>(timeResolution);
-			averageFPS = static_cast<T>(fpsSample) / sec;
-			prevTimeSample = timeSample;
-		}
-		totalFPS++;
-	}
-
-	void update(const float elapsedTime) noexcept {
-		if (totalFPS % fpsSample == 0) {
-		}
-		totalFPS++;
-	}
-
-	unsigned int getFPS() const noexcept { return averageFPS; }
+	unsigned int getFPS() const noexcept { return this->averageFPS; }
 
   protected:
-	void internal_update(long int timeSample) noexcept {
-		if (totalFPS % fpsSample == 0) {
-			/*  Compute number average FPS.  */
-			long int deltaTime = timeSample - prevTimeSample;
-			T sec = static_cast<T>(deltaTime) / static_cast<T>(timeResolution);
-			averageFPS = static_cast<T>(fpsSample) / sec;
-			prevTimeSample = timeSample;
+	void incrementFPS(const float timeSample) noexcept {
 
-			this->totalFPS = 0;
+		if (this->totalFPS % fpsSample == 0) {
+			/*  Compute number average FPS.  */
+			const float deltaTime = timeSample - prevTimeSample;
+			this->averageFPS = static_cast<T>(fpsSample) / deltaTime;
+
+			this->prevTimeSample = timeSample;
 		}
+
+		this->totalFPS++;
 	}
 
   private:
 	size_t totalFPS;
-	int fpsSample;
+	unsigned int fpsSample;
 	unsigned int averageFPS;
-	long int prevTimeSample;
+	float prevTimeSample;
 	long int timeResolution;
 };

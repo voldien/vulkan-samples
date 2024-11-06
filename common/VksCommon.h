@@ -2,7 +2,7 @@
 #include "Importer/IOUtil.h"
 #include "VKSample.h"
 #include "VKWindow.h"
-#include <Core/Math.h>
+#include <Math/Math.h>
 #include <VKDevice.h>
 #include <VKHelper.h>
 

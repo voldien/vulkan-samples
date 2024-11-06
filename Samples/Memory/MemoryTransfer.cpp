@@ -1,5 +1,4 @@
 #include "vulkan/vulkan_core.h"
-#include <Importer/ImageImport.h>
 #include <VKSample.h>
 #include <VKSampleBase.h>
 #include <VKUtil.h>
@@ -120,9 +119,9 @@ namespace vksample {
 		}
 
 		virtual void run() override {
-			
+
 			/*	*/
-			const int nrTransferSamples = 150; // TODO ass argument. this->getResult()["texture"].as<std::string>();
+			const int nrTransferSamples = this->getResult()["samples"].as<int>();
 
 			VkQueryPoolCreateInfo createInfo{};
 			createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -133,9 +132,6 @@ namespace vksample {
 			createInfo.queryCount = 2; // TODO
 
 			VKS_VALIDATE(vkCreateQueryPool(this->getDevice(), &createInfo, nullptr, &queryPool));
-
-			// TODO find the queue with best and possbile timestamp capability.
-			// TODO check if any of the queue supports timestamp, by looking at timestampValidBits value.
 
 			std::vector<int64_t> timeSample(nrTransferSamples);
 
@@ -248,14 +244,16 @@ namespace vksample {
 		MemoryTransferVKSample() : VKSample<MemoryTransfer>() {}
 		virtual void customOptions(cxxopts::OptionAdder &options) override {
 			options("M,memory-size", "Explicit Memory Size", cxxopts::value<int>()->default_value("-1"))(
-				"B,batches", "Number of Batches", cxxopts::value<int>()->default_value("-1"))
-				(
-				"Q,queue-index", "Select Queue to perform the memory bencharmk", cxxopts::value<int>()->default_value("-1"));
+				"S,samples", "Number of Samples", cxxopts::value<int>()->default_value("-1"))(
+				"Q,queue-index", "Select Queue to perform the memory bencharmk",
+				cxxopts::value<int>()->default_value("-1"));
 		}
 
 		std::vector<VkDeviceQueueCreateInfo>
 		OnSelectQueue(const std::vector<std::shared_ptr<PhysicalDevice>> &physical_devices) override {
 			std::vector<VkDeviceQueueCreateInfo> queues;
+
+			this->getResult();
 
 			/*	Select queue with transfer and the best timestamp resolution.	*/
 			uint32_t timestampvalid = 0;
@@ -268,7 +266,7 @@ namespace vksample {
 					queueIndex = j;
 				}
 			}
-			//TODO: fix reference.
+			// TODO: fix reference.
 			std::vector<float> queuePriorities(1, 1.0f);
 
 			VkDeviceQueueCreateInfo queueCreateInfo;

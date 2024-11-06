@@ -1,5 +1,5 @@
 #include "Importer/ImageImport.h"
-#include "Util/Time.hpp"
+
 #include "VksCommon.h"
 #include "vulkan/vulkan_core.h"
 #include <SDL2/SDL.h>
@@ -368,7 +368,6 @@ namespace vksample {
 				void *data;
 				VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 				memcpy(data, vertices.data(), (size_t)bufferInfo.size);
-				vkUnmapMemory(getDevice(), vertexMemory);
 
 				// Setup the range
 				VkMappedMemoryRange stagingRange{};
@@ -377,6 +376,8 @@ namespace vksample {
 				stagingRange.offset = 0;
 				stagingRange.size = bufferInfo.size;
 				VKS_VALIDATE(vkFlushMappedMemoryRanges(this->getDevice(), 1, &stagingRange));
+
+				vkUnmapMemory(getDevice(), vertexMemory);
 			}
 
 			this->onResize(this->width(), this->height());
@@ -441,9 +442,9 @@ namespace vksample {
 
 		void update() override {
 			/*	*/
-			this->camera.update(this->getTimer().deltaTime());
+			this->camera.update(this->getTimer().deltaTime<float>());
 
-			const float elapsedTime = this->getTimer().getElapsed();
+			const float elapsedTime = this->getTimer().getElapsed<float>();
 
 			this->mvp.proj = this->camera.getProjectionMatrix();
 			this->mvp.model = glm::mat4(1.0f);

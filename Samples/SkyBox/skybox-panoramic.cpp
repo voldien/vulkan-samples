@@ -2,7 +2,6 @@
 #include <Importer/ImageImport.h>
 #include <SDL2/SDL.h>
 #include <Util/CameraController.h>
-#include <Util/Time.hpp>
 #include <VKWindow.h>
 #include <VksCommon.h>
 #include <glm/glm.hpp>
@@ -443,7 +442,7 @@ namespace vksample {
 
 		virtual void draw() override {
 
-			this->cameraController.update(this->getTimer().deltaTime());
+			this->cameraController.update(this->getTimer().deltaTime<float>());
 			glm::mat4 viewMatrix = this->cameraController.getViewMatrix();
 			// TODO add character controller.
 

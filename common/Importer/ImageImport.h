@@ -1,9 +1,8 @@
 #pragma once
-#include <Core/IO/IFileSystem.h>
+#include <IO/IFileSystem.h>
 #include <FragDef.h>
 #include <VKDevice.h>
 #include <VKHelper.h>
-#include <stdio.h>
 #include <vulkan/vulkan.h>
 
 namespace vksample {

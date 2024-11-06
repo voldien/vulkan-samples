@@ -1,9 +1,8 @@
 #pragma once
-#include <Core/IO/FileSystem.h>
-#include <Core/IO/IOUtil.h>
 #include <Exception.hpp>
+#include <IO/FileSystem.h>
+#include <IO/IOUtil.h>
 #include <fmt/format.h>
-#include <fstream>
 #include <vector>
 
 namespace vksample {
@@ -27,7 +26,7 @@ namespace vksample {
 
 			fragcore::Ref<fragcore::IO> ref =
 				fragcore::Ref<fragcore::IO>(filesystem->openFile(filename.c_str(), fragcore::IO::IOMode::READ));
-			std::vector<T> buffer = fragcore::IOUtil::readFile<T>(ref);
+			std::vector<T> buffer = fragcore::IOUtil::readFileData<T>(ref);
 			ref->close();
 			return buffer;
 		}

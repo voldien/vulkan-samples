@@ -1,3 +1,4 @@
+#include "vulkan/vulkan_core.h"
 #include <Importer/IOUtil.h>
 #include <VKSample.h>
 #include <VKWindow.h>
@@ -120,7 +121,9 @@ namespace vksample {
 			VkPipelineViewportStateCreateInfo viewportState{};
 			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportState.viewportCount = 1;
+			viewportState.scissorCount = 1;
 			viewportState.pViewports = &viewport;
+			viewportState.pScissors = &scissor;
 
 			VkPipelineRasterizationStateCreateInfo rasterizer{};
 			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -168,13 +171,14 @@ namespace vksample {
 
 			VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
-			VkDynamicState dynamicStateEnables[1];
+			std::array<VkDynamicState, 2> dynamicStateEnables;
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
+			dynamicStateEnables[1] = VK_DYNAMIC_STATE_SCISSOR;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 			dynamicStateInfo.pNext = NULL;
-			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
-			dynamicStateInfo.dynamicStateCount = 1;
+			dynamicStateInfo.pDynamicStates = dynamicStateEnables.data();
+			dynamicStateInfo.dynamicStateCount = dynamicStateEnables.size();
 
 			VkGraphicsPipelineCreateInfo pipelineInfo{};
 			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -281,7 +285,10 @@ namespace vksample {
 									   .height = static_cast<float>(height),
 									   .minDepth = 0,
 									   .maxDepth = 1.0f};
+				VkRect2D scissor = {0, 0, static_cast<uint32_t>(viewport.width),
+									static_cast<uint32_t>(viewport.height)};
 				vkCmdSetViewport(cmd, 0, 1, &viewport);
+				vkCmdSetScissor(cmd, 0, 1, &scissor);
 
 				/*	*/
 				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);

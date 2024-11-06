@@ -1,117 +1,58 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2023 Valdemar Lindberg
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ */
 #pragma once
-#include <SDL2/SDL_events.h>
+#include "Math3D/Math3D.h"
+#include "Util/Frustum.h"
 #include <SDL2/SDL_keyboard.h>
-#include <SDL2/SDL_mouse.h>
-#define FLYTHROUGH_CAMERA_IMPLEMENTATION
-#include <flythrough_camera.h>
+#include <SDLInput.h>
+#include <glm/fwd.hpp>
+#include <glm/geometric.hpp>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/rotate_vector.hpp>
 
-class Camera {
-  public:
-	Camera() { this->updateProjectionMatrix(); }
-
-	void setAspect(const float aspect) noexcept {
-		this->aspect = aspect;
-		this->updateProjectionMatrix();
-	}
-	float getAspect() const noexcept { return this->aspect; }
-
-	void setNear(const float near) noexcept {
-		this->near = near;
-		this->updateProjectionMatrix();
-	}
-	float getNear() const noexcept { return this->near; }
-
-	void setFar(const float far) noexcept {
-		this->far = far;
-		this->updateProjectionMatrix();
-	}
-	float getFar() const noexcept { return this->far; }
-
-	float getFOV() const noexcept { return this->fov; }
-	void setFOV(float FOV) noexcept {
-		this->fov = FOV;
-		this->updateProjectionMatrix();
-	}
-
-	const glm::mat4 &getProjectionMatrix() const noexcept { return this->proj; }
-
-  protected:
-	void updateProjectionMatrix() noexcept {
-		this->proj = glm::perspective(glm::radians(this->getFOV() * 0.5f), this->aspect, this->near, this->far);
-	}
-
-  protected:
-	float fov = 80.0f;
-	float aspect = 16.0f / 9.0f;
-	float near = 0.15f;
-	float far = 1000.0f;
-	glm::mat4 proj;
-};
-
-class CameraController : public Camera {
+/**
+ * @brief
+ *
+ */
+class CameraController : public glsample::Frustum {
   public:
 	CameraController() = default;
 
-	void update(const float deltaTime) noexcept {
+	void update(const float deltaTime) noexcept;
 
-		const Uint8 *state = SDL_GetKeyboardState(nullptr);
+	void enableNavigation(const bool enable) noexcept;
+	void enableLook(const bool enable) noexcept;
 
-		bool w = state[SDL_SCANCODE_W];
-		bool a = state[SDL_SCANCODE_A];
-		bool s = state[SDL_SCANCODE_S];
-		bool d = state[SDL_SCANCODE_D];
-		bool alt = state[SDL_SCANCODE_LALT];
-		bool shift = state[SDL_SCANCODE_LSHIFT];
-		// mouse movement.
-		SDL_PumpEvents(); // make sure we have the latest mouse state.
+	const glm::mat4 &getViewMatrix() const noexcept;
+	const glm::mat4 getRotationMatrix() const noexcept;
+	const glm::mat4 getViewTranslationMatrix() const noexcept;
 
-		const int buttons = SDL_GetMouseState(&x, &y);
+	const glm::vec3 &getLookDirection() const noexcept;
+	const glm::vec3 getPosition() const noexcept;
+	void setPosition(const glm::vec3 &position) noexcept;
 
-		const float xDiff = -(xprev - x) * xspeed;
-		const float yDiff = -(yprev - y) * yspeed;
-		xprev = x;
-		yprev = y;
+	const glm::vec3 &getUp() const noexcept;
 
-		/*	*/
-		if (!enable_Navigation) {
-			w = false;
-			a = false;
-			s = false;
-			d = false;
-		}
+	void lookAt(const glm::vec3 &position) noexcept;
 
-		/*	*/
-		float current_speed = this->speed;
-		if (shift) {
-			current_speed *= 2.5f;
-		}
+	bool hasMoved() const noexcept;
 
-		/*	*/
-		if (!alt) {
-			flythrough_camera_update(&this->pos[0], &this->look[0], &this->up[0], &this->view[0][0], deltaTime,
-									 current_speed, 0.5f * activated, this->fov, xDiff, yDiff, w, a, s, d, 0, 0, 0);
-		}
-	}
-	void enableNavigation(const bool enable) noexcept { this->enable_Navigation = enable; }
+  protected:
+	void update() noexcept;
 
-	const glm::mat4 &getViewMatrix() const noexcept { return this->view; }
-	const glm::mat4 getRotationMatrix() const noexcept {
-		glm::quat rotation = glm::quatLookAt(glm::normalize(this->getLookDirection()), glm::normalize(this->getUp()));
-		return glm::toMat4(rotation);
-	}
-
-	const glm::vec3 &getLookDirection() const noexcept { return this->look; }
-	const glm::vec3 getPosition() const noexcept { return this->pos; }
-	void setPosition(const glm::vec3 &position) noexcept { this->pos = position; }
-
-	const glm::vec3 &getUp() const { return this->up; }
-
-	void lookAt(const glm::vec3 &position) noexcept { this->look = glm::normalize(position - this->getPosition()); }
+	void updateFrustum();
 
   private:
 	float speed = 100;
@@ -119,7 +60,10 @@ class CameraController : public Camera {
 	float xspeed = 0.5f;
 	float yspeed = 0.5f;
 
-	bool enable_Navigation = true;
+	float fastSpeed = 2.5f;
+
+	bool enabled_Navigation = true;
+	bool enabled_Look = true;
 
 	int x, y, xprev, yprev;
 

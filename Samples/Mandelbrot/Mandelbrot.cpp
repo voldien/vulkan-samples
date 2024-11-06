@@ -32,9 +32,10 @@ namespace vksample {
 		struct mandelbrot_param_t {
 			float posX, posY;
 			float mousePosX, mousePosY;
-			float zoom; /*  */
-			float c;	/*  */
-			int nrSamples;
+			float zoom = 1.0f; /*	*/
+			float c = 0;	   /*	*/
+			float ci = 1;	   /*	*/
+			int nrSamples = 128;
 		} params = {};
 
 		size_t paramMemSize = sizeof(params);

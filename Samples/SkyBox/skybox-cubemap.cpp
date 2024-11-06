@@ -1,5 +1,5 @@
 #include "Importer/ImageImport.h"
-#include "Util/Time.hpp"
+
 
 #include "VksCommon.h"
 #include <SDL2/SDL.h>
@@ -455,7 +455,7 @@ namespace vksample {
 
 		virtual void draw() override {
 
-			this->cameraController.update(getTimer().deltaTime());
+			this->cameraController.update(getTimer().deltaTime<float>());
 			glm::mat4 viewMatrix = this->cameraController.getViewMatrix();
 			// TODO add character controller.
 			this->mvp.model = glm::mat4(1.0f);

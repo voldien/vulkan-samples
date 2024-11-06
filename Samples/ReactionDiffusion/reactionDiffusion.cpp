@@ -400,7 +400,7 @@ namespace vksample {
 			SDL_GetMouseState(&x, &y);
 			params.mousePosX = x;
 			params.mousePosY = y;
-			params.delta = getTimer().deltaTime();
+			params.delta = getTimer().deltaTime<float>();
 			params.posX = 0;
 			params.posY = 0;
 			params.zoom = 1.0f;

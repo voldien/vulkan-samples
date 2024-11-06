@@ -64,22 +64,22 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 
 	VkFormat vk_format;
 	switch (image.getFormat()) {
-	case fragcore::TextureFormat::RGB24:
+	case fragcore::ImageFormat::RGB24:
 		vk_format = VK_FORMAT_R8G8B8_UNORM;
 		break;
-	case fragcore::TextureFormat::RGBA32:
+	case fragcore::ImageFormat::RGBA32:
 		vk_format = VK_FORMAT_R8G8B8A8_UNORM;
 		break;
-	case fragcore::TextureFormat::BGR24:
+	case fragcore::ImageFormat::BGR24:
 		vk_format = VK_FORMAT_B8G8R8_UNORM;
 		break;
-	case fragcore::TextureFormat::BGRA32:
+	case fragcore::ImageFormat::BGRA32:
 		vk_format = VK_FORMAT_B8G8R8A8_UNORM;
 		break;
-	case fragcore::TextureFormat::RGBAFloat:
+	case fragcore::ImageFormat::RGBAFloat:
 		vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;
 		break;
-	case fragcore::TextureFormat::RGBFloat:
+	case fragcore::ImageFormat::RGBFloat:
 		vk_format = VK_FORMAT_R32G32B32_SFLOAT;
 		break;
 	default:

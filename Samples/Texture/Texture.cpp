@@ -453,8 +453,8 @@ namespace vksample {
 		virtual void draw() override {
 
 			/*	*/
-			float elapsedTime = this->getTimer().getElapsed();
-			this->camera.update(this->getTimer().deltaTime());
+			float elapsedTime = this->getTimer().getElapsed<float>();
+			this->camera.update(this->getTimer().deltaTime<float>());
 
 			/*	*/
 			this->uniform_stage_buffer.proj = this->camera.getProjectionMatrix();

@@ -1,7 +1,6 @@
 #pragma once
 #include "IWindow.h"
 #include "SDLWindow.h"
-#include "Util/Time.hpp"
 #include "VKSampleBase.h"
 #include <iostream>
 #include <memory>
@@ -193,9 +192,6 @@ class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
 	virtual intptr_t getNativePtr() const override; /*  Get native window reference object. */
 	virtual VkSurfaceKHR createSurface(const std::shared_ptr<VulkanCore> &instance) override;
 
-  public:
-	vkscommon::Time &getTimer() noexcept { return this->time; }
-
   private:
 	typedef struct _SwapchainBuffers {
 		struct SwapChainSupportDetails {
@@ -236,6 +232,4 @@ class VKWindow : public vkscommon::VKSampleSessionBase, public IWindow {
 	std::vector<VkFence> imageAvailableFence;
 
 	IWindow *proxyWindow;
-
-	vkscommon::Time time;
 };
