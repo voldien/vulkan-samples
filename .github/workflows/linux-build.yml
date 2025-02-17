@@ -9,7 +9,7 @@ jobs:
     runs-on: "ubuntu-20.04"
     name: Core
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: "recursive"
 
@@ -18,8 +18,8 @@ jobs:
         sudo apt-get update
         sudo apt-get install pkg-config libsdl2-dev libfreeimage-dev libfmt-dev libglm-dev libglfw3-dev libgtest-dev googletest
         sudo apt-get install libvulkan-dev glslang-tools mesa-vulkan-drivers libassimp-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libbz2-dev \
-        libzip-dev libogg-dev libopus-dev libvorbis-dev libopenal-dev libalut-dev
-        
+        libzip-dev libogg-dev libopus-dev libvorbis-dev libopenal-dev libalut-dev libeigen3-dev
+
     - name: Prepare Vulkan SDK
       uses: humbletim/setup-vulkan-sdk@v1.2.0
       with:

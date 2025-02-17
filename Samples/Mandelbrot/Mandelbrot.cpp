@@ -1,3 +1,4 @@
+#include <SDL_mouse.h>
 #include <VKWindow.h>
 #include <VksCommon.h>
 #include <glm/glm.hpp>
@@ -5,8 +6,8 @@
 namespace vksample {
 
 	/**
-	 * @brief 
-	 * 
+	 * @brief
+	 *
 	 */
 	class MandelBrotWindow : public VKWindow {
 	  private:
@@ -27,11 +28,11 @@ namespace vksample {
 		VkCommandPool computeCmdPool = VK_NULL_HANDLE;
 		std::vector<VkCommandBuffer> computeCmds;
 
-		const std::string computeShaderPath = "shaders/mandelbrot/mandelbrot.comp.spv";
+		const std::string computeShaderPath = "Shaders/mandelbrot/mandelbrot.comp.spv";
 
 		struct mandelbrot_param_t {
-			float posX, posY;
-			float mousePosX, mousePosY;
+			float posX{}, posY{};
+			float mousePosX{}, mousePosY{};
 			float zoom = 1.0f; /*	*/
 			float c = 0;	   /*	*/
 			float ci = 1;	   /*	*/
@@ -46,9 +47,9 @@ namespace vksample {
 			this->setTitle(std::string("MandelBrot"));
 			this->show();
 		}
-		virtual ~MandelBrotWindow() {}
+		~MandelBrotWindow() override = default;
 
-		virtual void release() override {
+		void release() override {
 			/*	*/
 			vkDestroyCommandPool(getDevice(), this->computeCmdPool, nullptr);
 
@@ -71,10 +72,10 @@ namespace vksample {
 		}
 
 		VkPipeline createComputePipeline(VkPipelineLayout *layout) {
-			VkPipeline pipeline;
+			VkPipeline pipeline = nullptr;
 
-			auto compShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath,
-																		   this->getFileSystem());
+			auto compShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
 
 			VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -84,7 +85,7 @@ namespace vksample {
 			compShaderStageInfo.module = compShaderModule;
 			compShaderStageInfo.pName = "main";
 
-			std::array<VkDescriptorSetLayoutBinding, 2> uboLayoutBindings;
+			std::array<VkDescriptorSetLayoutBinding, 2> uboLayoutBindings{};
 
 			/*	*/
 			uboLayoutBindings[0].binding = 0;
@@ -112,7 +113,7 @@ namespace vksample {
 			return pipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 
 			// TODO fix physical device.
 			const size_t minMapBufferSize =
@@ -148,7 +149,7 @@ namespace vksample {
 			onResize(width(), height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
@@ -167,8 +168,9 @@ namespace vksample {
 			/*	*/
 			computeImageViews.resize(getSwapChainImageCount());
 			for (size_t i = 0; i < computeImageViews.size(); i++) {
-				if (computeImageViews[i] != nullptr)
+				if (computeImageViews[i] != nullptr) {
 					vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
+				}
 				computeImageViews[i] = VKHelper::createImageView(getDevice(), mandelBrotImage[i], VK_IMAGE_VIEW_TYPE_2D,
 																 getDefaultImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
 			}
@@ -221,7 +223,7 @@ namespace vksample {
 			}
 
 			for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-				void *data;
+				void *data = nullptr;
 				VKS_VALIDATE(vkMapMemory(getDevice(), paramMemory, paramMemSize * i, paramMemSize, 0, &data));
 				memcpy(data, &params, paramMemSize);
 				vkUnmapMemory(getDevice(), paramMemory);
@@ -240,7 +242,7 @@ namespace vksample {
 				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
-										&descriptorSets[i], 0, NULL);
+										&descriptorSets[i], 0, nullptr);
 
 				const int localInvokation = 16;
 
@@ -283,16 +285,16 @@ namespace vksample {
 			}
 		}
 
-		virtual void draw() override {
+		void draw() override {
 			// Setup the range
-			void *data;
+			void *data = nullptr;
 			VKS_VALIDATE(
 				vkMapMemory(getDevice(), paramMemory, paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
 			memcpy(data, &params, paramMemSize);
 			vkUnmapMemory(getDevice(), paramMemory);
 
 			/*	Update.	*/
-			int x, y;
+			int x = 0, y = 0;
 			SDL_GetMouseState(&x, &y);
 			params.mousePosX = x;
 			params.mousePosY = y;
@@ -304,7 +306,7 @@ namespace vksample {
 	};
 
 	/*	*/
-	
+
 } // namespace vksample
 
 int main(int argc, const char **argv) {

@@ -1,5 +1,5 @@
 #include "vulkan/vulkan_core.h"
-#include <Importer/IOUtil.h>
+#include <Util/IOUtil.h>
 #include <VKSample.h>
 #include <VKWindow.h>
 #include <iostream>
@@ -19,8 +19,8 @@ namespace vksample {
 		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 
 		/*	Shader source file paths.	*/
-		const std::string vertexShaderPath = "shaders/triangle/triangle.vert.spv";
-		const std::string fragmentShaderPath = "shaders/triangle/triangle.frag.spv";
+		const std::string vertexShaderPath = "Shaders/triangle/triangle.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/triangle/triangle.frag.spv";
 
 	  public:
 		Triangle(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -29,10 +29,10 @@ namespace vksample {
 			this->setTitle("Triangle");
 		}
 
-		typedef struct vertex_t {
+		using Vertex = struct vertex_t {
 			float pos[2];
 			float color[3];
-		} Vertex;
+		};
 
 		void release() override {
 
@@ -73,7 +73,7 @@ namespace vksample {
 			fragShaderStageInfo.module = fragShaderModule;
 			fragShaderStageInfo.pName = "main";
 
-			VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+			const VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -83,7 +83,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -171,12 +171,12 @@ namespace vksample {
 
 			VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
-			std::array<VkDynamicState, 2> dynamicStateEnables;
+			std::array<VkDynamicState, 2> dynamicStateEnables{};
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 			dynamicStateEnables[1] = VK_DYNAMIC_STATE_SCISSOR;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicStateInfo.pNext = NULL;
+			dynamicStateInfo.pNext = nullptr;
 			dynamicStateInfo.pDynamicStates = dynamicStateEnables.data();
 			dynamicStateInfo.dynamicStateCount = dynamicStateEnables.size();
 
@@ -206,7 +206,7 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 			/*	Create pipeline.	*/
 			graphicsPipeline = createGraphicPipeline();
 
@@ -239,12 +239,12 @@ namespace vksample {
 			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
 			/*	Transfer the vertex data to the buffer.	*/
-			void *data;
+			void *data = nullptr;
 			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 			vkUnmapMemory(getDevice(), vertexMemory);
 
-			onResize(width(), height());
+			this->onResize(this->width(), this->height());
 		}
 
 		void onResize(int width, int height) override {
@@ -254,6 +254,7 @@ namespace vksample {
 			/*	Rebuild the command buffer.	*/
 			for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
 				VkCommandBuffer cmd = getCommandBuffers(i);
+
 
 				VkCommandBufferBeginInfo beginInfo = {};
 				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

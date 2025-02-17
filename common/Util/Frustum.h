@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2023 Valdemar Lindberg
+ * Copyright (c) 2025 Valdemar Lindberg
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -14,13 +14,13 @@
  * all copies or substantial portions of the Software.
  */
 #pragma once
-#include "Camera.h"
+#include "Node.h"
 #include <FragCore.h>
 #include <GeometryUtil.h>
 #include <Math3D/BoundingSphere.h>
 #include <Math3D/Plane.h>
 
-namespace glsample {
+namespace vksample {
 
 	using namespace fragcore;
 
@@ -28,8 +28,9 @@ namespace glsample {
 	 * @brief Positive
 	 *
 	 */
-	class FVDECLSPEC Frustum : public Camera<float> {
+	class FVDECLSPEC Frustum : public Node {
 	  public:
+		~Frustum() override = default;
 		/**
 		 *	Intersection.
 		 */
@@ -65,7 +66,7 @@ namespace glsample {
 		 *	Comput the frustum planes,
 		 *	planes normal pointing positive towards the frustum volume.
 		 */
-		virtual void calcFrustumPlanes(const Vector3 &position, const Vector3 &look, const Vector3 &up,
+		virtual void calcFrustumPlanes(const Vector3 &position, const Vector3 &look_forward, const Vector3 &up,
 									   const Vector3 &right);
 
 		/**
@@ -107,12 +108,11 @@ namespace glsample {
 		virtual Intersection intersectionFrustum(const Frustum &frustum) const noexcept;
 
 	  protected: /*	Makes the object only inheritable .	*/
-		Frustum() noexcept;
-		Frustum(const Frustum &other) noexcept;
+		Frustum() = default;
+		Frustum(const Frustum &other);
 
-	  private:					/*	Attributes.	*/
+	  protected:				/*	Attributes.	*/
 		Plane<float> planes[6]; /*	*/
-		float nw, nh, fh, fw;	/*	*/
 	};
 
-} // namespace glsample
+} // namespace vksample

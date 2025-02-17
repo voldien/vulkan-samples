@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2023 Valdemar Lindberg
+ * Copyright (c) 2025 Valdemar Lindberg
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -14,62 +14,69 @@
  * all copies or substantial portions of the Software.
  */
 #pragma once
-#include "Math3D/Math3D.h"
-#include "Util/Frustum.h"
+#include "Util/Camera.h"
 #include <SDL2/SDL_keyboard.h>
 #include <SDLInput.h>
 #include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
 #include <glm/glm.hpp>
 
-/**
- * @brief
- *
- */
-class CameraController : public glsample::Frustum {
-  public:
-	CameraController() = default;
+namespace vksample {
 
-	void update(const float deltaTime) noexcept;
+	/**
+	 * @brief
+	 *
+	 */
+	class FVDECLSPEC CameraController : public Camera {
+	  public:
+		~CameraController() override = default;
 
-	void enableNavigation(const bool enable) noexcept;
-	void enableLook(const bool enable) noexcept;
+		void update(const float deltaTime) noexcept;
 
-	const glm::mat4 &getViewMatrix() const noexcept;
-	const glm::mat4 getRotationMatrix() const noexcept;
-	const glm::mat4 getViewTranslationMatrix() const noexcept;
+		void enableNavigation(const bool enable) noexcept;
+		void enableLook(const bool enable) noexcept;
 
-	const glm::vec3 &getLookDirection() const noexcept;
-	const glm::vec3 getPosition() const noexcept;
-	void setPosition(const glm::vec3 &position) noexcept;
+		const glm::mat4 &getViewMatrix() const noexcept;
+		const glm::mat4 getRotationMatrix() const noexcept;
+		const glm::mat4 getViewTranslationMatrix() const noexcept;
 
-	const glm::vec3 &getUp() const noexcept;
+		const glm::vec3 &getLookDirection() const noexcept;
 
-	void lookAt(const glm::vec3 &position) noexcept;
+		const glm::vec3 getPosition() const noexcept;
+		void setPosition(const glm::vec3 &position) noexcept;
 
-	bool hasMoved() const noexcept;
+		const glm::vec3 getRotation() const noexcept;
+		void setRotation(const glm::vec3 &rotation) noexcept;
 
-  protected:
-	void update() noexcept;
+		const glm::vec3 &getUp() const noexcept;
 
-	void updateFrustum();
+		void lookAt(const glm::vec3 &position) noexcept;
 
-  private:
-	float speed = 100;
-	float activated = 1.0f;
-	float xspeed = 0.5f;
-	float yspeed = 0.5f;
+		bool hasMoved() const noexcept;
 
-	float fastSpeed = 2.5f;
+	  protected:
+		void update() noexcept;
 
-	bool enabled_Navigation = true;
-	bool enabled_Look = true;
+		void updateFrustum();
 
-	int x, y, xprev, yprev;
+	  private:
+		float speed = 100;
+		float activated = 1.0f;
+		float xspeed = 0.5f;
+		float yspeed = 0.5f;
 
-	glm::mat4 view;
+		float fastSpeed = 2.5f;
 
-	glm::vec3 pos = {0.0f, 1.0f, 0.0f};
-	glm::vec3 look = {0.0f, 0.0f, 1.0f};
-	glm::vec3 up = {0.0f, 1.0f, 0.0f};
-};
+		bool enabled_Navigation = true;
+		bool enabled_Look = true;
+
+		int x{}, y{}, xprev{}, yprev{};
+
+		glm::mat4 view{};
+
+		glm::vec3 pos = {0.0f, 1.0f, 0.0f};
+		glm::vec3 look = {0.0f, 0.0f, 1.0f};
+		glm::vec3 up = {0.0f, 1.0f, 0.0f};
+	};
+
+} // namespace glsample

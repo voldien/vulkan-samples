@@ -95,8 +95,8 @@ namespace vksample {
 
 		VkPipeline createGraphicPipeline() {
 
-			auto vertShaderCode = IOUtil::readFile("shaders/triangle-mvp.vert.spv");
-			auto fragShaderCode = IOUtil::readFile("shaders/triangle-mvp.frag.spv");
+			auto vertShaderCode = IOUtil::readFile("Shaders/triangle-mvp.vert.spv");
+			auto fragShaderCode = IOUtil::readFile("Shaders/triangle-mvp.frag.spv");
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);

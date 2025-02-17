@@ -1,5 +1,6 @@
 #include <VKWindow.h>
 #include <VksCommon.h>
+#include <cstddef>
 #include <glm/glm.hpp>
 
 namespace vksample {
@@ -27,7 +28,7 @@ namespace vksample {
 		VkCommandPool computeCmdPool = VK_NULL_HANDLE;
 		std::vector<VkCommandBuffer> computeCmds;
 
-		const std::string computeGameOfLifeShaderPath = "shaders/gameoflife/gameoflife.comp.spv";
+		const std::string computeGameOfLifeShaderPath = "Shaders/gameoflife/gameoflife.comp.spv";
 
 	  public:
 		GameOfLife(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -37,7 +38,7 @@ namespace vksample {
 			this->show();
 		}
 
-		virtual void release() override {
+		void release() override {
 			/*	*/
 			vkDestroyCommandPool(this->getDevice(), this->computeCmdPool, nullptr);
 
@@ -67,9 +68,9 @@ namespace vksample {
 		}
 
 		VkPipeline createComputePipeline(VkPipelineLayout *layout) {
-			VkPipeline pipeline;
+			VkPipeline pipeline = nullptr;
 
-			auto compShaderCode =
+			std::vector<uint32_t> compShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->computeGameOfLifeShaderPath, this->getFileSystem());
 
 			VkShaderModule compShaderModule = VKHelper::createShaderModule(this->getDevice(), compShaderCode);
@@ -80,7 +81,9 @@ namespace vksample {
 			compShaderStageInfo.module = compShaderModule;
 			compShaderStageInfo.pName = "main";
 
-			std::array<VkDescriptorSetLayoutBinding, 3> uboLayoutBindings;
+			const auto layoutBinding = PipelineLayoutUtil::getDefaultBinding(compShaderCode);
+
+			std::array<VkDescriptorSetLayoutBinding, 3> uboLayoutBindings{};
 			/*	Previous Cell.	*/
 			uboLayoutBindings[0].binding = 0;
 			uboLayoutBindings[0].descriptorCount = 1;
@@ -103,7 +106,7 @@ namespace vksample {
 			uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 			/*	*/
-			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings);
+			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, layoutBinding[0].bindings);
 
 			/*	*/
 			VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
@@ -115,7 +118,7 @@ namespace vksample {
 			return pipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 
 			/*	Create pipeline.	*/
 			this->computePipeline = createComputePipeline(&computePipelineLayout);
@@ -140,7 +143,7 @@ namespace vksample {
 			onResize(width(), height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			/*	Wait in till the resources are not used.	*/
 			VKS_VALIDATE(vkQueueWaitIdle(this->getDefaultGraphicQueue()));
@@ -174,7 +177,7 @@ namespace vksample {
 			// Upload init random data.
 			{
 				// TODO create the default buffer.
-				std::vector<uint8_t> textureData(width * height * sizeof(uint8_t));
+				std::vector<uint8_t> textureData(static_cast<unsigned long>(width * height) * sizeof(uint8_t));
 
 				/*	Generate random game state.	*/
 				for (int j = 0; j < height; j++) {
@@ -187,8 +190,8 @@ namespace vksample {
 				/*	*/
 				VkCommandPool commandPool = this->getGraphicCommandPool();
 				VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(this->getDevice(), commandPool);
-				VkBuffer stagingBuffer;
-				VkDeviceMemory stagingBufferMemory;
+				VkBuffer stagingBuffer = nullptr;
+				VkDeviceMemory stagingBufferMemory = nullptr;
 
 				VkPhysicalDeviceMemoryProperties memProperties;
 
@@ -199,7 +202,7 @@ namespace vksample {
 									   VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 									   stagingBuffer, stagingBufferMemory);
 
-				void *stageData;
+				void *stageData = nullptr;
 				vkMapMemory(this->getDevice(), stagingBufferMemory, 0, textureData.size(), 0, &stageData);
 				memcpy(stageData, textureData.data(), static_cast<size_t>(textureData.size()));
 				vkUnmapMemory(this->getDevice(), stagingBufferMemory);
@@ -321,6 +324,8 @@ namespace vksample {
 										&descriptorSets[i], 0, nullptr);
 
 				const float localInvokation = 8; // TODO fetch
+				std::ceil(width / localInvokation);
+				std::ceil(height / localInvokation);
 
 				vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
 
@@ -414,7 +419,7 @@ namespace vksample {
 			}
 		}
 
-		virtual void draw() override {
+		void draw() override {
 			// Setup the range
 		}
 	};

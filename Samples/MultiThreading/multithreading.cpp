@@ -1,7 +1,4 @@
-#include "Importer/ImageImport.h"
-
-
-#include "VksCommon.h"
+#include "VKSample.h"
 #include <Core/SystemInfo.h>
 #include <TaskScheduler.h>
 #include <Util/CameraController.h>
@@ -33,20 +30,20 @@ namespace vksample {
 		std::vector<VkCommandBuffer> secondaryCommandBuffer;
 		fragcore::Time time;
 		CameraController cameraController;
-		const std::string vertexShaderPath = "shaders/particlesystem/particle.vert.spv";
-		const std::string fragmentShaderPath = "shaders/particlesystem/particle.frag.spv";
-		fragcore::TaskScheduler *tashSch;
+		const std::string vertexShaderPath = "Shaders/particlesystem/particle.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/particlesystem/particle.frag.spv";
+		fragcore::TaskScheduler *tashSch{};
 
-		struct UniformBufferBlock {
-			alignas(16) glm::mat4 model;
-			alignas(16) glm::mat4 view;
-			alignas(16) glm::mat4 proj;
-		} mvp;
+		struct alignas(16) UniformBufferBlock {
+			glm::mat4 model;
+			glm::mat4 view;
+			glm::mat4 proj;
+		} mvp{};
 
-		typedef struct _vertex_t {
+		using Vertex = struct _vertex_t {
 			float pos[3];
 			float uv[2];
-		} Vertex;
+		};
 
 	  public:
 		MultiThreading(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -54,9 +51,9 @@ namespace vksample {
 			this->setTitle("MultiThreading");
 			this->show();
 		}
-		virtual ~MultiThreading() {}
+		~MultiThreading() override = default;
 
-		virtual void release() override {
+		void release() override {
 
 			// vkFreeDescriptorSets
 			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
@@ -146,7 +143,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -243,7 +240,7 @@ namespace vksample {
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicStateInfo.pNext = NULL;
+			dynamicStateInfo.pNext = nullptr;
 			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
 			dynamicStateInfo.dynamicStateCount = 1;
 
@@ -273,7 +270,7 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 
 			this->secondaryCommandBuffer = this->getVKDevice()->allocateCommandBuffers(
 				this->getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_SECONDARY,
@@ -293,7 +290,7 @@ namespace vksample {
 									   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 										   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 									   uniformBuffers[i], uniformBuffersMemory[i]);
-				void *_data;
+				void *_data = nullptr;
 				VKS_VALIDATE(
 					vkMapMemory(getDevice(), uniformBuffersMemory[i], 0, (size_t)sizeof(this->mvp), 0, &_data));
 				mapMemory.push_back(_data);
@@ -365,7 +362,7 @@ namespace vksample {
 
 			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
-			void *data;
+			void *data = nullptr;
 			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 			vkUnmapMemory(getDevice(), vertexMemory);
@@ -375,7 +372,7 @@ namespace vksample {
 			time.start();
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 			this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
@@ -435,7 +432,7 @@ namespace vksample {
 			}
 		}
 
-		virtual void draw() override {
+		void draw() override {
 
 			time.update();
 			float elapsedTime = time.getElapsed<float>();
@@ -464,7 +461,7 @@ namespace vksample {
 			vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 		}
 
-		virtual void update() {}
+		void update() override {}
 	};
 } // namespace vksample
 

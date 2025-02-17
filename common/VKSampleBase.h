@@ -16,14 +16,16 @@
 #pragma once
 #include "FPSCounter.h"
 #include "IO/IFileSystem.h"
+#include "spdlog/logger.h"
 #include <Core/Object.h>
 #include <Core/Time.h>
 #include <VKDevice.h>
 #include <VkPhysicalDevice.h>
 #include <VulkanCore.h>
 #include <cxxopts.hpp>
+#include <fmt/format.h>
 
-namespace vkscommon {
+namespace vksample {
 
 	/**
 	 * @brief
@@ -31,10 +33,7 @@ namespace vkscommon {
 	 */
 	class FVDECLSPEC VKSampleSessionBase : fragcore::Object {
 	  public:
-		VKSampleSessionBase(std::shared_ptr<fvkcore::VulkanCore> &core, std::shared_ptr<fvkcore::VKDevice> &device)
-			: core(core), device(device) {
-			this->loadDefaultQueue();
-		}
+		VKSampleSessionBase(std::shared_ptr<fvkcore::VulkanCore> &core, std::shared_ptr<fvkcore::VKDevice> &device);
 
 		virtual void run() = 0;
 		virtual void Initialize() {}
@@ -52,13 +51,9 @@ namespace vkscommon {
 			this->transfer_queue = this->device->getQueue(this->transfer_queue_node_index, 0);
 		}
 
-		virtual ~VKSampleSessionBase() { this->release(); }
+		~VKSampleSessionBase() override { this->release(); }
 
 	  public: /*	*/
-			  /*	*/
-		FPSCounter<float> &getFPSCounter() noexcept { return this->fpsCounter; }
-		const FPSCounter<float> &getFPSCounter() const noexcept { return this->fpsCounter; }
-
 		/*	*/
 		fragcore::IFileSystem *getFileSystem() const noexcept { return this->filesystem; }
 		void setFileSystem(fragcore::IFileSystem *filesystem) { this->filesystem = filesystem; }
@@ -70,6 +65,8 @@ namespace vkscommon {
 		/*	*/
 		const fragcore::Time &getTimer() const noexcept { return this->time; }
 		fragcore::Time &getTimer() noexcept { return this->time; }
+
+		spdlog::logger &getLogger() const noexcept { return *this->logger; }
 
 	  public: /*	Vulkan methods.	*/
 		VkDevice getDevice() const noexcept { return this->device->getHandle(); }
@@ -84,7 +81,7 @@ namespace vkscommon {
 		const std::shared_ptr<fvkcore::VKDevice> &getVKDevice() const noexcept { return this->device; }
 		std::shared_ptr<fvkcore::VKDevice> &getVKDevice() noexcept { return this->device; }
 
-		const std::shared_ptr<fvkcore::PhysicalDevice> getPhysicalDevice() const noexcept {
+		std::shared_ptr<fvkcore::PhysicalDevice> getPhysicalDevice() const noexcept {
 			return this->getVKDevice()->getPhysicalDevice(0);
 		}
 		std::shared_ptr<fvkcore::PhysicalDevice> getPhysicalDevice() noexcept {
@@ -110,24 +107,24 @@ namespace vkscommon {
 		std::shared_ptr<fvkcore::VKDevice> device;
 
 		/*  */
-		VkQueue graphic_queue;
-		VkQueue compute_queue;
-		VkQueue transfer_queue;
+		VkQueue graphic_queue{};
+		VkQueue compute_queue{};
+		VkQueue transfer_queue{};
 
 		/*  */
-		uint32_t graphics_queue_node_index;
-		uint32_t compute_queue_node_index;
-		uint32_t transfer_queue_node_index;
+		uint32_t graphics_queue_node_index{};
+		uint32_t compute_queue_node_index{};
+		uint32_t transfer_queue_node_index{};
 
-		VkCommandPool graphic_pool;
-		VkCommandPool compute_pool;
-		VkCommandPool transfer_pool;
+		VkCommandPool graphic_pool{};
+		VkCommandPool compute_pool{};
+		VkCommandPool transfer_pool{};
 
-	  protected: /*	*/
-		FPSCounter<float> fpsCounter;
+	  private: /*	*/
 		cxxopts::ParseResult parseResult;
 		fragcore::Time time;
-		fragcore::IFileSystem *filesystem;
-			void *rdoc_api = nullptr;
+		spdlog::logger *logger = nullptr;
+		fragcore::IFileSystem *filesystem = nullptr;
+		void *rdoc_api = nullptr;
 	};
-} // namespace vkscommon
+} // namespace vksample

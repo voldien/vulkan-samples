@@ -114,8 +114,8 @@ namespace vksample {
 											  {1.0f, -1.0f, 1.0f, 1, 0}
 
 		};
-		const std::string vertexShaderPath = "shaders/skybox/skybox.vert.spv";
-		const std::string fragmentShaderPath = "shaders/skybox/cubemap.frag.spv";
+		const std::string vertexShaderPath = "Shaders/skybox/skybox.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/skybox/cubemap.frag.spv";
 
 		VkPipeline createGraphicPipeline() {
 			auto vertShaderCode =
@@ -277,7 +277,7 @@ namespace vksample {
 
 			/*	*/
 			vksample::ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
-			imageImporter.createImage2D("asset/panorama.png", this->getDevice(), getGraphicCommandPool(),
+			imageImporter.loadImage2D("asset/panorama.png", this->getDevice(), getGraphicCommandPool(),
 										getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
 
 			skyboxTextureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D,

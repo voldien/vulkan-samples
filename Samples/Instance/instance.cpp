@@ -1,3 +1,4 @@
+#include "Util/CameraController.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <VksCommon.h>
@@ -9,7 +10,7 @@ namespace vksample {
 	class Instance : public VKWindow {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
-		VkDeviceMemory vertexMemory;
+		VkDeviceMemory vertexMemory{};
 		VkDeviceSize indices_offset = 0;
 		size_t nrIndices = 1;
 
@@ -27,18 +28,18 @@ namespace vksample {
 		VkSampler sampler = VK_NULL_HANDLE;
 
 		struct UniformBufferBlock {
-			glm::mat4 model;
-			glm::mat4 view;
-			glm::mat4 proj;
-			glm::mat4 modelView;
-			glm::mat4 modelViewProjection;
+			glm::mat4 model{};
+			glm::mat4 view{};
+			glm::mat4 proj{};
+			glm::mat4 modelView{};
+			glm::mat4 modelViewProjection{};
 
 			/*	Light source.	*/
 			glm::vec4 direction = glm::vec4(1.0f / sqrt(2.0f), -1.0f / sqrt(2.0f), 0.0f, 0.0f);
 			glm::vec4 lightColor = glm::vec4(1.0f);
 			glm::vec4 ambientLight = glm::vec4(0.15f, 0.15f, 0.15f, 1.0f);
 			glm::vec4 specularColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-			glm::vec4 viewPos;
+			glm::vec4 viewPos{};
 
 			float shininess = 16.0f;
 		} uniformData;
@@ -53,8 +54,8 @@ namespace vksample {
 
 		CameraController camera;
 
-		const std::string vertexInstanceShaderPath = "shaders/instance/instance.vert.spv";
-		const std::string fragmentInstanceShaderPath = "shaders/instance/instance.frag.spv";
+		const std::string vertexInstanceShaderPath = "Shaders/instance/instance.vert.spv";
+		const std::string fragmentInstanceShaderPath = "Shaders/instance/instance.frag.spv";
 
 	  public:
 		Instance(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -65,9 +66,9 @@ namespace vksample {
 			this->camera.lookAt(glm::vec3(1));
 		}
 
-		virtual ~Instance() {}
+		~Instance() override = default;
 
-		virtual void release() override {
+		void release() override {
 			vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 			vkFreeMemory(getDevice(), vertexMemory, nullptr);
 
@@ -110,7 +111,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(fragcore::ProceduralGeometry::Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -227,7 +228,7 @@ namespace vksample {
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicStateInfo.pNext = NULL;
+			dynamicStateInfo.pNext = nullptr;
 			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
 			dynamicStateInfo.dynamicStateCount = 1;
 
@@ -257,7 +258,7 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 
 			const std::string diffuseTexturePath = this->getResult()["texture"].as<std::string>();
 			const std::string modelPath = this->getResult()["model"].as<std::string>();
@@ -288,7 +289,7 @@ namespace vksample {
 
 			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
-			void *data;
+			void *data = nullptr;
 			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 			vkUnmapMemory(getDevice(), vertexMemory);
@@ -296,7 +297,7 @@ namespace vksample {
 			onResize(width(), height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
@@ -344,9 +345,9 @@ namespace vksample {
 			}
 		}
 
-		virtual void draw() override {}
+		void draw() override {}
 
-		virtual void update() override {
+		void update() override {
 			/*	*/
 			float elapsedTime = this->getTimer().getElapsed<float>();
 			this->camera.update(this->getTimer().deltaTime<float>());
@@ -395,7 +396,7 @@ namespace vksample {
 	  public:
 		InstanceVKSample() : VKSample<Instance>() {}
 
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
+		void customOptions(cxxopts::OptionAdder &options) override {
 			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/diffuse.png"))(
 				"M,model", "Model Path", cxxopts::value<std::string>()->default_value("asset/bunny.obj"))(
 				"B,batch", "Bath Size", cxxopts::value<int>()->default_value("64"));

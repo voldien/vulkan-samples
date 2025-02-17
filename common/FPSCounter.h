@@ -14,7 +14,7 @@
  * all copies or substantial portions of the Software.
  */
 #pragma once
-#include <stddef.h>
+#include <cstddef>
 
 /**
  * @brief
@@ -50,9 +50,9 @@ template <typename T = float> class FPSCounter {
 	}
 
   private:
-	size_t totalFPS;
-	unsigned int fpsSample;
-	unsigned int averageFPS;
-	float prevTimeSample;
-	long int timeResolution;
+	size_t totalFPS{};
+	unsigned int fpsSample{};
+	unsigned int averageFPS{};
+	float prevTimeSample{};
+	long int timeResolution{};
 };

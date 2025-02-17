@@ -35,27 +35,27 @@ namespace vksample {
 		VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
 		/*	*/
-		VkBuffer uniformBuffer;
-		VkDeviceMemory uniformBufferMemory;
+		VkBuffer uniformBuffer{};
+		VkDeviceMemory uniformBufferMemory{};
 		std::vector<void *> mapMemory;
 		VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
 
 		CameraController cameraController;
 
-		const std::string vertexShaderPath = "shaders/skybox/skybox.vert.spv";
-		const std::string fragmentShaderPath = "shaders/skybox/panoramic.frag.spv";
+		const std::string vertexShaderPath = "Shaders/skybox/skybox.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/skybox/panoramic.frag.spv";
 
 		struct UniformBufferBlock {
-			glm::mat4 proj;
-			glm::mat4 modelViewProjection;
+			glm::mat4 proj{};
+			glm::mat4 modelViewProjection{};
 			glm::vec4 tintColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 			float exposure = 1.0f;
 		} uniform_stage_buffer;
 
-		typedef struct _vertex_t {
+		using Vertex = struct _vertex_t {
 			float pos[3];
 			float uv[2];
-		} Vertex;
+		};
 
 	  public:
 		SkyboxPanoramic(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -69,9 +69,9 @@ namespace vksample {
 			this->setTitle("Skybox Panoramic");
 			this->show();
 		}
-		virtual ~SkyboxPanoramic() {}
+		~SkyboxPanoramic() override = default;
 
-		virtual void release() override {
+		void release() override {
 
 			vkDestroySampler(getDevice(), sampler, nullptr);
 
@@ -125,7 +125,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(fragcore::ProceduralGeometry::Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -218,7 +218,7 @@ namespace vksample {
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicStateInfo.pNext = NULL;
+			dynamicStateInfo.pNext = nullptr;
 			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
 			dynamicStateInfo.dynamicStateCount = 1;
 
@@ -248,13 +248,13 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 
 			const std::string panoramicPath = this->getResult()["skybox-texture"].as<std::string>();
 
 			/*	Load and Create Texture.	*/
 			vksample::ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
-			imageImporter.createImage2D(panoramicPath.c_str(), this->getDevice(), getTransferCommandPool(),
+			imageImporter.loadImage2D(panoramicPath.c_str(), this->getDevice(), getTransferCommandPool(),
 										this->getDefaultTransferQueue(), physicalDevice(), texture, textureMemory);
 
 			skyboxTextureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D,
@@ -276,7 +276,7 @@ namespace vksample {
 								   this->uniformBuffer, this->uniformBufferMemory);
 
 			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
-				void *_data;
+				void *_data = nullptr;
 				VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i,
 										 (size_t)sizeof(this->uniform_stage_buffer), 0, &_data));
 				mapMemory.push_back(_data);
@@ -372,7 +372,7 @@ namespace vksample {
 				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexIndicesMemory, 0));
 
 				/*	Upload vertex data.	*/
-				uint8_t *data;
+				uint8_t *data = nullptr;
 				VKS_VALIDATE(vkMapMemory(getDevice(), vertexIndicesMemory, 0, bufferInfo.size, 0, (void **)&data));
 				memcpy(data, vertices.data(), (size_t)vertices.size() * sizeof(vertices[0]));
 				memcpy(data + indices_offset, indices.data(), (size_t)indices.size() * sizeof(indices[0]));
@@ -382,7 +382,7 @@ namespace vksample {
 			this->onResize(this->width(), this->height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(this->getDefaultTransferQueue()));
 			VKS_VALIDATE(vkQueueWaitIdle(this->getDefaultGraphicQueue()));
@@ -440,7 +440,7 @@ namespace vksample {
 			}
 		}
 
-		virtual void draw() override {
+		void draw() override {
 
 			this->cameraController.update(this->getTimer().deltaTime<float>());
 			glm::mat4 viewMatrix = this->cameraController.getViewMatrix();
@@ -461,14 +461,14 @@ namespace vksample {
 			// 	vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 		}
 
-		 void update() override {}
+		void update() override {}
 	};
 
 	class SkyBoxPanoramicVKSample : public VKSample<SkyboxPanoramic> {
 	  public:
 		SkyBoxPanoramicVKSample() : VKSample<SkyboxPanoramic>() {}
 
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
+		void customOptions(cxxopts::OptionAdder &options) override {
 			options("T,skybox-texture", "Texture Path",
 					cxxopts::value<std::string>()->default_value("asset/winter_lake_01_4k.exr"));
 		}

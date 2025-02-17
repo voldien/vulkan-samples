@@ -1,7 +1,6 @@
-#include "FPSCounter.h"
-
-#include "VksCommon.h"
+#include "VKSample.h"
 #include <SDL2/SDL.h>
+#include <Util/IOUtil.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -28,24 +27,24 @@ namespace vksample {
 
 		std::vector<VkDescriptorSet> descriptorSets;
 
-		VkDeviceSize uniformBufferSize;
+		VkDeviceSize uniformBufferSize{};
 		VkBuffer uniformBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory uniformBufferMemory = VK_NULL_HANDLE;
 		std::vector<void *> mapMemory;
 
-		const std::string vertexShaderPath = "shaders/pushconstant/pushconstant.vert.spv";
-		const std::string fragmentShaderPath = "shaders/pushconstant/pushconstant.frag.spv";
+		const std::string vertexShaderPath = "Shaders/pushconstant/pushconstant.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/pushconstant/pushconstant.frag.spv";
 
-		struct UniformBufferBlock {
-			alignas(16) glm::mat4 model;
-			alignas(16) glm::mat4 view;
-			alignas(16) glm::mat4 proj;
-		} mvp;
+		struct alignas(16) UniformBufferBlock {
+			glm::mat4 model;
+			glm::mat4 view;
+			glm::mat4 proj;
+		} mvp{};
 
-		typedef struct _vertex_t {
+		using Vertex = struct _vertex_t {
 			float pos[3];
 			float uv[2];
-		} Vertex;
+		};
 
 	  public:
 		PushConstant(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -101,7 +100,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -220,7 +219,7 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 
 			// TODO align
 			uniformBufferSize = sizeof(UniformBufferBlock);
@@ -238,7 +237,7 @@ namespace vksample {
 								   uniformBuffer, uniformBufferMemory);
 
 			for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-				void *_data;
+				void *_data = nullptr;
 				VKS_VALIDATE(
 					vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, uniformBufferSize, 0, &_data));
 				mapMemory.push_back(_data);
@@ -319,7 +318,7 @@ namespace vksample {
 				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexIndicesMemory, 0));
 
 				/*	Upload vertex data.	*/
-				uint8_t *data;
+				uint8_t *data = nullptr;
 				VKS_VALIDATE(vkMapMemory(getDevice(), vertexIndicesMemory, 0, bufferInfo.size, 0, (void **)&data));
 				memcpy(data, vertices.data(), (size_t)vertices.size() * sizeof(vertices[0]));
 				memcpy(data + indices_offset, indices.data(), (size_t)indices.size() * sizeof(indices[0]));
@@ -391,8 +390,8 @@ namespace vksample {
 			this->mvp.model = glm::mat4(1.0f);
 			this->mvp.view = glm::mat4(1.0f);
 			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-			this->mvp.model =
-				glm::rotate(this->mvp.model, glm::radians(getTimer().getElapsed<float>() * 45), glm::vec3(0.0f, 1.0f, 0.0f));
+			this->mvp.model = glm::rotate(this->mvp.model, glm::radians(getTimer().getElapsed<float>() * 45),
+										  glm::vec3(0.0f, 1.0f, 0.0f));
 			this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
 		}
 	};
@@ -401,7 +400,7 @@ namespace vksample {
 	  public:
 		PushConstantVKSample() : VKSample<PushConstant>() {}
 
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
+		void customOptions(cxxopts::OptionAdder &options) override {
 			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/diffuse.png"))(
 				"M,model", "Model Path", cxxopts::value<std::string>()->default_value("asset/bunny.obj"));
 		}

@@ -1,5 +1,4 @@
-
-#include "VksCommon.h"
+#include "VKSample.h"
 #include <Importer/ImageImport.h>
 #include <SDL2/SDL.h>
 #include <Util/CameraController.h>
@@ -43,17 +42,17 @@ namespace vksample {
 		VkBuffer uniformBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory uniformBufferMemory = VK_NULL_HANDLE;
 		std::vector<void *> mapMemory;
-		VkDeviceSize uniformBufferSize;
+		VkDeviceSize uniformBufferSize{};
 
 		CameraController camera;
 
 		struct UniformBufferBlock {
-			glm::mat4 model;
-			glm::mat4 view;
-			glm::mat4 proj;
-			glm::mat4 modelView;
-			glm::mat4 ViewProj;
-			glm::mat4 modelViewProjection;
+			glm::mat4 model{};
+			glm::mat4 view{};
+			glm::mat4 proj{};
+			glm::mat4 modelView{};
+			glm::mat4 ViewProj{};
+			glm::mat4 modelViewProjection{};
 
 			glm::vec4 tintColor = glm::vec4(1);
 			/*light source.	*/
@@ -63,16 +62,16 @@ namespace vksample {
 			float normalStrength = 1.0f;
 		} mvp;
 
-		typedef struct _vertex_t {
+		using Vertex = struct _vertex_t {
 			float pos[3];
 			float uv[2];
-		} Vertex;
+		};
 
 		const std::string diffuseTexturePath = "asset/diffuse.png";
 		const std::string normalTexturePath = "asset/normalmap.png";
 
-		const std::string vertexShaderPath = "shaders/normalmap/normalmap.vert.spv";
-		const std::string fragmentShaderPath = "shaders/normalmap/normalmap.frag.spv";
+		const std::string vertexShaderPath = "Shaders/normalmap/normalmap.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/normalmap/normalmap.frag.spv";
 
 	  public:
 		NormalMap(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -80,9 +79,9 @@ namespace vksample {
 			this->setTitle("NormalMap");
 			this->show();
 		}
-		virtual ~NormalMap() {}
+		~NormalMap() override = default;
 
-		virtual void release() override {
+		void release() override {
 
 			vkDestroySampler(getDevice(), sampler, nullptr);
 
@@ -179,7 +178,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -295,7 +294,7 @@ namespace vksample {
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicStateInfo.pNext = NULL;
+			dynamicStateInfo.pNext = nullptr;
 			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
 			dynamicStateInfo.dynamicStateCount = 1;
 
@@ -332,7 +331,7 @@ namespace vksample {
 			const std::string normalTexturePath = this->getResult()["normal-texture"].as<std::string>();
 
 			/*	Load and Create Texture.	*/
-			VkCommandBuffer cmd;
+			VkCommandBuffer cmd = nullptr;
 			std::vector<VkCommandBuffer> cmds = this->getVKDevice()->allocateCommandBuffers(
 				getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 			VkCommandBufferBeginInfo beginInfo = {};
@@ -343,12 +342,12 @@ namespace vksample {
 			ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
 
 			/*	Diffuse Texture.	*/
-			imageImporter.createImage2D(this->diffuseTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
+			imageImporter.loadImage2D(this->diffuseTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
 										getDefaultGraphicQueue(), physicalDevice(), this->diffuse_texture,
 										this->diffuse_textureMemory);
 
 			/*	Normal Texture.	*/
-			imageImporter.createImage2D(this->normalTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
+			imageImporter.loadImage2D(this->normalTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
 										getDefaultGraphicQueue(), physicalDevice(), this->normal_texture,
 										this->normal_textureMemory);
 
@@ -383,11 +382,12 @@ namespace vksample {
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   uniformBuffer, uniformBufferMemory);
 
+			this->mapMemory.resize(this->getSwapChainImageCount());
+			uint8_t *_data = nullptr;
+			VKS_VALIDATE(vkMapMemory(this->getDevice(), uniformBufferMemory, 0,
+									 this->uniformBufferSize, 0, (void**)&_data));
 			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
-				void *_data;
-				VKS_VALIDATE(vkMapMemory(getDevice(), this->uniformBufferMemory, this->uniformBufferSize * i,
-										 this->uniformBufferSize, 0, &_data));
-				mapMemory.push_back(_data);
+				this->mapMemory[i] = &_data[this->uniformBufferSize * i];
 			}
 
 			/*	Create pipeline.	*/
@@ -494,7 +494,7 @@ namespace vksample {
 				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexIndicesMemory, 0));
 
 				/*	Upload vertex data.	*/
-				uint8_t *data;
+				uint8_t *data = nullptr;
 				VKS_VALIDATE(vkMapMemory(getDevice(), vertexIndicesMemory, 0, bufferInfo.size, 0, (void **)&data));
 				memcpy(data, vertices.data(), (size_t)vertices.size() * sizeof(vertices[0]));
 				memcpy(data + indices_offset, indices.data(), (size_t)indices.size() * sizeof(indices[0]));
@@ -504,7 +504,7 @@ namespace vksample {
 			this->onResize(this->width(), this->height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
@@ -559,7 +559,7 @@ namespace vksample {
 			this->camera.setAspect((float)width / (float)height);
 		}
 
-		virtual void draw() override {
+		void draw() override {
 			/*	Update Camera.	*/
 			float elapsedTime = this->getTimer().getElapsed<float>();
 			this->camera.update(getTimer().deltaTime<float>());
@@ -578,13 +578,13 @@ namespace vksample {
 			memcpy(mapMemory[this->getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
 		}
 
-		virtual void update() {}
+		void update() override {}
 	};
 
 	class NormalMapVKSample : public VKSample<NormalMap> {
 	  public:
 		NormalMapVKSample() : VKSample<NormalMap>() {}
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
+		void customOptions(cxxopts::OptionAdder &options) override {
 			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/diffuse.png"))(
 				"N,normal-texture", "NormalMap Path",
 				cxxopts::value<std::string>()->default_value("asset/normalmap.png"))(

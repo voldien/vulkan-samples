@@ -208,5 +208,7 @@ lint/tmp/
 
 # Android Profiling
 *.hprof
-.cache
+*.cache
 *.spv
+
+asset/

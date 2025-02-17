@@ -1,14 +1,20 @@
-#include <ImageLoader.h>
-#include <thread>
-#define VK_USE_PLATFORM_XLIB_KHR
 #include "VKWindow.h"
+#include <ImageLoader.h>
+#include <SDL_vulkan.h>
+#include <cstddef>
+#include <thread>
+
+#include "SDLVKWindow.h"
 #include <SDL2/SDL.h>
 #include <VKDevice.h>
 #include <VKHelper.h>
 #include <cassert>
+
+#define VK_USE_PLATFORM_XLIB_KHR
 #include <vulkan/vulkan.h>
 
 using namespace fvkcore;
+using namespace vksample;
 
 VKWindow::~VKWindow() {
 
@@ -40,9 +46,7 @@ VKWindow::~VKWindow() {
 
 VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
 				   int height)
-	: VKSampleSessionBase(core, device) {
-
-	this->proxyWindow = new SDLWindow();
+	: VKSampleSessionBase(core, device), proxyWindow(new vksample::SDLVKWindow()) {
 
 	SDL_DisplayMode displaymode;
 	SDL_GetCurrentDisplayMode(0, &displaymode);
@@ -90,7 +94,7 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 		VKS_VALIDATE(vkCreateFence(getDevice(), &fenceInfo, nullptr, &this->inFlightFences[i]));
 	}
 
-	this->time.start();
+	this->fpsCounter = FPSCounter<float>(60, this->getTimer().getTimeResolution());
 }
 
 uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }
@@ -123,8 +127,7 @@ const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice() const noexce
 
 VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
 
-void VKWindow::setPhysicalDevice(VkPhysicalDevice device) { /*	*/
-}
+void VKWindow::setPhysicalDevice(VkPhysicalDevice device) { /*	*/ }
 std::vector<VkQueue> VKWindow::getQueues() const noexcept { return {}; }
 
 VkCommandBuffer VKWindow::getCurrentCommandBuffer() const noexcept {
@@ -146,16 +149,16 @@ void VKWindow::swapBuffer() {
 	vkWaitForFences(this->getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame], VK_TRUE, UINT64_MAX);
 
 	/*  */
-	uint32_t imageIndex;
+	uint32_t imageIndex = 0;
 	result = vkAcquireNextImageKHR(getDevice(), this->swapChain->swapchain, UINT64_MAX,
 								   this->imageAvailableSemaphores[this->swapChain->currentFrame], VK_NULL_HANDLE,
 								   &imageIndex);
 
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		recreateSwapChain();
 		return;
-	} else
-		VKS_VALIDATE(result);
+	}
+	VKS_VALIDATE(result);
 
 	if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
 		vkWaitForFences(getDevice(), 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
@@ -220,11 +223,11 @@ void VKWindow::createQueueAndCommandPool() {
 	cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	/*  Create command pool.    */
-	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, NULL, &this->graphic_pool));
+	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, nullptr, &this->graphic_pool));
 
-	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, NULL, &this->compute_pool));
+	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, nullptr, &this->compute_pool));
 	/*  Create command pool.    */
-	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, NULL, &this->transfer_pool));
+	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, nullptr, &this->transfer_pool));
 }
 
 void VKWindow::createSwapChain() {
@@ -448,7 +451,7 @@ void VKWindow::recreateSwapChain() {
 }
 
 void VKWindow::cleanSwapChain() {
-	for (auto framebuffer : swapChain->swapChainFramebuffers) {
+	for (auto *framebuffer : swapChain->swapChainFramebuffers) {
 		vkDestroyFramebuffer(this->getDevice(), framebuffer, nullptr);
 	}
 	this->swapChain->swapChainFramebuffers.clear();
@@ -461,7 +464,7 @@ void VKWindow::cleanSwapChain() {
 	vkDestroyRenderPass(this->getDevice(), swapChain->renderPass, nullptr);
 
 	/*	*/
-	for (auto imageView : swapChain->swapChainImageViews) {
+	for (auto *imageView : swapChain->swapChainImageViews) {
 		vkDestroyImageView(this->getDevice(), imageView, nullptr);
 	}
 	swapChain->swapChainImageViews.clear();
@@ -473,6 +476,7 @@ void VKWindow::cleanSwapChain() {
 
 	vkDestroySwapchainKHR(this->getDevice(), this->swapChain->swapchain, nullptr);
 }
+
 VkFormat VKWindow::findDepthFormat() {
 	return VKHelper::findSupportedFormat(
 		physicalDevice(), {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
@@ -480,16 +484,17 @@ VkFormat VKWindow::findDepthFormat() {
 }
 
 VkSurfaceKHR VKWindow::createSurface() {
-	VkXlibSurfaceCreateInfoKHR createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-	createInfo.window = proxyWindow->getNativePtr();
-	createInfo.pNext = nullptr;
-	// createInfo.dpy = proxyWindow->getNativePtr();
-	createInfo.flags = 0;
 
-	VkSurfaceKHR surface;
-	VKS_VALIDATE(vkCreateXlibSurfaceKHR(core->getHandle(), &createInfo, nullptr, &surface));
+	// VkXlibSurfaceCreateInfoKHR createInfo{};
+	// createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+	// createInfo.window = proxyWindow->getNativePtr();
+	// createInfo.pNext = nullptr;
+	// // createInfo.dpy = proxyWindow->getNativePtr();
+	// createInfo.flags = 0;
 
+	VkSurfaceKHR surface = nullptr;
+	//	VKS_VALIDATE(vkCreateXlibSurfaceKHR(core->getHandle(), &createInfo, nullptr, &surface));
+	SDL_Vulkan_CreateSurface((SDL_Window *)proxyWindow->getNativePtr(), this->getInstance(), &surface);
 	return surface;
 }
 
@@ -519,6 +524,7 @@ void VKWindow::run() {
 	SDL_Event event = {};
 	bool isAlive = true;
 	bool visible = true;
+	this->getTimer().start();
 
 	while (isAlive) {
 		while (SDL_PollEvent(&event)) {
@@ -552,20 +558,15 @@ void VKWindow::run() {
 				break;
 			}
 		}
+
 		if (visible) {
 			this->update();
-			this->draw();
 
+			this->draw();
 			/*	ImGui.	*/
 
 			/*	*/
 			this->swapBuffer();
-			this->fpsCounter.update(this->getTimer().deltaTime<float>());
-
-			this->getTimer().update();
-
-			std::cout << "FPS " << getFPSCounter().getFPS() << " Elapsed Time: " << getTimer().getElapsed<float>()
-					  << std::endl;
 		}
 		/*	*/
 		const Uint8 *state = SDL_GetKeyboardState(nullptr);
@@ -577,6 +578,13 @@ void VKWindow::run() {
 		if (state[SDL_SCANCODE_RETURN] && (state[SDL_SCANCODE_LCTRL] || state[SDL_SCANCODE_RCTRL])) {
 			this->setFullScreen(!this->isFullScreen());
 		}
+
+		this->getFPSCounter().update(this->getTimer().getElapsed<float>());
+
+		std::cout << "FPS " << getFPSCounter().getFPS() << " Elapsed Time: " << getTimer().getElapsed<float>()
+				  << std::endl;
+
+		this->getTimer().update();
 	}
 finished:
 	/*	Wait intill all gpu tasks has been finished before terminate.	*/
@@ -597,12 +605,12 @@ void VKWindow::captureScreenShot() {
 	std::thread process_thread([screen_grab_width_size, screen_grab_height_size, pixelData]() {
 		/*	*/
 		fragcore::Image image(screen_grab_width_size, screen_grab_height_size, fragcore::ImageFormat::RGBA32);
-		image.setPixelData(pixelData, screen_grab_width_size * screen_grab_height_size * 4);
+		image.setPixelData(pixelData, static_cast<long>(screen_grab_width_size * screen_grab_height_size) * 4);
 		fragcore::ImageLoader loader;
 
 		// Application and time
-		time_t rawtime;
-		struct tm *timeinfo;
+		time_t rawtime = 0;
+		struct tm *timeinfo = nullptr;
 		char buffer[80];
 
 		std::time(&rawtime);
@@ -683,10 +691,11 @@ std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
 
 	// TODO be replace with own code!
 	SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
-	if (tmpWindow == NULL)
+	if (tmpWindow == nullptr) {
 		throw cxxexcept::RuntimeException("Failed to create Tmp Vulkan window - {}", SDL_GetError());
+	}
 	/*	*/
-	unsigned int count;
+	unsigned int count = 0;
 	if (!SDL_Vulkan_GetInstanceExtensions(tmpWindow, &count, nullptr)) {
 		throw cxxexcept::RuntimeException("SDL_Vulkan_GetInstanceExtensions");
 	}

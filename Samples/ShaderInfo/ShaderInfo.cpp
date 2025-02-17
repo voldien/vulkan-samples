@@ -1,21 +1,21 @@
-#include "VKUtil.h"
-#include "VksCommon.h"
+#include "VKSample.h"
+#include "VKSampleBase.h"
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 
 namespace vksample {
 
-	class ShaderInfo : public vkscommon::VKSampleSessionBase {
+	class ShaderInfo : public vksample::VKSampleSessionBase {
 	  public:
 		ShaderInfo(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
 			: VKSampleSessionBase(core, device) {}
 
-		virtual ~ShaderInfo() {}
+		 ~ShaderInfo() override = default;
 
 		VkPipeline loadPipeline() { return VK_NULL_HANDLE; }
 
 	
-		virtual void run() override {
+		 void run() override {
 			
 			//TODO add 
 			std::vector<VkPipeline> pipelines = {};
@@ -52,7 +52,7 @@ namespace vksample {
 	class ShaderInfoVKSample : public VKSample<ShaderInfo> {
 	  public:
 		ShaderInfoVKSample() : VKSample<ShaderInfo>() {}
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
+		 void customOptions(cxxopts::OptionAdder &options) override {
 			options("S,shader", "Texture Path", cxxopts::value<std::string>()->default_value("Shaders/gameoflife/gameoflife.comp.spv"));
 		}
 	};

@@ -38,17 +38,17 @@ namespace vksample {
 		VkImageView textureView = VK_NULL_HANDLE;
 		VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
-		struct UniformBufferBlock {
+		struct alignas(16) UniformBufferBlock {
 			glm::mat4 model;
 			glm::mat4 view;
 			glm::mat4 proj;
 			glm::mat4 modelView;
-		} uniform_stage_buffer;
+		} uniform_stage_buffer{};
 
 		VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
 
-		const std::string vertexShaderPath = "shaders/texture/texture.vert.spv";
-		const std::string fragmentShaderPath = "shaders/texture/texture.frag.spv";
+		const std::string vertexShaderPath = "Shaders/texture/texture.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/texture/texture.frag.spv";
 
 	  public:
 		SingleTexture(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -115,7 +115,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(fragcore::ProceduralGeometry::Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -218,7 +218,7 @@ namespace vksample {
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicStateInfo.pNext = NULL;
+			dynamicStateInfo.pNext = nullptr;
 			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
 			dynamicStateInfo.dynamicStateCount = 1;
 
@@ -248,15 +248,15 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 			/*	*/
 			const std::string texturePath = this->getResult()["texture"].as<std::string>();
 
 			{
 				ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
-				imageImporter.createImage2D(texturePath.c_str(), this->getDevice(), this->getGraphicCommandPool(),
-											this->getDefaultGraphicQueue(), this->physicalDevice(), texture,
-											textureMemory);
+				imageImporter.loadImage2D(texturePath.c_str(), this->getDevice(), this->getGraphicCommandPool(),
+										  this->getDefaultGraphicQueue(), this->physicalDevice(), texture,
+										  textureMemory);
 
 				this->textureView = VKHelper::createImageView(getDevice(), this->texture, VK_IMAGE_VIEW_TYPE_2D,
 															  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -279,12 +279,13 @@ namespace vksample {
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   this->uniformBuffer, this->uniformBufferMemory);
 
+			uint8_t *_data = nullptr;
+			VKS_VALIDATE(vkMapMemory(getDevice(), this->uniformBufferMemory, 0,
+									 this->uniformBufferSize * this->getSwapChainImageCount(), 0, (void **)&_data));
+
 			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
 
-				void *_data;
-				VKS_VALIDATE(vkMapMemory(getDevice(), this->uniformBufferMemory, this->uniformBufferSize * i,
-										 this->uniformBufferSize, 0, &_data));
-				mapMemory.push_back(_data);
+				mapMemory.push_back((void *)&_data[this->uniformBufferSize * i]);
 			}
 
 			/*	Allocate descriptor set.	*/
@@ -378,7 +379,7 @@ namespace vksample {
 				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexIndicesMemory, 0));
 
 				/*	Upload vertex data.	*/
-				uint8_t *data;
+				uint8_t *data = nullptr;
 				VKS_VALIDATE(vkMapMemory(getDevice(), vertexIndicesMemory, 0, bufferInfo.size, 0, (void **)&data));
 				memcpy(data, vertices.data(), (size_t)vertices.size() * sizeof(vertices[0]));
 				memcpy(data + indices_offset, indices.data(), (size_t)indices.size() * sizeof(indices[0]));
@@ -393,7 +394,7 @@ namespace vksample {
 			this->onResize(this->width(), this->height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
@@ -450,7 +451,7 @@ namespace vksample {
 			this->camera.setAspect((float)width / (float)height);
 		}
 
-		virtual void draw() override {
+		void draw() override {
 
 			/*	*/
 			float elapsedTime = this->getTimer().getElapsed<float>();
@@ -477,7 +478,7 @@ namespace vksample {
 	class SingleTextureVKSample : public VKSample<SingleTexture> {
 	  public:
 		SingleTextureVKSample() : VKSample<SingleTexture>() {}
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
+		void customOptions(cxxopts::OptionAdder &options) override {
 			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/uv-texture.png"));
 		}
 	};

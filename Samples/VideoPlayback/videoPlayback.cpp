@@ -31,18 +31,18 @@ namespace vksample {
 	  private:
 		static const int nrVideoFrames = 3;
 		int nthVideoFrame = 0;
-		int frameSize;
+		int frameSize{};
 
 		/*	Decoded video frames.	*/
-		std::array<VkImage, nrVideoFrames> videoFrames;
-		std::array<VkDeviceMemory, nrVideoFrames> videoFrameMemory;
+		std::array<VkImage, nrVideoFrames> videoFrames{};
+		std::array<VkDeviceMemory, nrVideoFrames> videoFrameMemory{};
 
 		/*	Stagning frames.	*/
-		VkBuffer videoStagingFrames;
+		VkBuffer videoStagingFrames{};
 		// TODO merge memory.
-		VkDeviceMemory videoStagingFrameMemory;
-		size_t videoStagingSize;
-		std::array<void *, nrVideoFrames> mapMemory;
+		VkDeviceMemory videoStagingFrameMemory{};
+		size_t videoStagingSize{};
+		std::array<void *, nrVideoFrames> mapMemory{};
 		std::shared_ptr<fragcore::OpenALAudioInterface> audioInterface;
 
 		/*  */
@@ -51,25 +51,25 @@ namespace vksample {
 		struct AVCodecContext *pAudioCtx = nullptr;
 
 		/*  */
-		int videoStream;
-		int audioStream;
-		size_t video_width;
-		size_t video_height;
+		int videoStream{};
+		int audioStream{};
+		size_t video_width{};
+		size_t video_height{};
 
-		size_t audio_sample_rate;
-		size_t audio_bit_rate;
-		size_t audio_channel;
+		size_t audio_sample_rate{};
+		size_t audio_bit_rate{};
+		size_t audio_channel{};
 
 		/*  */
 		struct AVFrame *frame = nullptr;
 		struct AVFrame *frameoutput = nullptr;
 		struct SwsContext *sws_ctx = nullptr;
 
-		unsigned int flag;
-		double video_clock;
-		double frame_timer;
-		double frame_last_pts;
-		double frame_last_delay;
+		unsigned int flag{};
+		double video_clock{};
+		double frame_timer{};
+		double frame_last_pts{};
+		double frame_last_delay{};
 
 	  public:
 		AVVideoPlayback(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -96,7 +96,7 @@ namespace vksample {
 		}
 
 		void loadVideo(const char *path) {
-			int result;
+			int result = 0;
 
 			this->pformatCtx = avformat_alloc_context();
 			if (!pformatCtx) {
@@ -144,17 +144,19 @@ namespace vksample {
 			}
 
 			/*  Get selected codec parameters. */
-			if (!video_st)
+			if (!video_st) {
 				throw cxxexcept::RuntimeException("Failed to find a video stream in {}.", path);
+			}
 
 			if (audio_st) {
 				AVCodecParameters *pAudioCodecParam = audio_st->codecpar;
 
 				/*  Create audio clip.  */
-				AVCodec *audioCodec = avcodec_find_decoder(pAudioCodecParam->codec_id);
+				const AVCodec *audioCodec = avcodec_find_decoder(pAudioCodecParam->codec_id);
 				this->pAudioCtx = avcodec_alloc_context3(audioCodec);
-				if (!this->pAudioCtx)
+				if (!this->pAudioCtx) {
 					throw cxxexcept::RuntimeException("Failed to create audio decode context");
+				}
 
 				result = avcodec_parameters_to_context(this->pAudioCtx, pAudioCodecParam);
 				if (result < 0) {
@@ -178,12 +180,14 @@ namespace vksample {
 			AVCodecParameters *pVideoCodecParam = video_st->codecpar;
 
 			/*	*/
-			AVCodec *pVideoCodec = avcodec_find_decoder(pVideoCodecParam->codec_id);
-			if (pVideoCodec == nullptr)
+			const AVCodec *pVideoCodec = avcodec_find_decoder(pVideoCodecParam->codec_id);
+			if (pVideoCodec == nullptr) {
 				throw cxxexcept::RuntimeException("failed to find decoder");
+			}
 			this->pVideoCtx = avcodec_alloc_context3(pVideoCodec);
-			if (this->pVideoCtx == nullptr)
+			if (this->pVideoCtx == nullptr) {
 				throw cxxexcept::RuntimeException("Failed to allocate video decoder context");
+			}
 
 			// AV_PIX_FMT_FLAG_RGB
 			/*  Modify the target pixel format. */
@@ -212,8 +216,9 @@ namespace vksample {
 			this->frame = av_frame_alloc();
 			this->frameoutput = av_frame_alloc();
 
-			if (this->frame == nullptr || this->frameoutput == nullptr)
+			if (this->frame == nullptr || this->frameoutput == nullptr) {
 				throw cxxexcept::RuntimeException("Failed to allocate frame");
+			}
 
 			size_t m_bufferSize =
 				av_image_get_buffer_size(AV_PIX_FMT_RGBA, this->pVideoCtx->width, this->pVideoCtx->height, 4);
@@ -227,11 +232,11 @@ namespace vksample {
 
 			this->frame_timer = av_gettime() / 1000000.0;
 		}
-		fragcore::AudioClip *clip;
-		fragcore::AudioListener *listener;
-		fragcore::AudioSource *audioSource;
+		fragcore::AudioClip *clip{};
+		fragcore::AudioListener *listener{};
+		fragcore::AudioSource *audioSource{};
 
-		virtual void Initialize() override {
+		void Initialize() override {
 
 			/*	*/
 			const std::string videoPath = this->getResult()["video"].as<std::string>();
@@ -267,12 +272,15 @@ namespace vksample {
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 								   videoStagingFrames, videoStagingFrameMemory);
 
+			//TODO: Fix mapping.
+			// VKS_VALIDATE(vkMapMemory(getDevice(), this->videoStagingFrameMemory,
+			// 						 (i % this->nrVideoFrames) * this->videoStagingSize, this->videoStagingSize, 0,
+			// 						 &mapMemory[i]));
+
 			/*	*/
 			for (size_t i = 0; i < this->videoFrames.size(); i++) {
 
-				VKS_VALIDATE(vkMapMemory(getDevice(), this->videoStagingFrameMemory,
-										 (i % this->nrVideoFrames) * this->videoStagingSize, this->videoStagingSize, 0,
-										 &mapMemory[i]));
+				
 
 				VKHelper::createImage(
 					getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
@@ -285,7 +293,7 @@ namespace vksample {
 			// this->audioSource->play();
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			nthVideoFrame = 0;
 
@@ -342,13 +350,13 @@ namespace vksample {
 			nthVideoFrame = 0;
 		}
 
-		virtual void draw() override {
+		void draw() override {
 			AVPacket *packet = av_packet_alloc();
 			if (!packet) {
 				throw cxxexcept::RuntimeException("failed to allocated memory for AVPacket");
 			}
 
-			int res, result;
+			int res = 0, result = 0;
 			// res = av_seek_frame(this->pformatCtx, this->videoStream, 60000, AVSEEK_FLAG_FRAME);
 
 			res = av_read_frame(this->pformatCtx, packet);
@@ -411,8 +419,9 @@ namespace vksample {
 
 					while (result >= 0) {
 						result = avcodec_receive_frame(this->pAudioCtx, this->frame);
-						if (result == AVERROR(EAGAIN) || result == AVERROR_EOF)
+						if (result == AVERROR(EAGAIN) || result == AVERROR_EOF) {
 							break;
+						}
 						if (result < 0) {
 							char buf[AV_ERROR_MAX_STRING_SIZE];
 							av_strerror(result, buf, sizeof(buf));
@@ -421,13 +430,14 @@ namespace vksample {
 						int data_size = av_get_bytes_per_sample(pAudioCtx->sample_fmt);
 
 						av_get_channel_layout_nb_channels(this->frame->channel_layout);
-						this->frame->format != AV_SAMPLE_FMT_S16P;
+						this->frame->format |= AV_SAMPLE_FMT_S16P;
 						this->frame->channel_layout;
 
 						/*	Assign new audio data.	*/
-						for (int i = 0; i < frame->nb_samples; i++)
-							for (int ch = 0; ch < pAudioCtx->channels; ch++)
-								continue;
+						for (int i = 0; i < frame->nb_samples; i++) {
+							for (int ch = 0; ch < pAudioCtx->channels; ch++) {
+							}
+						}
 						// clip->setData(this->frame->data[0], data_size, 0);
 					}
 					// this->audioSource->play();

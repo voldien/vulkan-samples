@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2023 Valdemar Lindberg
+ * Copyright (c) 2025 Valdemar Lindberg
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,72 +36,71 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+namespace glsample {}
 
-typedef struct asset_object_t {
+using AssetObject = struct asset_object_t {
 	std::string name;
-} AssetObject;
+};
 
-typedef struct vertex_bone_data_t {
+using VertexBoneData = struct vertex_bone_data_t {
 	static const int NUM_BONES_PER_VERTEX = 4;
 	uint32_t IDs[NUM_BONES_PER_VERTEX];
 	float Weights[NUM_BONES_PER_VERTEX];
-} VertexBoneData;
+};
 
-typedef struct vertex_bone_buffer_t {
+using VertexBoneBuffer = struct vertex_bone_buffer_t {
 	std::vector<VertexBoneData> vertexBoneData;
-} VertexBoneBuffer;
+};
 
-typedef struct material_texture_sampling_t {
-	unsigned int wrapping;
-	unsigned int filtering;
-	unsigned int mapping;
-} MaterialTextureSampling;
+using MaterialTextureSampling = struct material_texture_sampling_t {
+	unsigned int wrapping = 0;
+	unsigned int filtering = 0;
+	unsigned int uv_mapping = 0;
+};
 
-typedef struct material_object_t : public AssetObject {
-	unsigned int program; // TODO: relocate.
+using MaterialObject = struct material_object_t : public AssetObject {
+	unsigned int program = 0; // TODO: relocate.
 
 	/*	Texture index.	*/
 	union {
 		struct {
 			int diffuseIndex = -1;
 			int normalIndex = -1;
-			int emissionIndex = -1;
-			int heightbumpIndex = -1;
+			int maskTextureIndex = -1;
 			int specularIndex = -1;
+			int emissionIndex = -1;
 			int reflectionIndex = -1;
 			int ambientOcclusionIndex = -1;
-			int metalIndex = -1;
-			int maskTextureIndex = -1;
 			int displacementIndex = -1;
+			int metalIndex = -1;
+			int heightbumpIndex = -1;
 		};
-		int texture_index[10];
+		int texture_index[16];
 	};
-	MaterialTextureSampling texture_sampling[10];
+	MaterialTextureSampling texture_sampling[16];
 
 	/*	TODO its own struct.	*/
 	// Material properties.
-	glm::vec4 ambient;
-	glm::vec4 diffuse;
-	glm::vec4 emission;
-	glm::vec4 specular;
-	glm::vec4 transparent;
-	glm::vec4 reflectivity;
+	glm::vec4 ambient = glm::vec4(1, 1, 1, 1);
+	glm::vec4 diffuse = glm::vec4(1);
+	glm::vec4 emission = glm::vec4(1);
+	glm::vec4 specular = glm::vec4(1);
+	glm::vec4 transparent = glm::vec4(1);
+	glm::vec4 reflectivity = glm::vec4(1);
 
 	/*	*/
-	float shinininess;
-	float shinininessStrength;
-	float opacity;
-	int blend_func_mode; /*	aiBlendMode*/
-	int wireframe_mode;
-	bool culling_both_side_mode;
-
+	float shinininess = 1;
+	float opacity = 1;
+	int blend_func_mode = 0; /*	aiBlendMode*/
+	int wireframe_mode = 0;
+	bool culling_both_side_mode = false;
+	float clipping = 1;
 	/*	*/
 
-	unsigned int shade_model; /*	aiShadingMode	*/
-} MaterialObject;
+	unsigned int shade_model = 0; /*	aiShadingMode	*/
+};
 
-typedef struct node_object_t : public AssetObject {
-
+using NodeObject = struct node_object_t : public AssetObject {
 	/*	*/
 	glm::vec3 localPosition;
 	glm::quat localRotation;
@@ -118,67 +117,64 @@ typedef struct node_object_t : public AssetObject {
 	std::vector<unsigned int> materialIndex;
 
 	struct node_object_t *parent = nullptr;
-} NodeObject;
+};
 
-typedef struct mesh_data_t : public AssetObject {
+using MeshData = struct mesh_data_t : public AssetObject {
 	/*	*/
-	size_t nrVertices;
-	size_t nrIndices;
+	size_t nrVertices{};
+	size_t nrIndices{};
 
-	size_t vertexStride;
-	size_t indicesStride;
+	size_t vertexStride{};
+	size_t indicesStride{};
 
 	/*	*/
-	void *vertexData;
-	void *indicesData;
+	void *vertexData{};
+	void *indicesData{};
+};
 
-} MeshData;
+using MorpthTarget = struct morph_target {};
 
-typedef struct morph_target {
-
-} MorpthTarget;
-
-typedef struct model_system_object : public AssetObject {
+using ModelSystemObject = struct model_system_object : public AssetObject {
 
 	// MeshData mesh;
 	// MeshData bone
-	size_t nrVertices;
-	size_t nrIndices;
-	size_t vertexStride;
-	size_t indicesStride;
+	size_t nrVertices{};
+	size_t nrIndices{};
+	size_t vertexStride{};
+	size_t indicesStride{};
 
-	void *vertexData;
-	void *indicesData;
+	void *vertexData{};
+	void *indicesData{};
 
-	unsigned int material_index;
+	unsigned int material_index{};
 
-	fragcore::Bound bound;
+	fragcore::Bound bound{};
 
 	/*	*/
-	unsigned int vertexOffset;
-	unsigned int normalOffset;
-	unsigned int tangentOffset;
-	unsigned int uvOffset;
-	unsigned int boneOffset;
-	unsigned int boneWeightOffset;
-	unsigned int boneIndexOffset;
+	unsigned int vertexOffset{};
+	unsigned int normalOffset{};
+	unsigned int tangentOffset{};
+	unsigned int uvOffset{};
+	unsigned int boneOffset{};
+	unsigned int boneWeightOffset{};
+	unsigned int boneIndexOffset{};
 
-	unsigned int primitiveType;
+	unsigned int primitiveType{};
+};
 
-} ModelSystemObject;
+using Bone = struct bone_t : public AssetObject {
+	glm::mat4 finalTransform{};
+	glm::mat4 offsetBoneMatrix;
+	size_t boneIndex{};
+	NodeObject *armature_bone;
+};
 
-typedef struct bone_t : public AssetObject {
-	glm::mat4 inverseBoneMatrix;
-	size_t boneIndex;
-} Bone;
-
-typedef struct model_skeleton_t : public AssetObject {
+using SkeletonSystem = struct model_skeleton_t : public AssetObject {
 
 	std::map<std::string, Bone> bones;
+};
 
-} SkeletonSystem;
-
-typedef struct texture_asset_object_t {
+using TextureAssetObject = struct texture_asset_object_t {
 	unsigned int texture = 0;
 	size_t width = 0;
 	size_t height = 0;
@@ -186,33 +182,30 @@ typedef struct texture_asset_object_t {
 	size_t dataSize = 0;
 	std::string filepath;
 	char *data = nullptr;
+};
 
-} TextureAssetObject;
+using KeyFrame = struct key_frame_t {
+	float time;		  /*	*/
+	float value;	  /*	*/
+	float tangentIn;  /*	*/
+	float tangentOut; /*	*/
+};
 
-typedef struct key_frame_t {
-	float time;
-	float value;
-	float tangentIn;
-	float tangentOut;
-} KeyFrame;
-
-typedef struct curve_t : public AssetObject {
+using Curve = struct curve_t : public AssetObject {
 	std::vector<KeyFrame> keyframes;
-} Curve;
+};
 
-typedef struct animation_object_t : public AssetObject {
+using AnimationObject = struct animation_object_t : public AssetObject {
+	std::map<std::string, Curve> curves__s;
 	std::vector<Curve> curves;
 	float duration;
-} AnimationObject;
+};
 
-typedef struct light_object_t : public AssetObject {
+using LightObject = struct light_object_t : public AssetObject {
 
 	// C_ENUM aiLightSourceType mType;
-
-	glm::vec3 mPosition;
-
-	glm::vec3 mDirection;
-
+	glm::vec3 position;
+	glm::vec3 direction;
 	glm::vec3 mUp;
 
 	float mAttenuationConstant;
@@ -230,9 +223,7 @@ typedef struct light_object_t : public AssetObject {
 	float mAngleInnerCone;
 
 	float mAngleOuterCone;
-} LightObject;
-
-using namespace Assimp;
+};
 
 class FVDECLSPEC ModelImporter {
   public:
@@ -268,17 +259,17 @@ class FVDECLSPEC ModelImporter {
 	TextureAssetObject *initTexture(aiTexture *texture, unsigned int index);
 
 	AnimationObject *initAnimation(const aiAnimation *animation, unsigned int index);
-	void loadCurve(aiNodeAnim *curve, Curve *animationClip);
 	//
 
 	LightObject *initLight(const aiLight *light, unsigned int index);
-
 	void loadTexturesFromMaterials(aiMaterial *material);
 
 	void convert2Adjcent(const aiMesh *mesh, std::vector<unsigned int> &indices);
 
+	NodeObject *getNodeByName(const std::string &name) const noexcept;
+
   public:
-	const std::vector<NodeObject *> getNodes() const noexcept { return this->nodes; }
+	std::vector<NodeObject *> getNodes() const noexcept { return this->nodes; }
 	const std::vector<ModelSystemObject> &getModels() const noexcept { return this->models; }
 	const NodeObject *getNodeRoot() const noexcept { return this->rootNode; }
 
@@ -295,14 +286,15 @@ class FVDECLSPEC ModelImporter {
 
 	const std::string &getDirectoryPath() const noexcept { return this->filepath; }
 
-	const glm::mat4 &globalTransform() const noexcept { return this->global; }
+	const glm::mat4 &globalTransform() const noexcept { return this->globalNodeTransform; }
 
   private:
-	fragcore::IFileSystem *fileSystem;
+	fragcore::IFileSystem *fileSystem = nullptr;
 
 	std::string filepath;
-	aiScene *sceneRef;
+	const aiScene *sceneRef = nullptr;
 	std::vector<NodeObject *> nodes;
+	std::map<std::string, NodeObject *> nodeByName;
 
 	std::vector<ModelSystemObject> models;
 	std::vector<MaterialObject> materials;
@@ -316,6 +308,8 @@ class FVDECLSPEC ModelImporter {
 	std::vector<AnimationObject> animations;
 	std::map<std::string, VertexBoneData> vertexBoneData;
 
-	NodeObject *rootNode;
-	glm::mat4 global;
+	std::vector<LightObject> lights;
+
+	NodeObject *rootNode = nullptr;
+	glm::mat4 globalNodeTransform;
 };

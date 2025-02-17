@@ -1,8 +1,9 @@
-#include "Importer/ImageImport.h"
 
-#include "VksCommon.h"
+#include "Util/CameraController.h"
+#include "VKSample.h"
 #include "vulkan/vulkan_core.h"
 #include <SDL2/SDL.h>
+#include <Util/IOUtil.h>
 #include <VKWindow.h>
 #include <cstdint>
 #include <glm/glm.hpp>
@@ -17,6 +18,7 @@ namespace vksample {
 	 */
 	class Cube : public VKWindow {
 	  private:
+	  	
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 
@@ -27,26 +29,26 @@ namespace vksample {
 		VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 		std::vector<VkDescriptorSet> descriptorSets;
-		VkBuffer uniformBuffer;
-		VkDeviceMemory uniformBufferMemory;
+		VkBuffer uniformBuffer{};
+		VkDeviceMemory uniformBufferMemory{};
 		std::vector<void *> mapMemory;
 
-		VkDeviceSize uniformMemSize;
+		VkDeviceSize uniformMemSize{};
 		CameraController camera;
 
-		const std::string vertexShaderPath = "shaders/triangle-mvp.vert.spv";
-		const std::string fragmentShaderPath = "shaders/triangle-mvp.frag.spv";
+		const std::string vertexShaderPath = "Shaders/triangle-mvp.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/triangle-mvp.frag.spv";
 
 		struct UniformBufferBlock {
 			glm::mat4 model;
 			glm::mat4 view;
 			glm::mat4 proj;
-		} mvp;
+		} mvp{};
 
-		typedef struct _vertex_t {
+		using Vertex = struct _vertex_t {
 			float pos[3];
 			float uv[2];
-		} Vertex;
+		};
 
 	  public:
 		Cube(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -145,7 +147,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -242,7 +244,7 @@ namespace vksample {
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicStateInfo.pNext = NULL;
+			dynamicStateInfo.pNext = nullptr;
 			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
 			dynamicStateInfo.dynamicStateCount = 1;
 
@@ -272,7 +274,7 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 
 			this->uniformMemSize = sizeof(UniformBufferBlock);
 
@@ -291,11 +293,11 @@ namespace vksample {
 								   this->uniformBuffer, this->uniformBufferMemory);
 
 			this->mapMemory.resize(this->getSwapChainImageCount());
+			uint8_t *_data = nullptr;
+			VKS_VALIDATE(
+				vkMapMemory(this->getDevice(), uniformBufferMemory, 0, this->uniformMemSize, 0, (void **)&_data));
 			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
-				void *_data;
-				VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, this->uniformMemSize * i,
-										 this->uniformMemSize, 0, &_data));
-				this->mapMemory[i] = _data;
+				this->mapMemory[i] = &_data[this->uniformMemSize * i];
 			}
 
 			VkDescriptorPoolSize poolSize{};
@@ -365,7 +367,7 @@ namespace vksample {
 
 				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
-				void *data;
+				void *data = nullptr;
 				VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 				memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 
@@ -471,7 +473,7 @@ namespace vksample {
 	  public:
 		CubeGLSample() : VKSample<Cube>() {}
 
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
+		void customOptions(cxxopts::OptionAdder &options) override {
 			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/texture.png"));
 		}
 	};

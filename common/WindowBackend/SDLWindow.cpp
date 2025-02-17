@@ -1,7 +1,10 @@
-#include "../SDLWindow.h"
+#include "../SDLVKWindow.h"
+#include "VulkanCore.h"
 #include <SDL2/SDL_vulkan.h>
 
-SDLWindow::SDLWindow() {
+using namespace vksample;
+
+SDLVKWindow::SDLVKWindow() {
 
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
 		throw cxxexcept::RuntimeException("Failed to init subsystem {}", SDL_GetError());
@@ -12,49 +15,52 @@ SDLWindow::SDLWindow() {
 
 	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_HIDDEN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE |
 													 SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_INPUT_FOCUS);
-	this->window = SDL_CreateWindow("", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, window_flags);
-	if (window == NULL) {
+	this->window =
+		SDL_CreateWindow("Vulkan Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, window_flags);
+
+	if (window == nullptr) {
 		throw cxxexcept::RuntimeException("failed create window - {}", SDL_GetError());
 	}
 }
-SDLWindow::~SDLWindow() {
+SDLVKWindow::~SDLVKWindow() {
 	SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER);
 }
 
-void SDLWindow::show() { SDL_ShowWindow(this->window); }
+void SDLVKWindow::show() { SDL_ShowWindow(this->window); }
 
-void SDLWindow::hide() { SDL_HideWindow(this->window); }
+void SDLVKWindow::hide() { SDL_HideWindow(this->window); }
 
-void SDLWindow::close() {
+void SDLVKWindow::close() {
 	this->hide();
 	SDL_DestroyWindow(this->window);
 }
 
-void SDLWindow::setTitle(const std::string &title) { SDL_SetWindowTitle(window, title.c_str()); }
+void SDLVKWindow::setTitle(const std::string &title) { SDL_SetWindowTitle(window, title.c_str()); }
 
-std::string SDLWindow::getTitle() const { return SDL_GetWindowTitle(window); }
+std::string SDLVKWindow::getTitle() const { return SDL_GetWindowTitle(window); }
 
-void SDLWindow::setPosition(int x, int y) noexcept { SDL_SetWindowPosition(this->window, x, y); }
+void SDLVKWindow::setPosition(int x, int y) noexcept { SDL_SetWindowPosition(this->window, x, y); }
 
-void SDLWindow::setSize(int width, int height) noexcept { SDL_SetWindowSize(this->window, width, height); }
+void SDLVKWindow::setSize(int width, int height) noexcept { SDL_SetWindowSize(this->window, width, height); }
 
-void SDLWindow::getPosition(int *x, int *y) const { SDL_GetWindowPosition(this->window, x, y); }
+void SDLVKWindow::getPosition(int *x, int *y) const { SDL_GetWindowPosition(this->window, x, y); }
 
-void SDLWindow::getSize(int *width, int *height) const { SDL_GetWindowSize(this->window, width, height); }
+void SDLVKWindow::getSize(int *width, int *height) const { SDL_GetWindowSize(this->window, width, height); }
 
-int SDLWindow::x() const noexcept {
-	int x, y;
+int SDLVKWindow::x() const noexcept {
+	int x = 0, y = 0;
 	SDL_GetWindowPosition(this->window, &x, &y);
 	return x;
 }
-int SDLWindow::y() const noexcept {
-	int x, y;
+
+int SDLVKWindow::y() const noexcept {
+	int x = 0, y = 0;
 	SDL_GetWindowPosition(this->window, &x, &y);
 	return y;
 }
-void SDLWindow::resizable(bool resizable) noexcept { SDL_SetWindowResizable(this->window, (SDL_bool)resizable); }
+void SDLVKWindow::resizable(bool resizable) noexcept { SDL_SetWindowResizable(this->window, (SDL_bool)resizable); }
 
-void SDLWindow::setFullScreen(bool fullscreen) {
+void SDLVKWindow::setFullScreen(bool fullscreen) {
 
 	if (fullscreen) {
 		SDL_SetWindowFullscreen(this->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -62,51 +68,55 @@ void SDLWindow::setFullScreen(bool fullscreen) {
 		SDL_SetWindowFullscreen(this->window, 0);
 	}
 }
+void SDLVKWindow::setFullScreen(fragcore::Display &display) {}
 
-bool SDLWindow::isFullScreen() const { return false; }
+bool SDLVKWindow::isFullScreen() const { return false; }
 
-void SDLWindow::setBordered(bool bordered) { SDL_SetWindowBordered(this->window, (SDL_bool)bordered); }
+void SDLVKWindow::setBordered(bool bordered) { SDL_SetWindowBordered(this->window, (SDL_bool)bordered); }
 
-int SDLWindow::width() const noexcept {
-	int w, h;
+int SDLVKWindow::width() const noexcept {
+	int w = 0, h = 0;
 	getSize(&w, &h);
 	return w;
 }
-int SDLWindow::height() const noexcept {
-	int w, h;
+int SDLVKWindow::height() const noexcept {
+	int w = 0, h = 0;
 	getSize(&w, &h);
 	return h;
 }
 
-float SDLWindow::getGamma() const { return 1.0f; }
+float SDLVKWindow::getGamma() const { return 1.0f; }
 
-void SDLWindow::setGamma(float gamma) {
+void SDLVKWindow::setGamma(float gamma) {
 	// TODO set
 }
 
-void SDLWindow::setMinimumSize(int width, int height) { SDL_SetWindowMinimumSize(this->window, width, height); }
-void SDLWindow::getMinimumSize(int *width, int *height) { SDL_GetWindowMinimumSize(this->window, width, height); }
+void SDLVKWindow::setMinimumSize(int width, int height) { SDL_SetWindowMinimumSize(this->window, width, height); }
+void SDLVKWindow::getMinimumSize(int *width, int *height) { SDL_GetWindowMinimumSize(this->window, width, height); }
 
-void SDLWindow::setMaximumSize(int width, int height) { SDL_SetWindowMaximumSize(this->window, width, height); }
-void SDLWindow::getMaximumSize(int *width, int *height) { SDL_GetWindowMaximumSize(this->window, width, height); }
+void SDLVKWindow::setMaximumSize(int width, int height) { SDL_SetWindowMaximumSize(this->window, width, height); }
+void SDLVKWindow::getMaximumSize(int *width, int *height) { SDL_GetWindowMaximumSize(this->window, width, height); }
 
-void SDLWindow::focus() { SDL_SetWindowInputFocus(this->window); }
+void SDLVKWindow::focus() { SDL_SetWindowInputFocus(this->window); }
 
-void SDLWindow::restore() { SDL_RestoreWindow(this->window); }
+void SDLVKWindow::restore() { SDL_RestoreWindow(this->window); }
 
-void SDLWindow::maximize() { SDL_MaximizeWindow(this->window); }
+void SDLVKWindow::maximize() { SDL_MaximizeWindow(this->window); }
 
-void SDLWindow::minimize() { SDL_MinimizeWindow(this->window); }
+void SDLVKWindow::minimize() { SDL_MinimizeWindow(this->window); }
 
-VkSurfaceKHR SDLWindow::createSurface(const std::shared_ptr<fvkcore::VulkanCore> &instance) {
-	VkSurfaceKHR surface;
+VkSurfaceKHR SDLVKWindow::createSurface(const std::shared_ptr<fvkcore::VulkanCore> &instance) {
+	VkSurfaceKHR surface = nullptr;
 	bool surfaceResult = SDL_Vulkan_CreateSurface(this->window, instance->getHandle(), &surface);
-	if (surfaceResult == SDL_FALSE)
+	if (surfaceResult == SDL_FALSE) {
 		throw cxxexcept::RuntimeException("failed create vulkan surface - {}", SDL_GetError());
+	}
 	return surface;
 }
 
-intptr_t SDLWindow::getNativePtr() const {
+fragcore::Display *SDLVKWindow::getCurrentDisplay() const {}
+
+intptr_t SDLVKWindow::getNativePtr() const {
 	return (intptr_t)this->window;
 	// 	SDL_SysWMinfo info;
 

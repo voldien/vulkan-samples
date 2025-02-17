@@ -2,13 +2,14 @@
 #include <VKSample.h>
 #include <VKSampleBase.h>
 #include <VKUtil.h>
+#include <cstddef>
 #include <cstdint>
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 
 namespace vksample {
 
-	static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue transferQueue, VkCommandBuffer cmd,
+	static void bufferMemoryTransfer(std::shared_ptr<VKDevice> &device, VkQueue cmdQueue, VkCommandBuffer cmd,
 									 std::vector<int64_t> &timeSampleNanoSeconds, VkBuffer srcBuffer,
 									 VkBuffer dstBuffer, VkDeviceSize sampleMemorySize, VkQueryPool queryPool) {
 
@@ -30,16 +31,26 @@ namespace vksample {
 
 			vkBeginCommandBuffer(cmd, &cmdBufBeginInfo);
 			vkCmdResetQueryPool(cmd, queryPool, 0, 2);
-			vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, queryPool, 0);
+			vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_NONE, queryPool, 0);
 			vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1, &bufferCopy);
+			/*	*/
+			std::vector<VkBufferMemoryBarrier> dispatchBarrier(1);
+			dispatchBarrier[0].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+			dispatchBarrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			dispatchBarrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			dispatchBarrier[0].srcAccessMask = VK_ACCESS_NONE;
+			dispatchBarrier[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0,
+								 nullptr, dispatchBarrier.size(), dispatchBarrier.data(), 0, nullptr);
+
 			vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 1);
 			vkEndCommandBuffer(cmd);
 
 			/*	*/
-			device->submitCommands(transferQueue, {cmd}, {}, {}, VK_NULL_HANDLE, {});
+			device->submitCommands(cmdQueue, {cmd}, {}, {}, VK_NULL_HANDLE, {});
 
-			/*	Wait intill all commands are complete.	*/
-			VKS_VALIDATE(vkQueueWaitIdle(transferQueue));
+			/*	Wait on CPU intill all commands are complete.	*/
+			VKS_VALIDATE(vkQueueWaitIdle(cmdQueue));
 
 			uint64_t buffer[2];
 			VkResult result =
@@ -75,13 +86,14 @@ namespace vksample {
 		std::cout << resultMsg << std::endl;
 	}
 
-	class MemoryTransfer : public vkscommon::VKSampleSessionBase {
+	class MemoryTransfer : public vksample::VKSampleSessionBase {
 	  private:
-		VkQueryPool queryPool;
+		VkQueryPool queryPool{};
 
 		/*	1KB, 1MB, 128MB, 512MB, 1024MB	*/
-		const std::array<VkDeviceSize, 5> memorySizes = {1024, 1024 * 1024, 1024 * 1024 * 128, 1024 * 1024 * 512,
-														 1 * 1024 * 1024};
+		const std::array<VkDeviceSize, 5> memorySizes = {
+			1024, static_cast<unsigned long>(1024 * 1024), static_cast<unsigned long>(1024 * 1024 * 128),
+			static_cast<unsigned long>(1024 * 1024 * 512), static_cast<unsigned long>(1024 * 1024 * 1024)};
 
 		std::vector<VkBuffer> sourceBuffer = std::vector<VkBuffer>(memorySizes.size(), VK_NULL_HANDLE);
 		std::vector<VkBuffer> destinationBuffer = std::vector<VkBuffer>(memorySizes.size(), VK_NULL_HANDLE);
@@ -96,13 +108,13 @@ namespace vksample {
 		}
 
 		void release() override {
-			this->releaseMemory();
+			this->releaseAllMemory();
 			vkDestroyQueryPool(this->getDevice(), this->queryPool, nullptr);
 		}
 
 		void loadDefaultQueue() override {}
 
-		void releaseMemory() {
+		void releaseAllMemory() {
 
 			for (size_t i = 0; i < this->memorySizes.size(); i++) {
 				vkDestroyBuffer(this->device->getHandle(), this->sourceBuffer[i], nullptr);
@@ -118,7 +130,7 @@ namespace vksample {
 			this->targetMemory = std::vector<VkDeviceMemory>(memorySizes.size(), VK_NULL_HANDLE);
 		}
 
-		virtual void run() override {
+		void run() override {
 
 			/*	*/
 			const int nrTransferSamples = this->getResult()["samples"].as<int>();
@@ -131,11 +143,11 @@ namespace vksample {
 			createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
 			createInfo.queryCount = 2; // TODO
 
+			/*	*/
+
 			VKS_VALIDATE(vkCreateQueryPool(this->getDevice(), &createInfo, nullptr, &queryPool));
 
 			std::vector<int64_t> timeSample(nrTransferSamples);
-
-			// TODO add support to look at the heap.
 
 			try {
 				VkQueue transfer = this->getDefaultTransferQueue();
@@ -157,8 +169,8 @@ namespace vksample {
 										   this->sourceBuffer[i], this->sourceMemory[i]);
 
 					VKHelper::createBuffer(this->getVKDevice()->getHandle(), memorySizes[i], memProp,
-										   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
-										   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, destinationBuffer[i], targetMemory[i]);
+										   VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+										   destinationBuffer[i], targetMemory[i]);
 				}
 				std::cout << std::endl << "CPU to GPU Buffer Memory Transfer Speed" << std::endl;
 				for (size_t i = 0; i < memorySizes.size(); i++) {
@@ -166,7 +178,7 @@ namespace vksample {
 										 destinationBuffer[i], memorySizes[i], this->queryPool);
 				}
 
-				this->releaseMemory();
+				this->releaseAllMemory();
 
 				/*	Allocate all buffers.	*/
 				for (size_t i = 0; i < memorySizes.size(); i++) {
@@ -187,7 +199,7 @@ namespace vksample {
 										 memorySizes[i], this->queryPool);
 				}
 
-				this->releaseMemory();
+				this->releaseAllMemory();
 
 				/*	Allocate all buffers.	*/
 				for (size_t i = 0; i < memorySizes.size(); i++) {
@@ -207,7 +219,7 @@ namespace vksample {
 				}
 
 				/*	Release buffers.	*/
-				this->releaseMemory();
+				this->releaseAllMemory();
 
 				/*	Allocate all buffers.	*/
 				for (size_t i = 0; i < memorySizes.size(); i++) {
@@ -227,7 +239,7 @@ namespace vksample {
 				}
 
 				/*	Release buffers.	*/
-				this->releaseMemory();
+				this->releaseAllMemory();
 
 				vkFreeCommandBuffers(device->getHandle(), commandPool, cmds.size(), cmds.data());
 				vkDestroyCommandPool(device->getHandle(), commandPool, nullptr);
@@ -242,9 +254,9 @@ namespace vksample {
 	class MemoryTransferVKSample : public VKSample<MemoryTransfer> {
 	  public:
 		MemoryTransferVKSample() : VKSample<MemoryTransfer>() {}
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
+		void customOptions(cxxopts::OptionAdder &options) override {
 			options("M,memory-size", "Explicit Memory Size", cxxopts::value<int>()->default_value("-1"))(
-				"S,samples", "Number of Samples", cxxopts::value<int>()->default_value("-1"))(
+				"S,samples", "Number of Samples", cxxopts::value<int>()->default_value("256"))(
 				"Q,queue-index", "Select Queue to perform the memory bencharmk",
 				cxxopts::value<int>()->default_value("-1"));
 		}
@@ -256,16 +268,19 @@ namespace vksample {
 			this->getResult();
 
 			/*	Select queue with transfer and the best timestamp resolution.	*/
-			uint32_t timestampvalid = 0;
+			uint32_t bestTimeStampvalid = 0;
 			int queueIndex = -1;
 			for (size_t j = 0; j < physical_devices[0]->getQueueFamilyProperties().size(); j++) {
 				/*  */
 				const VkQueueFamilyProperties &familyProp = physical_devices[0]->getQueueFamilyProperties()[j];
-				if ((familyProp.queueFlags & VK_QUEUE_TRANSFER_BIT) && familyProp.timestampValidBits > timestampvalid) {
-					timestampvalid = familyProp.timestampValidBits;
+
+				if ((familyProp.queueFlags & VK_QUEUE_TRANSFER_BIT) &&
+					familyProp.timestampValidBits > bestTimeStampvalid) {
+					bestTimeStampvalid = familyProp.timestampValidBits;
 					queueIndex = j;
 				}
 			}
+
 			// TODO: fix reference.
 			std::vector<float> queuePriorities(1, 1.0f);
 

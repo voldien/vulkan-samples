@@ -14,18 +14,13 @@
  * all copies or substantial portions of the Software.
  */
 #pragma once
-#include "FPSCounter.h"
-#include "VKSampleBase.h"
-#include "VKWindow.h"
 #include <IO/FileSystem.h>
 #include <VKDevice.h>
 #include <VkPhysicalDevice.h>
 #include <VulkanCore.h>
 #include <cxxopts.hpp>
-#include <iostream>
-#include <map>
 
-namespace vkscommon {
+namespace vksample {
 
 	class FVDECLSPEC VKSampleSession {
 	  public:
@@ -34,6 +29,7 @@ namespace vkscommon {
 						 std::unordered_map<const char *, bool> required_device_extensions = {},
 						 std::unordered_map<const char *, bool> required_instance_layers = {},
 						 std::unordered_map<const char *, bool> required_instance_extensions = {}) = 0;
+
 		virtual void customOptions([[maybe_unused]] cxxopts::OptionAdder &options) {}
 
 		cxxopts::ParseResult &getResult() noexcept { return this->parseResult; }
@@ -46,4 +42,4 @@ namespace vkscommon {
 		cxxopts::ParseResult parseResult;
 	};
 
-} // namespace vkscommon
+} // namespace vksample

@@ -1,7 +1,21 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2025 Valdemar Lindberg
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ */
 #pragma once
 #include "Exception.hpp"
-#include "Importer/IOUtil.h"
-#include "Util/CameraController.h"
+#include "TaskScheduler/IScheduler.h"
 #include "VKSampleSession.h"
 #include "VkPhysicalDevice.h"
 #include "vulkan/vulkan_core.h"
@@ -9,6 +23,9 @@
 #include <GeometryUtil.h>
 #include <ProceduralGeometry.h>
 #include <SDLDisplay.h>
+#include <TaskScheduler.h>
+#include <Util/IOUtil.h>
+#include <VKWindow.h>
 #include <cxxopts.hpp>
 #include <memory>
 #include <thread>
@@ -18,14 +35,13 @@
  *
  * @tparam T
  */
-template <class T> class VKSample : public vkscommon::VKSampleSession {
+template <class T> class VKSample : public vksample::VKSampleSession {
   public:
-	VKSample() {}
+	VKSample() = default;
 
-	virtual void run(int argc, const char **argv,
-					 std::unordered_map<const char *, bool> required_device_extensions = {},
-					 std::unordered_map<const char *, bool> required_instance_layers = {},
-					 std::unordered_map<const char *, bool> required_instance_extensions = {}) override {
+	void run(int argc, const char **argv, std::unordered_map<const char *, bool> required_device_extensions = {},
+			 std::unordered_map<const char *, bool> required_instance_layers = {},
+			 std::unordered_map<const char *, bool> required_instance_extensions = {}) override {
 
 		/*	Parse argument.	*/
 		const std::string helperInfo = "Vulkan Sample: " + fragcore::SystemInfo::getApplicationName() +
@@ -34,11 +50,11 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 		/*	*/
 		cxxopts::Options options("Vulkan Sample: " + fragcore::SystemInfo::getApplicationName(), helperInfo);
 		cxxopts::OptionAdder &addr = options.add_options()("h,help", "helper information.")(
-			"d,debug", "Enable Debug View.", cxxopts::value<bool>()->default_value("true"))(
+			"d,debug", "Enable Debug.", cxxopts::value<bool>()->default_value("true"))(
 			"t,time", "How long to run sample", cxxopts::value<float>()->default_value("0"))(
 			"i,instance-extensions", ".", cxxopts::value<uint32_t>()->default_value("5"))(
 			"l,instance-layers", ".", cxxopts::value<uint32_t>()->default_value("5"))(
-			"D,device-extensions", ".", cxxopts::value<bool>()->default_value("false"))(
+			"E,device-extensions", ".", cxxopts::value<bool>()->default_value("false"))(
 			"g,gpu-device", "GPU Device Select", cxxopts::value<int32_t>()->default_value("-1"))(
 			"p,present-mode", "Present Mode", cxxopts::value<int32_t>()->default_value("-1"))(
 			"f,fullscreen", "FullScreen", cxxopts::value<bool>()->default_value("false"))(
@@ -47,12 +63,16 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			"F,filesystem", "FileSystem", cxxopts::value<std::string>()->default_value("."))(
 			"C,color-space", "Display ColorSpace", cxxopts::value<std::string>()->default_value(""))(
 			"W,width", "Set Window Width", cxxopts::value<int>()->default_value("-1"))(
-			"H,height", "Set Window Height", cxxopts::value<int>()->default_value("-1"));
+			"H,height", "Set Window Height", cxxopts::value<int>()->default_value("-1"))(
+			"D,display", "Display", cxxopts::value<int>()->default_value("-1"))(
+			"m,multi-sample", "Set MSAA", cxxopts::value<int>()->default_value("0"))(
+			"G,gamma-correction", "Enable Gamma Correction", cxxopts::value<bool>()->default_value("false"));
 
 		/*	Append command option for the specific sample.	*/
 		this->customOptions(addr);
 
 		/*	Parse the command line input.	*/
+		options.allow_unrecognised_options();
 		auto result = options.parse(argc, (char **&)argv);
 
 		/*	If mention help, Display help and exit!	*/
@@ -76,18 +96,21 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			}
 		}
 
-		bool headless = result["headless"].as<bool>();
+		const bool headless = result["headless"].as<bool>();
 
 		/*	*/
 		// TODO add support to integrate
 		int nr_instance_extensions = result["instance-extensions"].count();
 		int nr_instance_layers = result["instance-layers"].count();
 		int nr_device_extensions = result["device-extensions"].count();
-		int device_index = result["gpu-device"].as<int32_t>();
+		int32_t device_select_index = result["gpu-device"].as<int32_t>();
+
+		fragcore::Ref<fragcore::IScheduler> schedular =
+			fragcore::Ref<fragcore::IScheduler>(new fragcore::TaskScheduler(2));
 
 		/*	Create filesystem that the asset will be read from.	*/
-		this->activeFileSystem = fragcore::FileSystem::createFileSystem();
-		std::string filesystemPath = result["filesystem"].as<std::string>();
+		this->activeFileSystem = fragcore::FileSystem::createFileSystem(schedular);
+		const std::string filesystemPath = result["filesystem"].as<std::string>();
 		if (!this->activeFileSystem->isDirectory(filesystemPath.c_str())) {
 
 			const std::string extension = this->activeFileSystem->getFileExtension(filesystemPath.c_str());
@@ -100,7 +123,7 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 		// TODO add surface extension based on platform.
 		std::unordered_map<const char *, bool> use_required_device_extensions = {
 			{VK_KHR_SWAPCHAIN_EXTENSION_NAME, !headless}};
-		std::unordered_map<const char *, bool> use_required_instance_layers = {{"VK_LAYER_KHRONOS_validation", debug}};
+		std::unordered_map<const char *, bool> use_required_instance_layers = {{"VK_LAYER_KHRONOS_validation", false}};
 		std::unordered_map<const char *, bool> use_required_instance_extensions = {
 			{VK_EXT_DEBUG_UTILS_EXTENSION_NAME, debug},
 			{VK_EXT_DEBUG_REPORT_EXTENSION_NAME, debug},
@@ -109,7 +132,6 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			{VK_KHR_SURFACE_EXTENSION_NAME, !headless},
 			{"VK_KHR_xlib_surface", !headless},
 			{"VK_KHR_display", !headless}};
-		//
 
 		// TODO append to device extension.
 		use_required_device_extensions.merge(required_device_extensions);
@@ -117,35 +139,41 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 		use_required_instance_extensions.merge(required_instance_extensions);
 
 		/*	*/
-		std::vector<const char *> required_window_device_extensions = VKWindow::getRequiredDeviceExtensions();
+		std::vector<const char *> required_window_device_extensions = vksample::VKWindow::getRequiredDeviceExtensions();
+		// TODO: add window required if using window
 		for (auto it = required_window_device_extensions.cbegin(); it != required_window_device_extensions.cend();
 			 it++) {
 			required_device_extensions[(*it)] = true;
 		}
 
 		/*	Vulkan core.	*/
-		this->core = std::make_shared<VulkanCore>(use_required_instance_extensions, use_required_instance_layers);
+		this->core =
+			std::make_shared<fvkcore::VulkanCore>(use_required_instance_extensions, use_required_instance_layers);
 
-		if (device_index >= this->core->getNrPhysicalDevices()) {
-			throw cxxexcept::RuntimeException("Must be valid physical device {} greater than {}", device_index,
-											  core->getNrPhysicalDevices());
-		}
+		if (device_select_index <= -1) {
 
-		const std::vector<VkPhysicalDevice> *physical_devices;
-		if (device_index == -1) {
-			/*	Select best gpu.	*/
-			physical_devices = &this->core->getPhysicalDevices();
+			const std::vector<std::shared_ptr<fvkcore::PhysicalDevice>> physical_devices =
+				this->core->createPhysicalDevices();
+
+			if (physical_devices.size() == 0) {
+				throw cxxexcept::RuntimeException("Could not retrive any physical devies");
+			}
+			device_select_index = 0;
+			for (size_t index_phy = 0; index_phy < physical_devices.size(); index_phy++) {
+				VkPhysicalDeviceType deviceType = physical_devices[index_phy]->getProperties().deviceType;
+				if (deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+					device_select_index = (int)index_phy;
+					break;
+				}
+			}
 		}
 
 		/*	All physical devices.	*/
-		std::vector<std::shared_ptr<PhysicalDevice>> selected_physical_devices;
+		std::vector<std::shared_ptr<fvkcore::PhysicalDevice>> selected_physical_devices;
 		const bool group_device_request = result.count("gpu-device") > 1;
 
-		if (device_index >= 0) {
-			selected_physical_devices.push_back(core->createPhysicalDevice(device_index));
-		} else if (physical_devices != nullptr) {
-			selected_physical_devices.push_back(
-				std::make_shared<PhysicalDevice>(*this->core.get(), physical_devices->at(0)));
+		if (device_select_index >= 0 && device_select_index < this->core->getNrPhysicalDevices()) {
+			selected_physical_devices.push_back(core->createPhysicalDevice(device_select_index));
 		} else {
 			throw cxxexcept::RuntimeException("Failed to find physical device");
 		}
@@ -165,7 +193,7 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			std::cout << selected_physical_devices[i]->getDeviceName() << std::endl;
 		}
 
-		/*Select All Queue and Create Device.	*/
+		/*	Select All Queue and Create Device.	*/
 		{
 			std::vector<std::vector<float>> global_queuePriorities;
 			std::vector<VkDeviceQueueCreateInfo> queues = this->OnSelectQueue(selected_physical_devices);
@@ -193,42 +221,60 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 			}
 
 			this->ldevice =
-				std::make_shared<VKDevice>(selected_physical_devices, use_required_device_extensions, queues);
+				std::make_shared<fvkcore::VKDevice>(selected_physical_devices, use_required_device_extensions, queues);
 		}
 
-		/*	*/
-		{
-			/*	Create Sample Object.	*/
-			this->ref = new T(core, ldevice);
-			/*	Pass custom command options.	*/
-			this->ref->setCommandResult(result);
+		/*	Create Sample Object.	*/
+		this->ref = new T(core, ldevice);
+		/*	Pass custom command options.	*/
+		this->ref->setCommandResult(result);
 
-			/*	Internal initialize.	*/
-			this->ref->setFileSystem(this->activeFileSystem);
+		/*	Internal initialize.	*/
+		this->ref->setFileSystem(this->activeFileSystem);
 
+		/*	Only if sample is a window type.	*/
+		fragcore::Window *windowRef = dynamic_cast<fragcore::Window *>(this->ref);
+		if constexpr (std::is_base_of_v<T, vksample::VKWindow> && windowRef && !headless) {
 			int width = result["width"].as<int>();
 			int height = result["height"].as<int>();
+			const int display_index = result["display"].as<int>();
+			int window_x = 0, window_y = 0;
+
+			fragcore::SDLDisplay display = fragcore::SDLDisplay::getPrimaryDisplay();
+			if (display_index >= 0) {
+				display = fragcore::SDLDisplay::getDisplay(display_index);
+			}
+
+			/*	*/
 			if (fullscreen) {
-				/*	*/
-				fragcore::SDLDisplay display = fragcore::SDLDisplay::getPrimaryDisplay();
+				/* Compute window size	*/
 				width = display.width();
 				height = display.height();
-			}
 
-			/*	Only if sample is a window type.	*/
-			IWindow *windowRef = dynamic_cast<IWindow *>(this->ref);
-			if (windowRef) {
-				windowRef->setSize(width, height);
-				// this->sampleRef->vsync(vsync);
-				windowRef->setFullScreen(fullscreen);
-			}
+				window_x = display.x();
+				window_y = display.y();
+			} else if (width == -1 || height == -1) {
 
-			this->ref->run();
+				/* Compute window size	*/
+				width = display.width() / 2;
+				height = display.height() / 2;
+
+				window_x = display.x() + width;
+				window_y = display.y() + height;
+			}
+			windowRef->setPosition(window_x, window_y);
+			windowRef->setSize(width, height);
+
+			// windowRef->vsync(vsync);
+			windowRef->setFullScreen(fullscreen);
+			windowRef->show();
 		}
+
+		this->ref->run();
 	}
 
-	virtual std::vector<VkDeviceQueueCreateInfo> OnSelectQueue([
-		[maybe_unused]] const std::vector<std::shared_ptr<PhysicalDevice>> &physical_selected_devices) {
+	virtual std::vector<VkDeviceQueueCreateInfo> OnSelectQueue(
+		[[maybe_unused]] const std::vector<std::shared_ptr<fvkcore::PhysicalDevice>> &physical_selected_devices) {
 		std::vector<std::vector<float>> global_queuePriorities;
 		std::vector<VkDeviceQueueCreateInfo> queues;
 		for (size_t j = 0; j < physical_selected_devices[0]->getQueueFamilyProperties().size(); j++) {
@@ -251,13 +297,13 @@ template <class T> class VKSample : public vkscommon::VKSampleSession {
 		return {};
 	}
 
-	virtual ~VKSample() {
+	~VKSample() override {
 		// this->ref->Release();
 		delete this->ref;
 	}
 
   private:
 	T *ref;
-	std::shared_ptr<VulkanCore> core;
-	std::shared_ptr<VKDevice> ldevice;
+	std::shared_ptr<fvkcore::VulkanCore> core;
+	std::shared_ptr<fvkcore::VKDevice> ldevice;
 };

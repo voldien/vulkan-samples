@@ -1,5 +1,5 @@
-#include "Importer/IOUtil.h"
 #include <SDL2/SDL.h>
+#include <Util/IOUtil.h>
 #include <VKSample.h>
 #include <VKWindow.h>
 #include <glm/glm.hpp>
@@ -26,16 +26,16 @@ namespace vksample {
 			this->setTitle("SubPasses");
 		}
 
-		virtual ~SubPasses() {}
-		typedef struct _vertex_t {
+		~SubPasses() override = default;
+		using Vertex = struct _vertex_t {
 			float pos[2];
 			float color[3];
-		} Vertex;
+		};
 
-		const std::string vertexShaderPath = "shaders/multipass/multipass.vert.spv";
-		const std::string fragmentShaderPath = "shaders/multipass/multipass.frag.spv";
+		const std::string vertexShaderPath = "Shaders/multipass/multipass.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/multipass/multipass.frag.spv";
 
-		virtual void release() override {
+		void release() override {
 
 			/*	*/
 			vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
@@ -56,8 +56,8 @@ namespace vksample {
 
 			auto vertShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   this->getFileSystem());
+			auto fragShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(this->getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(this->getDevice(), fragShaderCode);
@@ -84,7 +84,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -197,7 +197,7 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 			/*	Create pipeline.	*/
 			graphicsPipeline = createGraphicPipeline();
 
@@ -248,7 +248,7 @@ namespace vksample {
 			/*	Bind the vertex buffer with the memory that contains the triangle vertices data.	*/
 			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
-			void *data;
+			void *data = nullptr;
 			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 			vkUnmapMemory(getDevice(), vertexMemory);
@@ -256,7 +256,7 @@ namespace vksample {
 			onResize(width(), height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(this->getDefaultGraphicQueue()));
 
@@ -339,12 +339,12 @@ namespace vksample {
 			}
 		}
 
-		virtual void update() {}
+		void update() override {}
 	};
 	class MultiPassGLSample : public VKSample<SubPasses> {
 	  public:
 		MultiPassGLSample() : VKSample<SubPasses>() {}
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
+		void customOptions(cxxopts::OptionAdder &options) override {
 			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/diffuse.png"))(
 				"M,model", "Model Path", cxxopts::value<std::string>()->default_value("asset/sponza/sponza.obj"));
 		}

@@ -1,8 +1,8 @@
 #include "ImageImport.h"
-#include "IOUtil.h"
 #include "VKHelper.h"
 #include <FreeImage.h>
 #include <ImageFormat.h>
+#include <Util/IOUtil.h>
 #include <imageloader/ImageLoader.h>
 #include <magic_enum.hpp>
 #include <stdexcept>
@@ -18,8 +18,8 @@ void ImageImporter::saveTextureData(const char *cfilename, const void *pixelData
 
 void ImageImporter::saveTextureData(const char *cfilename, VkDevice device, VkImage image) {
 
-	void *pixelData;
-	unsigned int width, height, layers;
+	void *pixelData = nullptr;
+	unsigned int width = 0, height = 0, layers = 0;
 
 	VkImageSubresource subResources = {};
 	VkSubresourceLayout subResourceLayout;
@@ -32,7 +32,7 @@ void ImageImporter::saveTextureData(const char *cfilename, VkDevice device, VkIm
 	saveTextureData(cfilename, pixelData, width, height, layers, 0);
 }
 
-void ImageImporter::createImage2D(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue,
+void ImageImporter::loadImage2D(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue,
 								  VkPhysicalDevice physicalDevice, VkImage &textureImage,
 								  VkDeviceMemory &textureImageMemory) {
 
@@ -51,18 +51,18 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 	VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(device, commandPool);
 
 	/*	*/
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
+	VkBuffer stagingBuffer = nullptr;
+	VkDeviceMemory stagingBufferMemory = nullptr;
 	VKHelper::createBuffer(device, imageSize, memProperties, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 						   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, stagingBuffer, stagingBufferMemory);
 
 	/*	Write image data.	*/
-	void *stageData;
+	void *stageData = nullptr;
 	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &stageData);
 	memcpy(stageData, image.getPixelData(), static_cast<size_t>(imageSize));
 	vkUnmapMemory(device, stagingBufferMemory);
 
-	VkFormat vk_format;
+	VkFormat vk_format = VK_FORMAT_R8G8B8_UNORM;
 	switch (image.getFormat()) {
 	case fragcore::ImageFormat::RGB24:
 		vk_format = VK_FORMAT_R8G8B8_UNORM;
@@ -87,12 +87,55 @@ void ImageImporter::createImage2D(const char *filename, VkDevice device, VkComma
 		break;
 	}
 
+	// TODO: relocat for reuse.
+	switch (image.getFormat()) {
+	case fragcore::ImageFormat::RGB24:
+		vk_format = VK_FORMAT_R8G8B8_UNORM;
+		break;
+	case fragcore::ImageFormat::RGBA32:
+		vk_format = VK_FORMAT_R8G8B8A8_UNORM;
+		break;
+	case fragcore::ImageFormat::BGR24:
+		vk_format = VK_FORMAT_B8G8R8_UNORM;
+		break;
+	case fragcore::ImageFormat::BGRA32:
+		vk_format = VK_FORMAT_B8G8R8A8_UNORM;
+		break;
+	case fragcore::ImageFormat::RGBAFloat:
+		vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		break;
+	case fragcore::ImageFormat::RGBFloat:
+		vk_format = VK_FORMAT_R32G32B32_SFLOAT;
+		break;
+	case fragcore::ImageFormat::Alpha8: /*	Single Channel.	*/
+
+		break;
+	case fragcore::ImageFormat::RFloat:
+
+		break;
+	case fragcore::ImageFormat::R16:
+
+		break;
+	case fragcore::ImageFormat::R16U:
+
+		break;
+	case fragcore::ImageFormat::R32:
+
+		break;
+	case fragcore::ImageFormat::R32U:
+
+		break;
+	default:
+		throw cxxexcept::RuntimeException("None Supported Format: {}", magic_enum::enum_name(image.getFormat()));
+	}
+
 	VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
 	// TODO fix VK_IMAGE_TILING_LINEAR or tiling
 	/*	TODO check if combination supported.	*/
 	if (!this->device.isFormatSupported(vk_format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_LINEAR,
 										VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 											VK_IMAGE_USAGE_SAMPLED_BIT)) {
+
 		throw fragcore::RuntimeException("None Supported Image Format on Device: {}", magic_enum::enum_name(vk_format));
 	}
 
@@ -179,10 +222,12 @@ void ImageImporter::generateMipmaps(VkDevice device, VkCommandPool commandPool, 
 		vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0,
 							 nullptr, 0, nullptr, 1, &barrier);
 
-		if (mipWidth > 1)
+		if (mipWidth > 1) {
 			mipWidth /= 2;
-		if (mipHeight > 1)
+		}
+		if (mipHeight > 1) {
 			mipHeight /= 2;
+		}
 	}
 
 	barrier.subresourceRange.baseMipLevel = mipLevels - 1;
