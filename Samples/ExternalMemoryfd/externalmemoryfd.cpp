@@ -1,6 +1,5 @@
-#include "Importer/ImageImport.h"
+#include "VKSample.h"
 #include "VKUtil.h"
-#include "VksCommon.h"
 #include <VKSampleBase.h>
 #include <cxxopts.hpp>
 #include <fmt/format.h>

@@ -6,6 +6,7 @@
 #include <vector>
 
 namespace vksample {
+	
 	class FVDECLSPEC IOUtil {
 	  public:
 		static std::vector<char> readFileString(const std::string &filename, fragcore::IFileSystem *filesystem) {

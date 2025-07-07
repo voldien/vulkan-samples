@@ -1,6 +1,7 @@
 #include "ModelImporter.h"
 #include "Core/SystemInfo.h"
 #include "Math/Math.h"
+#include "RenderDesc.h"
 #include "TaskScheduler/IScheduler.h"
 #include "assimp/Importer.hpp"
 #include "assimp/ProgressHandler.hpp"
@@ -15,6 +16,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <glm/fwd.hpp>
+#include <iostream>
 #include <sys/types.h>
 #include <thread>
 #include <utility>
@@ -46,7 +48,7 @@ static inline glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4 *from) noexcept {
 	return to;
 }
 
-ModelImporter::ModelImporter(ModelImporter &&other)
+ModelImporter::ModelImporter(ModelImporter &&other) noexcept
 	: filepath(other.filepath), nodes(other.nodes), models(other.models), materials(other.materials),
 	  textures(other.textures), textureMapping(other.textureMapping), textureIndexMapping(other.textureIndexMapping),
 	  skeletons(other.skeletons), animations(other.animations), vertexBoneData(other.vertexBoneData),
@@ -54,7 +56,7 @@ ModelImporter::ModelImporter(ModelImporter &&other)
 	this->fileSystem = std::exchange(other.fileSystem, nullptr);
 }
 
-ModelImporter &ModelImporter::operator=(ModelImporter &&other) {
+ModelImporter &ModelImporter::operator=(ModelImporter &&other) noexcept {
 	this->fileSystem = std::exchange(other.fileSystem, nullptr);
 
 	this->globalNodeTransform = other.globalNodeTransform;
@@ -90,9 +92,14 @@ void ModelImporter::loadContent(const std::string &path, unsigned long int suppo
 	importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, false);
 	importer.SetProgressHandler(new CustomProgress());
 
+	size_t flags = aiProcessPreset_TargetRealtime_Fast | aiProcess_GenBoundingBoxes | aiProcess_PopulateArmatureData;
+	if (false) {
+		flags = aiProcessPreset_TargetRealtime_MaxQuality | aiProcess_GenBoundingBoxes |
+				aiProcess_PopulateArmatureData | aiProcess_OptimizeGraph | aiProcess_OptimizeMeshes;
+	}
+
 	/*	*/
-	this->sceneRef = importer.ReadFile(path.c_str(), aiProcessPreset_TargetRealtime_Quality |
-														 aiProcess_GenBoundingBoxes | aiProcess_PopulateArmatureData);
+	this->sceneRef = importer.ReadFile(path.c_str(), flags);
 
 	if (this->sceneRef == nullptr) {
 		throw RuntimeException("Failed to load file: {} - Error: {}", path, importer.GetErrorString());
@@ -111,6 +118,7 @@ void ModelImporter::clear() noexcept {
 		}
 	}
 
+	this->nodePool.clean();
 	this->nodes.clear();
 	this->models.clear();
 	this->materials.clear();
@@ -122,7 +130,7 @@ void ModelImporter::clear() noexcept {
 
 void ModelImporter::initScene(const aiScene *scene) {
 
-	fragcore::IScheduler *schedular = this->getFileSystem()->getScheduler().ptr();
+	fragcore::IScheduler *schedular = this->getFileSystem()->getScheduler().get();
 
 	this->models.resize(scene->mNumMeshes);
 
@@ -145,18 +153,22 @@ void ModelImporter::initScene(const aiScene *scene) {
 		}
 
 		/*	*/
-		for (size_t x = 0; x < scene->mNumMaterials; x++) {
+		const size_t nrMaterials = scene->mNumMaterials;
+		for (size_t x = 0; x < nrMaterials; x++) {
 			this->loadTexturesFromMaterials(scene->mMaterials[x]);
 		}
 
-		for (size_t x = 0; x < scene->mNumMeshes; x++) {
-			// TODO: relocate.
-			C_STRUCT aiAABB aabb = scene->mMeshes[x]->mAABB;
+		const size_t nrMeshes = scene->mNumMeshes;
+		for (size_t x = 0; x < nrMeshes; x++) {
 
+			C_STRUCT aiAABB &aabb = scene->mMeshes[x]->mAABB;
+
+			/*	*/
 			this->models[x].bound.aabb.min[0] = aabb.mMin.x;
 			this->models[x].bound.aabb.min[1] = aabb.mMin.y;
 			this->models[x].bound.aabb.min[2] = aabb.mMin.z;
 
+			/*	*/
 			this->models[x].bound.aabb.max[0] = aabb.mMax.x;
 			this->models[x].bound.aabb.max[1] = aabb.mMax.y;
 			this->models[x].bound.aabb.max[2] = aabb.mMax.z;
@@ -167,7 +179,14 @@ void ModelImporter::initScene(const aiScene *scene) {
 	const size_t nr_threads = fragcore::Math::clamp<size_t>(scene->mNumMeshes / 4, 1, SystemInfo::getCPUCoreCount());
 	std::vector<std::thread> model_threads(nr_threads);
 
+	for (size_t x = 0; x < scene->mNumMeshes; x++) {
+
+		this->initMesh(scene->mMeshes[x], x);
+	}
+	// TODO: fix
 	/*	Multithread the loading of all the geometry data.	*/
+	//	#pragma omp parallel for schedule(dynamic, 4)
+	/*
 	for (size_t index_thread = 0; index_thread < model_threads.size(); index_thread++) {
 
 		const size_t start_mesh = (scene->mNumMeshes / nr_threads) * index_thread;
@@ -181,11 +200,14 @@ void ModelImporter::initScene(const aiScene *scene) {
 
 				for (size_t x = start_mesh; x < fragcore::Math::min<size_t>(start_mesh + num_mesh, scene->mNumMeshes);
 					 x++) {
+
 					this->initMesh(scene->mMeshes[x], x);
 				}
 			}
 		});
-	}
+	}*/
+	// #pragma omp
+
 	/*	*/
 	std::thread process_animation_light_camera_thread([&]() {
 		if (scene->HasAnimations()) {
@@ -196,16 +218,25 @@ void ModelImporter::initScene(const aiScene *scene) {
 
 		if (scene->HasLights()) {
 			this->lights.resize(scene->mNumLights);
-			for (unsigned int x = 0; x < scene->mNumLights; x++) {
+			const size_t nrLights = scene->mNumLights;
+			for (unsigned int x = 0; x < nrLights; x++) {
 				this->initLight(scene->mLights[x], x);
 			}
 		}
 
 		if (scene->HasCameras()) {
+			cameras.resize(scene->mNumCameras);
+
 			for (unsigned int x = 0; x < scene->mNumCameras; x++) {
-				/*	*/
+				CameraData &cameraData = cameras[x];
+
+				cameraData.name = scene->mCameras[x]->mName.C_Str();
+				// scene->mCameras[x]->mPosition;
 			}
 		}
+
+		// TODO: compute
+		nodePool.resize(2048);
 	});
 	// process_animation_light_camera_thread.detach();
 
@@ -213,12 +244,11 @@ void ModelImporter::initScene(const aiScene *scene) {
 	process_animation_light_camera_thread.join();
 
 	for (size_t i = 0; i < model_threads.size(); i++) {
-		model_threads[i].join();
+		//	model_threads[i].join();
 	}
 
 	/*	*/
 	if (scene->HasMaterials()) {
-		/*	Extract additional texture */
 
 		this->materials.resize(scene->mNumMaterials);
 		for (size_t x = 0; x < scene->mNumMaterials; x++) {
@@ -226,7 +256,7 @@ void ModelImporter::initScene(const aiScene *scene) {
 		}
 	}
 
-	this->initNoodeRoot(scene->mRootNode, nullptr);
+	this->initNodeRoot(scene->mRootNode, nullptr);
 
 	/*	*/
 	for (size_t x = 0; x < scene->mNumMeshes; x++) {
@@ -234,31 +264,31 @@ void ModelImporter::initScene(const aiScene *scene) {
 	}
 }
 
-void ModelImporter::initNoodeRoot(const aiNode *ai_node, NodeObject *parent) {
-	size_t gameObjectCount = 0;
-	size_t meshCount = 0;
+void ModelImporter::initNodeRoot(const aiNode *ai_node, NodeObject *parent) {
 
 	/*	iterate through each child of parent node.	*/
 	for (size_t node_index = 0; node_index < ai_node->mNumChildren; node_index++) {
 		aiNode *child_node = ai_node->mChildren[node_index];
 
-		unsigned int meshCount = 0;
-		aiVector3D position, scale;
+		aiVector3f position, scale;
 		aiQuaternion rotation;
 
-		NodeObject *pobject = new NodeObject();
+		NodeObject *pobject = nodePool.obtain();
 
-		/*	extract position, rotation, position from transformation matrix.	*/
-		child_node->mTransformation.Decompose(scale, rotation, position);
 		if (parent) {
 			pobject->parent = parent;
 		} else {
 			pobject->parent = nullptr;
 		}
 
+		/*	extract position, rotation, position from transformation matrix.	*/
+		child_node->mTransformation.Decompose(scale, rotation, position);
+
+		/*	*/
 		pobject->localPosition = glm::vec3(position.x, position.y, position.z);
 		pobject->localRotation = glm::quat(rotation.w, rotation.x, rotation.y, rotation.z);
 		pobject->localScale = glm::vec3(scale.x, scale.y, scale.z);
+
 		/*	*/
 		pobject->modelLocalTransform = aiMatrix4x4ToGlm(&child_node->mTransformation);
 
@@ -295,7 +325,7 @@ void ModelImporter::initNoodeRoot(const aiNode *ai_node, NodeObject *parent) {
 		this->nodeByName[std::string(child_node->mName.C_Str())] = pobject;
 
 		/*	*/
-		this->initNoodeRoot(child_node, pobject);
+		this->initNodeRoot(child_node, pobject);
 	}
 }
 
@@ -340,6 +370,7 @@ SkeletonSystem *ModelImporter::initBoneSkeleton(const aiMesh *mesh, unsigned int
 ModelSystemObject *ModelImporter::initMesh(const aiMesh *aimesh, unsigned int index) {
 	ModelSystemObject *pmesh = &this->models[index];
 
+	/*	*/
 	const unsigned int nrUVs = fragcore::Math::max<unsigned int>(aimesh->GetNumUVChannels(), 1);
 	const unsigned int nrVertexColors = aimesh->GetNumColorChannels();
 
@@ -348,11 +379,12 @@ ModelSystemObject *ModelImporter::initMesh(const aiMesh *aimesh, unsigned int in
 	const size_t uvSize = nrUVs * (sizeof(float) * 2);
 	const size_t normalSize = sizeof(float) * 3;
 	const size_t tangentSize = sizeof(float) * 3;
+	const size_t vertexColorSize = nrVertexColors * sizeof(float) * 4;
 	const size_t boneIDSize = sizeof(unsigned int);
 	const size_t boneWeightSize = sizeof(float);
 
 	/*	*/
-	const size_t boneWeightCount = 4;
+	const size_t boneWeightCount = 4; // TODO: adjustable
 	size_t boneByteSize = 0;
 	size_t bonecount = 0;
 	if (aimesh->HasBones()) {
@@ -360,108 +392,128 @@ ModelSystemObject *ModelImporter::initMesh(const aiMesh *aimesh, unsigned int in
 		bonecount = boneWeightCount;
 	}
 
+	const unsigned int numVertices = aimesh->mNumVertices;
+	const unsigned int numFaces = aimesh->mNumFaces;
+
 	/*	*/
-	const size_t StrideSize = vertexSize + uvSize + normalSize + tangentSize + boneByteSize;
-	const uint floatStride = StrideSize / sizeof(float);
+	const size_t StrideSize = vertexSize + uvSize + normalSize + tangentSize + vertexColorSize + boneByteSize;
+	const uint VertexFloatStride = StrideSize / sizeof(float);
 
 	const size_t indicesSize = 4;
 
+	assert(StrideSize > 0);
+	assert(indicesSize > 0);
+
 	/*	*/
-	float *vertices = (float *)malloc(aimesh->mNumVertices * StrideSize);
-	unsigned char *Indice =
-		(unsigned char *)malloc(indicesSize * aimesh->mNumFaces * 3); // TODO: compute number of faces.
+	const bool hasPositions = aimesh->HasPositions();
+	const bool hasFaces = aimesh->HasFaces();
+	const bool hasNormal = aimesh->HasNormals();
+	const bool hasUV = aimesh->GetNumUVChannels() > 0;
+
+	/*	*/
+	float *vertices = (float *)malloc(numVertices * StrideSize);
+	unsigned char *Indice = nullptr;
+	if (hasFaces) {
+		Indice = (unsigned char *)malloc(indicesSize * numFaces * 3);
+	}
 
 	/*	*/
 	unsigned char *Itemp = Indice;
 
-	/*	*/
-	const aiVector3D Zero = aiVector3D(0, 0, 0);
-	if (aimesh->HasPositions()) {
+	for (unsigned int x = 0; x < numVertices; x++) {
 
-		for (unsigned int x = 0; x < aimesh->mNumVertices; x++) {
+		/*	Next Vertex/Data Point.	*/
+		float *pVertex = &vertices[static_cast<size_t>(VertexFloatStride * x)];
 
-			float *pVertex = &vertices[static_cast<size_t>(floatStride * x)];
+		/*	*/
+		const aiVector3D *Pos = &(aimesh->mVertices[x]);
+		aiVector3D *pNormal = &(aimesh->mNormals[x]);
+		const aiVector3D *Tangent = aimesh->mTangents ? &(aimesh->mTangents[x]) : nullptr;
 
-			/*	*/
-			const aiVector3D *Pos = &(aimesh->mVertices[x]);
-			aiVector3D *pNormal = &(aimesh->mNormals[x]);
-			const aiVector3D *Tangent = aimesh->mTangents ? &(aimesh->mTangents[x]) : nullptr;
+		/*	Vertex position.	*/
+		*pVertex++ = Pos->x;
+		*pVertex++ = Pos->y;
+		*pVertex++ = Pos->z;
 
-			/*	Vertex position.	*/
-			*pVertex++ = Pos->x;
-			*pVertex++ = Pos->y;
-			*pVertex++ = Pos->z;
+		/*	UV coordinates.	*/
+		if (hasUV) {
+			for (unsigned int uv_index = 0; uv_index < nrUVs; uv_index++) {
+				//	if (aimesh->HasTextureCoords(uv_index)) {
+				*pVertex++ = aimesh->mTextureCoords[uv_index][x].x;
+				*pVertex++ = aimesh->mTextureCoords[uv_index][x].y;
+				//	}
+			}
+		} else {
+			*pVertex++ = 0;
+			*pVertex++ = 0;
+		}
 
-			/*	UV coordinates.	*/
-			if (aimesh->GetNumUVChannels() > 0) {
-				for (unsigned int uv_index = 0; uv_index < aimesh->GetNumUVChannels(); uv_index++) {
-					if (aimesh->HasTextureCoords(uv_index)) {
-						*pVertex++ = aimesh->mTextureCoords[uv_index][x].x;
-						*pVertex++ = aimesh->mTextureCoords[uv_index][x].y;
-					}
-				}
-			} else {
-				*pVertex++ = 0;
+		/*	Normals.	*/
+		if (hasNormal) {
+			pNormal->Normalize();
+			*pVertex++ = pNormal->x;
+			*pVertex++ = pNormal->y;
+			*pVertex++ = pNormal->z;
+		} else {
+			*pVertex++ = 0;
+			*pVertex++ = 0;
+			*pVertex++ = 0;
+		}
+
+		/*	*/
+		if (Tangent) {
+			*pVertex++ = Tangent->x;
+			*pVertex++ = Tangent->y;
+			*pVertex++ = Tangent->z;
+		} else {
+			*pVertex++ = 0;
+			*pVertex++ = 0;
+			*pVertex++ = 0;
+		}
+
+		/*	*/
+		if (aimesh->GetNumColorChannels() > 0) {
+
+			for (unsigned int color_index = 0; color_index < aimesh->GetNumColorChannels(); color_index++) {
+				*pVertex++ = aimesh->mColors[color_index][x].r;
+				*pVertex++ = aimesh->mColors[color_index][x].g;
+				*pVertex++ = aimesh->mColors[color_index][x].b;
+				*pVertex++ = aimesh->mColors[color_index][x].a;
+			}
+		}
+
+		/*	Offset only. assign later.	*/
+		if (boneByteSize > 0 && bonecount > 0) {
+			/*	BoneID	*/
+			for (unsigned int i = 0; i < bonecount; i++) {
 				*pVertex++ = 0;
 			}
-
-			/*	Normals.	*/
-			if (aimesh->HasNormals()) {
-				pNormal->Normalize();
-				*pVertex++ = pNormal->x;
-				*pVertex++ = pNormal->y;
-				*pVertex++ = pNormal->z;
-			} else {
-				*pVertex++ = 0;
-				*pVertex++ = 0;
+			/*	BoneWeight	*/
+			for (unsigned int i = 0; i < bonecount; i++) {
 				*pVertex++ = 0;
 			}
+		}
 
-			/*	*/
-			if (Tangent) {
-				*pVertex++ = Tangent->x;
-				*pVertex++ = Tangent->y;
-				*pVertex++ = Tangent->z;
-			} else {
-
-				*pVertex++ = 0;
-				*pVertex++ = 0;
-				*pVertex++ = 0;
-			}
-
-			if (aimesh->GetNumColorChannels() > 0) {
-				for (unsigned int color_index = 0; color_index < aimesh->GetNumColorChannels(); color_index++) {
-					aimesh->mColors[color_index][x];
-				}
-			}
-
-			/*	Offset only. assign later.	*/
-			if (boneByteSize > 0 && bonecount > 0) {
-				/*	BoneID	*/
-				for (unsigned int i = 0; i < bonecount; i++) {
-					*pVertex++ = 0;
-				}
-				/*	BoneWeight	*/
-				for (unsigned int i = 0; i < bonecount; i++) {
-					*pVertex++ = 0;
-				}
-			}
-
-		} /*	*/
-	}
+	} /*	*/
 
 	/*	Assign data offset.	*/
 	pmesh->vertexOffset = 0;
 	pmesh->uvOffset = vertexSize;
 	pmesh->normalOffset = vertexSize + uvSize;
 	pmesh->tangentOffset = vertexSize + uvSize + normalSize;
+	if (nrVertexColors > 0) {
+		pmesh->vertexColorOffset = vertexSize + uvSize + normalSize + tangentSize;
+	} else {
+		pmesh->vertexColorOffset = -1;
+	}
 
 	/*	Load bones.	*/
 	if (aimesh->HasBones()) {
 
 		/*	*/
-		pmesh->boneIndexOffset = (vertexSize + uvSize + normalSize + tangentSize);
-		pmesh->boneWeightOffset = (vertexSize + uvSize + normalSize + tangentSize + bonecount * boneIDSize);
+		pmesh->boneIndexOffset = (vertexSize + uvSize + normalSize + tangentSize + vertexColorSize);
+		pmesh->boneWeightOffset =
+			(vertexSize + uvSize + normalSize + tangentSize + vertexColorSize + bonecount * boneIDSize);
 
 		const uint BoneStrideOffset = (pmesh->boneIndexOffset / sizeof(float));
 
@@ -476,7 +528,7 @@ ModelSystemObject *ModelImporter::initMesh(const aiMesh *aimesh, unsigned int in
 				const unsigned int VertexID = aimesh->mBones[i]->mWeights[j].mVertexId;
 				const float Weight = aimesh->mBones[i]->mWeights[j].mWeight;
 
-				float *boneData = &vertices[(VertexID * floatStride) + BoneStrideOffset];
+				float *boneData = &vertices[(VertexID * VertexFloatStride) + BoneStrideOffset];
 
 				/*	Assign next bone without any value.	*/
 				for (uint x = 0; x < bonecount; x++) {
@@ -496,11 +548,11 @@ ModelSystemObject *ModelImporter::initMesh(const aiMesh *aimesh, unsigned int in
 
 	/*	Primitive Indices.	*/
 	size_t nrFaces = 0;
-	if (aimesh->HasFaces()) {
+	if (hasFaces) {
 
 		if (indicesSize == sizeof(unsigned int)) {
 
-			for (size_t x = 0; x < aimesh->mNumFaces; x++) {
+			for (size_t x = 0; x < numFaces; x++) {
 				const aiFace &face = aimesh->mFaces[x];
 
 				/*	*/
@@ -510,8 +562,10 @@ ModelSystemObject *ModelImporter::initMesh(const aiMesh *aimesh, unsigned int in
 				nrFaces += face.mNumIndices;
 			}
 
-		} else { // TODO determine if can be removed.
-			for (size_t x = 0; x < aimesh->mNumFaces; x++) {
+		} else {
+
+			// TODO determine if can be removed.
+			for (size_t x = 0; x < numFaces; x++) {
 				const aiFace &face = aimesh->mFaces[x];
 
 				if (face.mNumIndices == 3) {
@@ -567,13 +621,13 @@ ModelSystemObject *ModelImporter::initMesh(const aiMesh *aimesh, unsigned int in
 	pmesh->vertexStride = StrideSize;
 	pmesh->primitiveType = aimesh->mPrimitiveTypes;
 	pmesh->name = std::string(aimesh->mName.C_Str());
+	pmesh->processed = true;
 
 	return pmesh;
 }
 
-MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t index) {
+MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t material_index) {
 
-	aiString name;
 	aiString path;
 
 	aiTextureMapping mapping;
@@ -585,36 +639,35 @@ MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t ind
 	glm::vec4 color = glm::vec4(0);
 	float shininessStrength = NAN;
 
-	MaterialObject *material = &this->materials[index];
+	MaterialObject *material_obj = &this->materials[material_index];
 
-	if (!ref_material) {
-		return nullptr;
-	}
+	assert(ref_material != nullptr);
 
 	const bool isTextureEmpty = this->textures.size() == 0;
 
 	/*	*/
+	aiString name;
 	if (ref_material->Get(AI_MATKEY_NAME, name) == aiReturn_SUCCESS) {
-		material->name = name.C_Str();
+		material_obj->name = name.C_Str();
 	}
 
 	/*	load all texture assoicated with material.	*/
-	for (size_t textureType = aiTextureType::aiTextureType_DIFFUSE; textureType < aiTextureType::aiTextureType_UNKNOWN;
-		 textureType++) {
+	for (size_t textureUsageType = aiTextureType::aiTextureType_DIFFUSE;
+		 textureUsageType < aiTextureType::aiTextureType_UNKNOWN; textureUsageType++) {
 
 		/*	*/
-		for (size_t textureIndex = 0; textureIndex < ref_material->GetTextureCount((aiTextureType)textureType);
+		for (size_t textureIndex = 0; textureIndex < ref_material->GetTextureCount((aiTextureType)textureUsageType);
 			 textureIndex++) {
 
 			/*	*/
 			aiString textureName;
-			if (ref_material->Get(AI_MATKEY_TEXTURE(textureType, textureIndex), textureName) ==
+			if (ref_material->Get(AI_MATKEY_TEXTURE(textureUsageType, textureIndex), textureName) ==
 				aiReturn::aiReturn_SUCCESS) {
 				/*	*/
 			}
 
 			aiTextureFlags textureFlag;
-			if (ref_material->Get(AI_MATKEY_TEXFLAGS(textureType, textureIndex), textureFlag) ==
+			if (ref_material->Get(AI_MATKEY_TEXFLAGS(textureUsageType, textureIndex), textureFlag) ==
 				aiReturn::aiReturn_SUCCESS) {
 				/*	*/
 			}
@@ -622,33 +675,52 @@ MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t ind
 			/*	*/
 			const auto *embeededTexture = sceneRef->GetEmbeddedTexture(textureName.C_Str());
 
-			if (ref_material->GetTexture((aiTextureType)textureType, textureIndex, &path, &mapping, &uvindex, &blend,
-										 &op, &mapmode) == aiReturn::aiReturn_SUCCESS) {
+			if (ref_material->GetTexture((aiTextureType)textureUsageType, textureIndex, &path, &mapping, &uvindex,
+										 &blend, &op, &mapmode) == aiReturn::aiReturn_SUCCESS) {
+
+				assert(textureUsageType < material_obj->texture_index.size());
 
 				/*	If embeeded.	*/
-				int texIndex = 0;
+				unsigned int texTableIndex = 0;
 				if (path.data[0] == '*' && embeededTexture) {
-					texIndex = atoi(&path.data[1]);
+					texTableIndex = atoi(&path.data[1]);
+					texTableIndex = fragcore::Math::clamp<unsigned int>(texTableIndex, 0, this->textures.size() - 1);
 				} else {
+
+					/*	Find if accessiable.	*/
 					const TextureAssetObject *textureObj = this->textureMapping[path.C_Str()];
-					if (textureObj) {
-						texIndex = this->textureIndexMapping[path.C_Str()];
+					auto it = textureIndexMapping.find(path.C_Str());
+					if (textureObj && it != this->textureIndexMapping.end()) {
+						texTableIndex = (*it).second;
+					} else {
+						/*	*/
+						std::cerr << "Can't find Texture" << std::endl;
+						continue;
 					}
 				}
 
 				/*	*/
-				if (texIndex >= 0) {
+				if (texTableIndex >= 0) {
 					switch (mapmode) {
-
+					default:
+					case _aiTextureMapMode_Force32Bit:
 					case aiTextureMapMode_Wrap:
+						material_obj->texture_sampling[textureUsageType].wrapping = TextureWrappingMode::Repeat;
+						break;
 					case aiTextureMapMode_Clamp:
+						material_obj->texture_sampling[textureUsageType].wrapping = TextureWrappingMode::Clamp;
+						break;
 					case aiTextureMapMode_Decal:
 					case aiTextureMapMode_Mirror:
-					case _aiTextureMapMode_Force32Bit:
+						material_obj->texture_sampling[textureUsageType].wrapping = TextureWrappingMode::RepeatMirror;
 						break;
 					}
+
 					switch (mapping) {
 					case aiTextureMapping_UV:
+						material_obj->texture_sampling[textureUsageType].uv_mapping =
+							fragcore::TextureUVMappingMode::UV;
+						break;
 					case aiTextureMapping_SPHERE:
 					case aiTextureMapping_CYLINDER:
 					case aiTextureMapping_BOX:
@@ -657,121 +729,124 @@ MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t ind
 					case _aiTextureMapping_Force32Bit:
 						break;
 					}
-					material->texture_sampling[texIndex].filtering = 0;
-					material->texture_sampling[texIndex].wrapping = mapmode;
-					material->texture_sampling[texIndex].uv_mapping = mapping;
+
+					material_obj->texture_sampling[textureUsageType].filtering = TextureFilterMode::Linear;
 				}
 
-				switch (textureType) {
+				/*	*/
+				switch (textureUsageType) {
 				case aiTextureType::aiTextureType_DIFFUSE:
-					material->diffuseIndex = texIndex;
+					material_obj->diffuseIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_NORMALS:
-					material->normalIndex = texIndex;
+					material_obj->normalIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_OPACITY:
-					material->maskTextureIndex = texIndex;
+					material_obj->maskTextureIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_SPECULAR:
-					material->specularIndex = texIndex;
+					material_obj->specularIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_HEIGHT:
-					material->heightbumpIndex = texIndex;
+					material_obj->heightbumpIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_AMBIENT:
+					material_obj->diffuseIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_EMISSIVE:
-					material->emissionIndex = texIndex;
+					material_obj->emissionIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_SHININESS:
+					material_obj->specularIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_DISPLACEMENT:
-					material->displacementIndex = texIndex;
-					break;
-				case aiTextureType::aiTextureType_LIGHTMAP:
+					material_obj->displacementIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_REFLECTION:
-					material->reflectionIndex = texIndex;
+					material_obj->reflectionIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_BASE_COLOR: /*	PBR.	*/
-					material->diffuseIndex = texIndex;
+					material_obj->diffuseIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_NORMAL_CAMERA:
-					material->normalIndex = texIndex;
+					material_obj->normalIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_EMISSION_COLOR:
-					material->emissionIndex = texIndex;
+					material_obj->emissionIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_METALNESS:
+					material_obj->metalIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_DIFFUSE_ROUGHNESS:
+					material_obj->specularIndex = texTableIndex;
 					break;
 				case aiTextureType::aiTextureType_AMBIENT_OCCLUSION:
+					material_obj->ambientOcclusionIndex = texTableIndex;
 					break;
 				case aiTextureType_UNKNOWN:
-					break;
+				case aiTextureType_GLTF_METALLIC_ROUGHNESS:
+				case aiTextureType::aiTextureType_LIGHTMAP:
 				default:
+					std::cerr << "Can't find any image " << texTableIndex << std::endl;
 					break;
 				}
 			}
 
-		} /**/
-	} /**/
+		} /*	*/
+	} /*	*/
 
 	/*	Assign shader attributes.	*/
 	{
 		aiShadingMode model = aiShadingMode_Flat;
 		if (ref_material->Get(AI_MATKEY_SHADING_MODEL, model) == aiReturn::aiReturn_SUCCESS) {
-			material->shade_model = model;
+			material_obj->shade_model = model;
 		}
 
 		if (model < aiShadingMode_PBR_BRDF) {
 
 			if (ref_material->Get(AI_MATKEY_COLOR_AMBIENT, color[0]) == aiReturn::aiReturn_SUCCESS) {
 				if (color[0] > 0.5f) {
-					material->ambient = color;
-					material->ambient[3] = 1;
+					material_obj->ambient = color;
+					material_obj->ambient[3] = 1;
 				}
 			}
 			if (ref_material->Get(AI_MATKEY_COLOR_DIFFUSE, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material->diffuse = color;
-				material->diffuse[3] = 1;
+				material_obj->diffuse = color;
+				material_obj->diffuse[3] = 1;
 			}
-			if (ref_material->Get(AI_MATKEY_COLOR_EMISSIVE, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material->emission = color;
-				material->emission[3] = 1;
+			if (ref_material->Get(AI_MATKEY_COLOR_EMISSIVE, color[0]) == aiReturn::aiReturn_SUCCESS) { // TODO:
+																									   // determine
+				material_obj->emission = color;
+				material_obj->emission[3] = 1;
 			}
 			if (ref_material->Get(AI_MATKEY_COLOR_SPECULAR, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material->specular = color;
-				material->specular[3] = 0;
+				material_obj->specular = color;
+				material_obj->specular[3] = 0;
 			}
 			if (ref_material->Get(AI_MATKEY_COLOR_TRANSPARENT, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material->transparent = color;
+				material_obj->transparent = color;
 			}
 			if (ref_material->Get(AI_MATKEY_COLOR_REFLECTIVE, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material->reflectivity = color;
-				material->reflectivity[3] = 1;
+				material_obj->reflectivity = color;
+				material_obj->reflectivity[3] = 1;
 			}
 			if (ref_material->Get(AI_MATKEY_SHININESS, shininessStrength) == aiReturn::aiReturn_SUCCESS) {
-				material->shinininess = shininessStrength;
-				material->specular[3] = shininessStrength;
+				material_obj->shinininess = shininessStrength;
 			}
 
 			float tmp = NAN;
 			if (ref_material->Get(AI_MATKEY_SHININESS_STRENGTH, tmp) == aiReturn::aiReturn_SUCCESS) {
-				material->specular *= tmp;
-			}
-			if (ref_material->Get(AI_MATKEY_BUMPSCALING, tmp) == aiReturn::aiReturn_SUCCESS) {
+				material_obj->shinininess *= tmp;
 			}
 
 			if (ref_material->Get(AI_MATKEY_OPACITY, tmp) == aiReturn::aiReturn_SUCCESS) {
-				material->opacity = tmp;
-				material->transparent[3] = tmp;
+				material_obj->opacity = tmp;
+				material_obj->transparent[3] = tmp;
 			} else {
-				material->transparent[3] = 1;
+				material_obj->transparent[3] = 1;
 			}
 			if (ref_material->Get(AI_MATKEY_TRANSPARENCYFACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
-				material->transparent *= tmp;
+				material_obj->shinininess *= tmp;
 			}
 
 			if (ref_material->Get(AI_MATKEY_REFRACTI, tmp) == aiReturn::aiReturn_SUCCESS) {
@@ -779,31 +854,51 @@ MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t ind
 			if (ref_material->Get(AI_MATKEY_REFLECTIVITY, tmp) == aiReturn::aiReturn_SUCCESS) {
 			}
 		} else {
+
+			material_obj->ambient = glm::vec4(1);
+
+			if (ref_material->Get(AI_MATKEY_BASE_COLOR, color[0]) == aiReturn::aiReturn_SUCCESS) {
+				material_obj->diffuse = color;
+				material_obj->diffuse[3] = 1;
+			}
+
 			/*	*/
 			if (ref_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material->transparent *= color;
+				material_obj->transparent *= color;
 			}
+
+			if (ref_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, color[0]) == aiReturn::aiReturn_SUCCESS) {
+				material_obj->emission = color;
+				material_obj->emission[3] = 1;
+			}
+		}
+
+		float tmp = NAN;
+		if (ref_material->Get(AI_MATKEY_BUMPSCALING, tmp) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->bumpiness = tmp;
 		}
 
 		aiBlendMode blendfunc;
 		if (ref_material->Get(AI_MATKEY_BLEND_FUNC, blendfunc) == aiReturn::aiReturn_SUCCESS) {
-			material->blend_func_mode = blendfunc;
+			material_obj->blend_func_mode = blendfunc;
 		}
 
 		int twosided = 0;
 		if (ref_material->Get(AI_MATKEY_TWOSIDED, twosided) == aiReturn::aiReturn_SUCCESS) {
-			material->culling_both_side_mode = twosided;
+			material_obj->culling_both_side_mode = twosided;
 		}
 
 		//_AI_MATKEY_TEXFLAGS_BASE
 
 		int use_wireframe = 0;
 		if (ref_material->Get(AI_MATKEY_ENABLE_WIREFRAME, use_wireframe) == aiReturn::aiReturn_SUCCESS) {
-			material->wireframe_mode = use_wireframe;
+			material_obj->wireframe_mode = use_wireframe;
 		}
 	}
 
-	return material;
+	material_obj->shinininess = fragcore::Math::max(material_obj->shinininess, 1.0f);
+
+	return material_obj;
 }
 
 void ModelImporter::loadTexturesFromMaterials(aiMaterial *pmaterial) {

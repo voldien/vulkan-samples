@@ -1,4 +1,5 @@
 #include "Util/CameraController.h"
+#include "VKSample.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <VksCommon.h>
@@ -47,6 +48,8 @@ namespace vksample {
 		/*  */
 		size_t rows = 8;
 		size_t cols = 8;
+
+		unsigned int uniformInstanceSize;
 
 		size_t instanceBatch = 64;
 		const size_t nrInstances = (rows * cols);
@@ -294,6 +297,15 @@ namespace vksample {
 			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 			vkUnmapMemory(getDevice(), vertexMemory);
 
+
+			int minMapBufferSize =this->getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
+
+			int uniformMaxSize = this->getPhysicalDevice()->getDeviceLimits().maxUniformBufferRange;
+			this->instanceBatch = uniformMaxSize / sizeof(glm::mat4);
+			this->uniformInstanceSize =
+				fragcore::Math::align<size_t>(this->nrInstances * sizeof(glm::mat4), (size_t)minMapBufferSize);
+			this->instance_model_matrices.resize(this->nrInstances);
+
 			onResize(width(), height());
 		}
 
@@ -355,10 +367,10 @@ namespace vksample {
 			/*	Update instance model matrix.	*/
 			for (size_t i = 0; i < rows; i++) {
 				for (size_t j = 0; j < cols; j++) {
-					const size_t index = i * cols + j;
+					const size_t index = (i * cols) + j;
 
 					glm::mat4 model = glm::translate(glm::mat4(1.0), glm::vec3(i * 10.0f, 0, j * 10.0f));
-					model = glm::rotate(model, glm::radians(elapsedTime * 45.0f + index * 11.5f),
+					model = glm::rotate(model, glm::radians((elapsedTime * 45.0f) + (index * 11.5f)),
 										glm::vec3(0.0f, 1.0f, 0.0f));
 					model = glm::scale(model, glm::vec3(1.95f));
 

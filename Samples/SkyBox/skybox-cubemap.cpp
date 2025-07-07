@@ -1,7 +1,6 @@
 #include "Importer/ImageImport.h"
+#include "VKSample.h"
 
-
-#include "VksCommon.h"
 #include <SDL2/SDL.h>
 #include <Util/CameraController.h>
 #include <VKWindow.h>
@@ -26,8 +25,8 @@ namespace vksample {
 		VkDeviceMemory textureMemory = VK_NULL_HANDLE;
 
 		std::vector<VkDescriptorSet> descriptorSets;
-		VkBuffer uniformBuffer;
-		VkDeviceMemory uniformBufferMemory;
+		VkBuffer uniformBuffer{};
+		VkDeviceMemory uniformBufferMemory{};
 		std::vector<void *> mapMemory;
 
 		CameraController cameraController;
@@ -39,12 +38,12 @@ namespace vksample {
 			glm::mat4 modelView;
 			glm::mat4 modelViewProjection;
 			glm::vec4 diffuseColor;
-		} mvp;
+		} mvp{};
 
-		typedef struct _vertex_t {
+		using Vertex = struct _vertex_t {
 			float pos[3];
 			float uv[2];
-		} Vertex;
+		};
 
 	  public:
 		SkyboxCubeMap(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -52,9 +51,9 @@ namespace vksample {
 			this->setTitle("Skybox Cubemap");
 			this->show();
 		}
-		virtual ~SkyboxCubeMap() {}
+		~SkyboxCubeMap() override = default;
 
-		virtual void release() override {
+		void release() override {
 
 			vkDestroySampler(getDevice(), sampler, nullptr);
 
@@ -120,8 +119,8 @@ namespace vksample {
 		VkPipeline createGraphicPipeline() {
 			auto vertShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-			auto fragShaderCode = vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath,
-																		   this->getFileSystem());
+			auto fragShaderCode =
+				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -148,7 +147,7 @@ namespace vksample {
 			bindingDescription.stride = sizeof(Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions;
+			std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -196,7 +195,6 @@ namespace vksample {
 			viewportState.viewportCount = 1;
 			viewportState.pViewports = &viewport;
 
-
 			VkPipelineRasterizationStateCreateInfo rasterizer{};
 			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 			rasterizer.depthClampEnable = VK_FALSE;
@@ -242,7 +240,7 @@ namespace vksample {
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicStateInfo.pNext = NULL;
+			dynamicStateInfo.pNext = nullptr;
 			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
 			dynamicStateInfo.dynamicStateCount = 1;
 
@@ -272,13 +270,13 @@ namespace vksample {
 			return graphicsPipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
 			/*	*/
 			vksample::ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
 			imageImporter.loadImage2D("asset/panorama.png", this->getDevice(), getGraphicCommandPool(),
-										getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
+									  getDefaultGraphicQueue(), physicalDevice(), texture, textureMemory);
 
 			skyboxTextureView = VKHelper::createImageView(getDevice(), texture, VK_IMAGE_VIEW_TYPE_2D,
 														  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -300,7 +298,7 @@ namespace vksample {
 								   uniformBuffer, uniformBufferMemory);
 
 			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
-				void *_data;
+				void *_data = nullptr;
 				VKS_VALIDATE(vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i,
 										 (size_t)sizeof(this->mvp), 0, &_data));
 				mapMemory.push_back(_data);
@@ -387,7 +385,7 @@ namespace vksample {
 
 			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
-			void *data;
+			void *data = nullptr;
 			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
 			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 			vkUnmapMemory(getDevice(), vertexMemory);
@@ -399,7 +397,7 @@ namespace vksample {
 			onResize(width(), height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 			this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
@@ -453,7 +451,7 @@ namespace vksample {
 			}
 		}
 
-		virtual void draw() override {
+		void draw() override {
 
 			this->cameraController.update(getTimer().deltaTime<float>());
 			glm::mat4 viewMatrix = this->cameraController.getViewMatrix();
@@ -472,7 +470,7 @@ namespace vksample {
 			// 	vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
 		}
 
-		virtual void update() {}
+		void update() override {}
 	};
 } // namespace vksample
 

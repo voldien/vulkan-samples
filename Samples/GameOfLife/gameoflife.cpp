@@ -1,3 +1,4 @@
+#include "VKSample.h"
 #include <VKWindow.h>
 #include <VksCommon.h>
 #include <cstddef>
@@ -82,34 +83,13 @@ namespace vksample {
 			compShaderStageInfo.pName = "main";
 
 			const auto layoutBinding = PipelineLayoutUtil::getDefaultBinding(compShaderCode);
-
-			std::array<VkDescriptorSetLayoutBinding, 3> uboLayoutBindings{};
-			/*	Previous Cell.	*/
-			uboLayoutBindings[0].binding = 0;
-			uboLayoutBindings[0].descriptorCount = 1;
-			uboLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			uboLayoutBindings[0].pImmutableSamplers = nullptr;
-			uboLayoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-			/*	Current Cell.	*/
-			uboLayoutBindings[1].binding = 1;
-			uboLayoutBindings[1].descriptorCount = 1;
-			uboLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			uboLayoutBindings[1].pImmutableSamplers = nullptr;
-			uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-			/*	Render Texture.	*/
-			uboLayoutBindings[2].binding = 2;
-			uboLayoutBindings[2].descriptorCount = 1;
-			uboLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			uboLayoutBindings[2].pImmutableSamplers = nullptr;
-			uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
+ 
 			/*	*/
 			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, layoutBinding[0].bindings);
 
 			/*	*/
 			VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
+
 
 			pipeline = VKHelper::createComputePipeline(getDevice(), *layout, compShaderStageInfo);
 
@@ -183,7 +163,7 @@ namespace vksample {
 				for (int j = 0; j < height; j++) {
 					for (int i = 0; i < width; i++) {
 						/*	Random value between dead and alive cells.	*/
-						textureData[width * j + i] = fragcore::Random::range(0, 2);
+						textureData[(width * j) + i] = fragcore::Random::range(0, 2);
 					}
 				}
 
@@ -251,7 +231,7 @@ namespace vksample {
 			VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 			descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
-			descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(this->getSwapChainImageCount());
+			descriptorSetAllocateInfo.descriptorSetCount = this->getSwapChainImageCount();
 			descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
 			// allocate descriptor set.
@@ -324,12 +304,12 @@ namespace vksample {
 										&descriptorSets[i], 0, nullptr);
 
 				const float localInvokation = 8; // TODO fetch
-				std::ceil(width / localInvokation);
-				std::ceil(height / localInvokation);
+				const size_t displatchX = std::ceil(width / localInvokation);
+				const size_t displatchY = std::ceil(height / localInvokation);
 
-				vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
+				vkCmdDispatch(cmd, displatchX, displatchY, 1);
 
-				/*	*/
+				/*	Wait in till the dispatch is finished before blitting.	*/
 				std::vector<VkImageMemoryBarrier> dispatchBarrier(2);
 				dispatchBarrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				dispatchBarrier[0].oldLayout = VK_IMAGE_LAYOUT_GENERAL;

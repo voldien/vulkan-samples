@@ -1,4 +1,3 @@
-
 #include "Util/CameraController.h"
 #include "VKSample.h"
 #include "vulkan/vulkan_core.h"
@@ -18,7 +17,6 @@ namespace vksample {
 	 */
 	class Cube : public VKWindow {
 	  private:
-	  	
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
 

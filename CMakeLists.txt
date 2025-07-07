@@ -11,17 +11,21 @@ OPTION(BUILD_WITH_ASAN "Enable AddressSanitizer." OFF )
 OPTION(BUILD_WITH_UBSAN "Enable Undefined Behavior sanitizer." OFF )
 OPTION(BUILD_WITH_TSAN "Enable Thread sanitizer" OFF)
 
-IF(CMAKE_BUILD_TYPE STREQUAL "Release")
+
+IF(CMAKE_BUILD_TYPE MATCHES Release)
 	MESSAGE(STATUS "Compile for release.")
-	ADD_DEFINITIONS(-O2)
-	SET(CMAKE_RELEASE TRUE)
-	SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s ${OpenMP_CXX_FLAGS}")
+	ADD_DEFINITIONS(-O3 -march=native)
 	SET(SIMD_FLAGS "-ftree-vectorize -ftree-slp-vectorize")
-ELSE()
+ENDIF()
+IF(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
+	MESSAGE(STATUS "Compile for release with Debug.")
+	ADD_DEFINITIONS(-O3 -march=native)
+	ADD_DEFINITIONS(-O3 -g3)
+ENDIF()
+IF(CMAKE_BUILD_TYPE MATCHES Debug)
 	MESSAGE(STATUS "Compile for debug.")
+	ADD_DEFINITIONS(-O3 -march=native)
 	ADD_DEFINITIONS(-g3 -O0)
-	SET(CMAKE_DEBUG TRUE)
-	SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_RELEASE} ${OpenMP_CXX_FLAGS}")
 ENDIF()
 
 IF (BUILD_SHARED_LIBS AND CMAKE_SIZEOF_VOID_P EQUAL 8) # -fPIC is only required
@@ -78,9 +82,6 @@ ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Instance)
 
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/MultiSampling)
 
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/MultiThreading)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/SubPasses)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Raytracing)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/ParticleSystem)
 
 ####################################
@@ -93,7 +94,6 @@ ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Cachepipeline)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/VideoPlayback)
 
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/ShaderInfo)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/VariableRateShading)
 
 
 #######################################
@@ -130,6 +130,9 @@ FILE(GLOB_RECURSE GLSL_SOURCE_FILES
 	${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.comp
 	${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.task
 	${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.mesh
+	${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.rgen
+	${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.miss
+	${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.rchit
 )
 
 ####################################

@@ -1,3 +1,4 @@
+#include "VKSample.h"
 #include "vulkan/vulkan_core.h"
 #include <Importer/ImageImport.h>
 #include <SDL2/SDL.h>
@@ -288,11 +289,11 @@ namespace vksample {
 			/*	Allocate descriptor set.	*/
 			const std::vector<VkDescriptorPoolSize> poolSize = {{
 																	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-																	static_cast<uint32_t>(getSwapChainImageCount()),
+																	getSwapChainImageCount(),
 																},
 																{
 																	VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-																	static_cast<uint32_t>(getSwapChainImageCount()),
+																	getSwapChainImageCount(),
 																}};
 			descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
 
@@ -301,7 +302,7 @@ namespace vksample {
 			VkDescriptorSetAllocateInfo allocdescInfo{};
 			allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			allocdescInfo.descriptorPool = descpool;
-			allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
+			allocdescInfo.descriptorSetCount = getSwapChainImageCount();
 			allocdescInfo.pSetLayouts = layouts.data();
 
 			descriptorSets.resize(this->getSwapChainImageCount());

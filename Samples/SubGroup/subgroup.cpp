@@ -1,3 +1,4 @@
+#include "VKSample.h"
 #include <VKWindow.h>
 #include <VksCommon.h>
 #include <cstddef>

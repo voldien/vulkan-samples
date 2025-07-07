@@ -3,7 +3,7 @@
 [![Linux Build](https://github.com/voldien/vulkan-samples/actions/workflows/linux-build.yml/badge.svg)](https://github.com/voldien/vulkan-samples/actions/workflows/linux-build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A set of vulkan sample for educational purposes.
+A collection of Vulkan Samples, work in progress, for personal educational purposes.
 
 ## Required Packages
 

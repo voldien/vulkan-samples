@@ -177,6 +177,7 @@ namespace vksample {
 
 		void resizable(bool resizable) noexcept override;
 
+
 		virtual void vsync(bool state);
 
 		void setFullScreen(bool fullscreen) override;

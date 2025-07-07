@@ -1,7 +1,8 @@
 
-#include "VksCommon.h"
+#include "VKSample.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
+#include <cstddef>
 #include <glm/glm.hpp>
 
 namespace vksample {
@@ -43,10 +44,10 @@ namespace vksample {
 			float delta = 10.1f;
 
 			/**/
-			float posX, posY;
-			float mousePosX, mousePosY;
-			float zoom; /*  */
-			float c;	/*  */
+			float posX{}, posY{};
+			float mousePosX{}, mousePosY{};
+			float zoom{}; /*  */
+			float c{};	  /*  */
 		} params = {};
 
 		unsigned int paramMemSize = sizeof(params);
@@ -59,9 +60,9 @@ namespace vksample {
 			this->setTitle(std::string("ReactionDiffusion Algorithm - Compute"));
 			this->show();
 		}
-		virtual ~ReactionDiffusion() {}
+		~ReactionDiffusion() override = default;
 
-		virtual void release() override {
+		void release() override {
 			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 			vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 
@@ -87,7 +88,7 @@ namespace vksample {
 		}
 
 		VkPipeline createComputePipeline(VkPipelineLayout *layout) {
-			VkPipeline pipeline;
+			VkPipeline pipeline = nullptr;
 
 			auto compShaderCode =
 				vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
@@ -100,7 +101,7 @@ namespace vksample {
 			compShaderStageInfo.module = compShaderModule;
 			compShaderStageInfo.pName = "main";
 
-			std::array<VkDescriptorSetLayoutBinding, 4> uboLayoutBindings;
+			std::array<VkDescriptorSetLayoutBinding, 4> uboLayoutBindings{};
 
 			/*	*/
 			uboLayoutBindings[0].binding = 0;
@@ -137,13 +138,13 @@ namespace vksample {
 			pipelineCreateInfo.layout = *layout;
 
 			VKS_VALIDATE(
-				vkCreateComputePipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &pipeline));
+				vkCreateComputePipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline));
 			vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
 
 			return pipeline;
 		}
 
-		virtual void Initialize() override {
+		void Initialize() override {
 
 			paramMemSize = sizeof(params);
 			size_t minMapBufferSize =
@@ -154,7 +155,7 @@ namespace vksample {
 			computePipeline = createComputePipeline(&computePipelineLayout);
 
 			/*	Create params.	*/
-			VkDeviceSize paramMemoryBufferSize = paramMemSize * getSwapChainImageCount();
+			VkDeviceSize paramMemoryBufferSize = static_cast<VkDeviceSize>(paramMemSize) * getSwapChainImageCount();
 
 			VkPhysicalDeviceMemoryProperties memProperties;
 			vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
@@ -174,11 +175,11 @@ namespace vksample {
 
 				{
 					VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-					static_cast<uint32_t>(getSwapChainImageCount()),
+					getSwapChainImageCount(),
 				},
 				{
 					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-					static_cast<uint32_t>(getSwapChainImageCount()),
+					getSwapChainImageCount(),
 				}};
 
 			VkDescriptorPoolCreateInfo poolInfo{};
@@ -192,7 +193,7 @@ namespace vksample {
 			onResize(width(), height());
 		}
 
-		virtual void onResize(int width, int height) override {
+		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
 
@@ -208,7 +209,7 @@ namespace vksample {
 								   cellsBuffer, cellsMemory);
 
 			/*	Write perlin noise to buffer data as init data.	*/
-			float *cellData;
+			float *cellData = nullptr;
 			VKS_VALIDATE(
 				vkMapMemory(getDevice(), cellsMemory, 0, cellBufferSize * nrCellBuffers, 0, (void **)&cellData));
 			for (size_t nthBuffer = 0; nthBuffer < nrCellBuffers; nthBuffer++) {
@@ -216,9 +217,9 @@ namespace vksample {
 					for (int w = 0; w < width; w++) {
 						for (int c = 0; c < nrChemicalComponents; c++) {
 							/*	*/
-							cellData[nthBuffer * (cellBufferSize / 4) +
+							cellData[(nthBuffer * (cellBufferSize / 4)) +
 									 (h * height * nrChemicalComponents + w * nrChemicalComponents + c)] =
-								fragcore::Math::PerlinNoise((float)w * 0.05f + c, (float)h * 0.05f + c, 1) * 1.0f;
+								fragcore::Math::PerlinNoise(((float)w * 0.05f) + c, ((float)h * 0.05f) + c, 1) * 1.0f;
 						}
 					}
 				}
@@ -240,8 +241,9 @@ namespace vksample {
 			/*	*/
 			computeImageViews.resize(getSwapChainImageCount());
 			for (size_t i = 0; i < computeImageViews.size(); i++) {
-				if (computeImageViews[i] != nullptr)
+				if (computeImageViews[i] != nullptr) {
 					vkDestroyImageView(getDevice(), computeImageViews[i], nullptr);
+				}
 				computeImageViews[i] =
 					VKHelper::createImageView(getDevice(), reactionDiffuseImage[i], VK_IMAGE_VIEW_TYPE_2D,
 											  getDefaultImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -254,7 +256,7 @@ namespace vksample {
 			VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 			descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
-			descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
+			descriptorSetAllocateInfo.descriptorSetCount = getSwapChainImageCount();
 			descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
 			/* allocate descriptor set.	*/
@@ -279,7 +281,7 @@ namespace vksample {
 
 				VkDescriptorBufferInfo paramBufferInfo{};
 				paramBufferInfo.buffer = paramBuffer;
-				paramBufferInfo.offset = paramMemSize * i;
+				paramBufferInfo.offset = static_cast<VkDeviceSize>(paramMemSize) * i;
 				paramBufferInfo.range = paramMemSize;
 
 				std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
@@ -387,16 +389,16 @@ namespace vksample {
 			}
 		}
 
-		virtual void draw() override {
+		void draw() override {
 
 			/*	Update uniform variables.	*/
-			void *data;
+			void *data = nullptr;
 			VKS_VALIDATE(
 				vkMapMemory(getDevice(), paramMemory, paramMemSize * getCurrentFrameIndex(), paramMemSize, 0, &data));
 			memcpy(data, &params, paramMemSize);
 			vkUnmapMemory(getDevice(), paramMemory);
 
-			int x, y;
+			int x = 0, y = 0;
 			SDL_GetMouseState(&x, &y);
 			params.mousePosX = x;
 			params.mousePosY = y;
@@ -407,12 +409,10 @@ namespace vksample {
 		}
 	};
 
-		class ReactionDiffusionVKSample : public VKSample<ReactionDiffusion> {
+	class ReactionDiffusionVKSample : public VKSample<ReactionDiffusion> {
 	  public:
 		ReactionDiffusionVKSample() : VKSample<ReactionDiffusion>() {}
-		virtual void customOptions(cxxopts::OptionAdder &options) override {
-			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/uv-texture.png"));
-		}
+		void customOptions(cxxopts::OptionAdder &options) override {}
 	};
 } // namespace vksample
 

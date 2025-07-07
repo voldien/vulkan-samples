@@ -1,4 +1,5 @@
 #include "VKWindow.h"
+#include <Core/SystemInfo.h>
 #include <ImageLoader.h>
 #include <SDL_vulkan.h>
 #include <cstddef>
@@ -171,6 +172,7 @@ void VKWindow::swapBuffer() {
 
 	vkResetFences(getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame]);
 
+	/*	*/
 	this->getVKDevice()->submitCommands(this->getDefaultGraphicQueue(), {this->swapChain->commandBuffers[imageIndex]},
 										{this->imageAvailableSemaphores[this->swapChain->currentFrame]},
 										{this->renderFinishedSemaphores[this->swapChain->currentFrame]},
@@ -179,11 +181,9 @@ void VKWindow::swapBuffer() {
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
 	/*	*/
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &this->swapChain->swapchain;
-
 	/*	*/
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
@@ -259,8 +259,7 @@ void VKWindow::createSwapChain() {
 
 	/*	TODO evoluate if this is thec correct.	*/
 	/*	Compute number of image to use in the swapchain.	*/
-	uint32_t imageCount =
-		std::max((uint32_t)swapChainSupport.capabilities.minImageCount, (uint32_t)1); /*	Atleast one.	*/
+	uint32_t imageCount = std::max(swapChainSupport.capabilities.minImageCount, (uint32_t)1); /*	Atleast one.	*/
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
 		/*	Clamp it to number of semaphores/fences.	*/
 		imageCount = std::max(swapChainSupport.capabilities.maxImageCount, (uint32_t)imagesInFlight.size());
@@ -568,6 +567,7 @@ void VKWindow::run() {
 			/*	*/
 			this->swapBuffer();
 		}
+
 		/*	*/
 		const Uint8 *state = SDL_GetKeyboardState(nullptr);
 		if (state[SDL_SCANCODE_F12]) {
@@ -690,7 +690,7 @@ std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
 	std::vector<const char *> usedInstanceExtensionNames;
 
 	// TODO be replace with own code!
-	SDL_Window *tmpWindow = SDL_CreateWindow("", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
+	SDL_Window *tmpWindow = SDL_CreateWindow("TmpWindow", 0, 0, 1, 1, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
 	if (tmpWindow == nullptr) {
 		throw cxxexcept::RuntimeException("Failed to create Tmp Vulkan window - {}", SDL_GetError());
 	}

@@ -1,3 +1,4 @@
+#include "VKSample.h"
 #include <FPSCounter.h>
 #include <Importer/ImageImport.h>
 #include <OpenALAudioInterface.h>
@@ -16,6 +17,8 @@ extern "C" {
 #include <libavutil/samplefmt.h>
 #include <libavutil/time.h>
 #include <libswscale/swscale.h>
+
+#include <cstddef>
 #ifdef __cplusplus
 }
 #endif
@@ -272,15 +275,13 @@ namespace vksample {
 								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 								   videoStagingFrames, videoStagingFrameMemory);
 
-			//TODO: Fix mapping.
-			// VKS_VALIDATE(vkMapMemory(getDevice(), this->videoStagingFrameMemory,
-			// 						 (i % this->nrVideoFrames) * this->videoStagingSize, this->videoStagingSize, 0,
-			// 						 &mapMemory[i]));
+			// TODO: Fix mapping.
+			//  VKS_VALIDATE(vkMapMemory(getDevice(), this->videoStagingFrameMemory,
+			//  						 (i % this->nrVideoFrames) * this->videoStagingSize, this->videoStagingSize, 0,
+			//  						 &mapMemory[i]));
 
 			/*	*/
 			for (size_t i = 0; i < this->videoFrames.size(); i++) {
-
-				
 
 				VKHelper::createImage(
 					getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
@@ -383,7 +384,7 @@ namespace vksample {
 						if (this->frame->format == AV_PIX_FMT_YUV420P) {
 
 							this->frame->data[0] =
-								this->frame->data[0] + this->frame->linesize[0] * (this->pVideoCtx->height - 1);
+								this->frame->data[0] + static_cast<ptrdiff_t>(this->frame->linesize[0] * (this->pVideoCtx->height - 1));
 							this->frame->data[1] =
 								this->frame->data[1] + this->frame->linesize[0] * this->pVideoCtx->height / 4 - 1;
 							this->frame->data[2] =

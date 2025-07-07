@@ -5,6 +5,10 @@
 
 namespace vksample {
 
+	/**
+	 * @brief 
+	 * 
+	 */
 	class CachePipeline : public vksample::VKSampleSessionBase {
 	  public:
 		CachePipeline(std::shared_ptr<fvkcore::VulkanCore> &core, std::shared_ptr<fvkcore::VKDevice> &device)

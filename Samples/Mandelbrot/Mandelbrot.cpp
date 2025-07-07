@@ -1,3 +1,4 @@
+#include "VKSample.h"
 #include <SDL_mouse.h>
 #include <VKWindow.h>
 #include <VksCommon.h>
@@ -137,11 +138,11 @@ namespace vksample {
 			/*	Allocate descriptor set.	*/
 			const std::vector<VkDescriptorPoolSize> poolSize = {{
 																	VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-																	static_cast<uint32_t>(getSwapChainImageCount()),
+																	getSwapChainImageCount(),
 																},
 																{
 																	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-																	static_cast<uint32_t>(getSwapChainImageCount()),
+																	getSwapChainImageCount(),
 																}};
 
 			descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
@@ -182,7 +183,7 @@ namespace vksample {
 			VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 			descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
-			descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
+			descriptorSetAllocateInfo.descriptorSetCount = getSwapChainImageCount();
 			descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
 			// allocate descriptor set.

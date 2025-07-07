@@ -17,6 +17,6 @@ VKSampleSessionBase::VKSampleSessionBase(std::shared_ptr<fvkcore::VulkanCore> &c
 	stdout_sink->set_pattern("%g:%# [%^%l%$] %v");
 
 	/*	*/
-	this->logger = new spdlog::logger("glsample", {stdout_sink});
+	this->logger = new spdlog::logger("vulkan-sample", {stdout_sink});
 	this->logger->set_level(spdlog::level::trace);
 }

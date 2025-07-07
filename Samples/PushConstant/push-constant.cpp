@@ -245,13 +245,13 @@ namespace vksample {
 
 			VkDescriptorPoolSize poolSize{};
 			poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			poolSize.descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
+			poolSize.descriptorCount = getSwapChainImageCount();
 
 			VkDescriptorPoolCreateInfo poolInfo{};
 			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 			poolInfo.poolSizeCount = 1;
 			poolInfo.pPoolSizes = &poolSize;
-			poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
+			poolInfo.maxSets = getSwapChainImageCount();
 
 			vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
 
@@ -262,7 +262,7 @@ namespace vksample {
 			VkDescriptorSetAllocateInfo allocdescInfo{};
 			allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			allocdescInfo.descriptorPool = descpool;
-			allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
+			allocdescInfo.descriptorSetCount = getSwapChainImageCount();
 			allocdescInfo.pSetLayouts = layouts.data();
 
 			descriptorSets.resize(getSwapChainImageCount());

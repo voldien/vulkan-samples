@@ -26,6 +26,7 @@ namespace vksample {
 
 	class PipelineLayoutUtil {
 	  public:
+
 		struct DescriptorSetLayoutData {
 			uint32_t set_number;
 			VkDescriptorSetLayoutCreateInfo create_info;
@@ -58,6 +59,7 @@ namespace vksample {
 			/*	*/
 			std::vector<DescriptorSetLayoutData> set_layouts(count);
 			for (size_t i_set = 0; i_set < sets.size(); ++i_set) {
+				
 				/*	*/
 				const SpvReflectDescriptorSet &refl_set = *(sets[i_set]);
 				DescriptorSetLayoutData &layout = set_layouts[i_set];

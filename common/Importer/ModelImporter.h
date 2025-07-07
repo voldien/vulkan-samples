@@ -14,7 +14,10 @@
  * all copies or substantial portions of the Software.
  */
 #pragma once
+#include "DataStructure/PoolAllocator.h"
+#include "FragDef.h"
 #include "Math3D/LinAlg.h"
+#include "RenderDesc.h"
 #include <IO/IFileSystem.h>
 #include <Math3D/AABB.h>
 #include <assimp/Importer.hpp>
@@ -42,7 +45,7 @@ using AssetObject = struct asset_object_t {
 	std::string name;
 };
 
-using VertexBoneData = struct vertex_bone_data_t {
+using VertexBoneData = struct alignas(32) vertex_bone_data_t {
 	static const int NUM_BONES_PER_VERTEX = 4;
 	uint32_t IDs[NUM_BONES_PER_VERTEX];
 	float Weights[NUM_BONES_PER_VERTEX];
@@ -53,43 +56,25 @@ using VertexBoneBuffer = struct vertex_bone_buffer_t {
 };
 
 using MaterialTextureSampling = struct material_texture_sampling_t {
-	unsigned int wrapping = 0;
-	unsigned int filtering = 0;
-	unsigned int uv_mapping = 0;
+	fragcore::TextureWrappingMode wrapping = fragcore::TextureWrappingMode::Repeat;
+	fragcore::TextureFilterMode filtering = fragcore::TextureFilterMode::Linear;
+	fragcore::TextureUVMappingMode uv_mapping = fragcore::TextureUVMappingMode::UV;
 };
 
 using MaterialObject = struct material_object_t : public AssetObject {
 	unsigned int program = 0; // TODO: relocate.
 
-	/*	Texture index.	*/
-	union {
-		struct {
-			int diffuseIndex = -1;
-			int normalIndex = -1;
-			int maskTextureIndex = -1;
-			int specularIndex = -1;
-			int emissionIndex = -1;
-			int reflectionIndex = -1;
-			int ambientOcclusionIndex = -1;
-			int displacementIndex = -1;
-			int metalIndex = -1;
-			int heightbumpIndex = -1;
-		};
-		int texture_index[16];
-	};
-	MaterialTextureSampling texture_sampling[16];
-
-	/*	TODO its own struct.	*/
 	// Material properties.
 	glm::vec4 ambient = glm::vec4(1, 1, 1, 1);
 	glm::vec4 diffuse = glm::vec4(1);
-	glm::vec4 emission = glm::vec4(1);
+	glm::vec4 emission = glm::vec4(0);
 	glm::vec4 specular = glm::vec4(1);
 	glm::vec4 transparent = glm::vec4(1);
 	glm::vec4 reflectivity = glm::vec4(1);
 
 	/*	*/
 	float shinininess = 1;
+	float bumpiness = 1;
 	float opacity = 1;
 	int blend_func_mode = 0; /*	aiBlendMode*/
 	int wireframe_mode = 0;
@@ -98,6 +83,47 @@ using MaterialObject = struct material_object_t : public AssetObject {
 	/*	*/
 
 	unsigned int shade_model = 0; /*	aiShadingMode	*/
+
+	MaterialTextureSampling texture_sampling[32];
+
+	/*	Texture index.	*/
+	union {
+		struct {
+			int diffuseIndex = -1;			/*	*/
+			int normalIndex = -1;			/*	*/
+			int maskTextureIndex = -1;		/*	*/
+			int specularIndex = -1;			/*	*/
+			int emissionIndex = -1;			/*	*/
+			int reflectionIndex = -1;		/*	*/
+			int ambientOcclusionIndex = -1; /*	*/
+			int displacementIndex = -1;		/*	*/
+			int metalIndex = -1;			/*	*/
+			int heightbumpIndex = -1;		/*	*/
+			int pad1 = -1;
+			int pad2 = -1;
+			int pad3 = -1;
+			int pad4 = -1;
+			int pad5 = -1;
+			int pad6 = -1;
+			int pad7 = -1;
+			int pad8 = -1;
+			int pad9 = -1;
+			int pad10 = -1;
+			int pad11 = -1;
+			int pad12 = -1;
+			int pad13 = -1;
+			int pad14 = -1;
+			int pad15 = -1;
+			int pad16 = -1;
+			int pad17 = -1;
+			int pad18 = -1;
+			int pad19 = -1;
+			int pad20 = -1;
+			int pad21 = -1;
+			int pad22 = -1;
+		};
+		std::array<int, 32> texture_index; /*	TextureType.	*/
+	};
 };
 
 using NodeObject = struct node_object_t : public AssetObject {
@@ -135,13 +161,12 @@ using MeshData = struct mesh_data_t : public AssetObject {
 using MorpthTarget = struct morph_target {};
 
 using ModelSystemObject = struct model_system_object : public AssetObject {
-
 	// MeshData mesh;
 	// MeshData bone
 	size_t nrVertices{};
 	size_t nrIndices{};
-	size_t vertexStride{};
-	size_t indicesStride{};
+	unsigned int vertexStride{};  /*	In Bytes.	*/
+	unsigned int indicesStride{}; /*	In Bytes.	*/
 
 	void *vertexData{};
 	void *indicesData{};
@@ -151,22 +176,32 @@ using ModelSystemObject = struct model_system_object : public AssetObject {
 	fragcore::Bound bound{};
 
 	/*	*/
-	unsigned int vertexOffset{};
-	unsigned int normalOffset{};
-	unsigned int tangentOffset{};
-	unsigned int uvOffset{};
-	unsigned int boneOffset{};
-	unsigned int boneWeightOffset{};
-	unsigned int boneIndexOffset{};
+	ssize_t vertexOffset{};
+	ssize_t uvOffset{};
+	ssize_t normalOffset{};
+	ssize_t tangentOffset{};
+	ssize_t vertexColorOffset{};
+	ssize_t boneOffset{};
+	ssize_t boneWeightOffset{};
+	ssize_t boneIndexOffset{};
 
 	unsigned int primitiveType{};
+
+	bool processed = false;
 };
 
-using Bone = struct bone_t : public AssetObject {
+using CameraData = struct camera_data_t : public AssetObject{
+	glm::vec3 position;
+	glm::vec3 up;
+	glm::vec3 lookAt;
+
+};
+
+using Bone = struct alignas(16) bone_t : public AssetObject {
 	glm::mat4 finalTransform{};
-	glm::mat4 offsetBoneMatrix;
+	glm::mat4 offsetBoneMatrix{};
 	size_t boneIndex{};
-	NodeObject *armature_bone;
+	NodeObject *armature_bone{};
 };
 
 using SkeletonSystem = struct model_skeleton_t : public AssetObject {
@@ -174,7 +209,7 @@ using SkeletonSystem = struct model_skeleton_t : public AssetObject {
 	std::map<std::string, Bone> bones;
 };
 
-using TextureAssetObject = struct texture_asset_object_t {
+using TextureAssetObject = struct alignas(32) texture_asset_object_t {
 	unsigned int texture = 0;
 	size_t width = 0;
 	size_t height = 0;
@@ -184,7 +219,7 @@ using TextureAssetObject = struct texture_asset_object_t {
 	char *data = nullptr;
 };
 
-using KeyFrame = struct key_frame_t {
+using KeyFrame = struct alignas(16) key_frame_t {
 	float time;		  /*	*/
 	float value;	  /*	*/
 	float tangentIn;  /*	*/
@@ -196,12 +231,12 @@ using Curve = struct curve_t : public AssetObject {
 };
 
 using AnimationObject = struct animation_object_t : public AssetObject {
-	std::map<std::string, Curve> curves__s;
+	std::map<std::string, Curve> curves_s;
 	std::vector<Curve> curves;
 	float duration;
 };
 
-using LightObject = struct light_object_t : public AssetObject {
+using LightObject = struct alignas(32) light_object_t : public AssetObject {
 
 	// C_ENUM aiLightSourceType mType;
 	glm::vec3 position;
@@ -229,15 +264,13 @@ class FVDECLSPEC ModelImporter {
   public:
 	ModelImporter(fragcore::IFileSystem *fileSystem) : fileSystem(fileSystem) {}
 	ModelImporter(const ModelImporter &other) = default;
-	ModelImporter(ModelImporter &&other);
+	ModelImporter(ModelImporter &&other) noexcept;
 	virtual ~ModelImporter() { this->clear(); }
 
 	ModelImporter &operator=(const ModelImporter &other) = default;
-	ModelImporter &operator=(ModelImporter &&other);
+	ModelImporter &operator=(ModelImporter &&other) noexcept;
 
 	virtual void loadContent(const std::string &path, unsigned long int supportFlag);
-	// virtual void loadContentMemory(const std::string &path, unsigned long int supportFlag);
-	// TODO:add load from memory.
 	virtual void clear() noexcept;
 
 	fragcore::IFileSystem *getFileSystem() const noexcept { return this->fileSystem; }
@@ -248,7 +281,7 @@ class FVDECLSPEC ModelImporter {
 	/**
 	 *
 	 */
-	void initNoodeRoot(const aiNode *nodes, NodeObject *parent = nullptr);
+	void initNodeRoot(const aiNode *nodes, NodeObject *parent = nullptr);
 
 	MaterialObject *initMaterial(aiMaterial *material, size_t index);
 
@@ -293,6 +326,7 @@ class FVDECLSPEC ModelImporter {
 
 	std::string filepath;
 	const aiScene *sceneRef = nullptr;
+	fragcore::PoolAllocator<NodeObject> nodePool;
 	std::vector<NodeObject *> nodes;
 	std::map<std::string, NodeObject *> nodeByName;
 
@@ -303,6 +337,8 @@ class FVDECLSPEC ModelImporter {
 	std::map<std::string, TextureAssetObject *> textureMapping;
 	std::map<std::string, unsigned int> textureIndexMapping;
 
+	std::vector<CameraData> cameras;
+
 	std::vector<SkeletonSystem> skeletons;
 
 	std::vector<AnimationObject> animations;
@@ -311,5 +347,5 @@ class FVDECLSPEC ModelImporter {
 	std::vector<LightObject> lights;
 
 	NodeObject *rootNode = nullptr;
-	glm::mat4 globalNodeTransform;
+	glm::mat4 globalNodeTransform{};
 };
