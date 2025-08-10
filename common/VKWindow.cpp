@@ -17,9 +17,9 @@
 using namespace fvkcore;
 using namespace vksample;
 
-VKWindow::~VKWindow() {
+VKBaseSampleWindow::~VKBaseSampleWindow() {
 
-	/*	Wait intill all gpu tasks has been finished before terminate.	*/
+	/*	Wait intill all gpu tasks has been finished before continue termination.	*/
 	vkDeviceWaitIdle(this->getDevice());
 
 	/*	Release all the resources associated with the window application.	*/
@@ -45,8 +45,8 @@ VKWindow::~VKWindow() {
 	delete this->proxyWindow;
 }
 
-VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
-				   int height)
+VKBaseSampleWindow::VKBaseSampleWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x,
+									   int y, int width, int height)
 	: VKSampleSessionBase(core, device), proxyWindow(new vksample::SDLVKWindow()) {
 
 	SDL_DisplayMode displaymode;
@@ -98,53 +98,58 @@ VKWindow::VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> 
 	this->fpsCounter = FPSCounter<float>(60, this->getTimer().getTimeResolution());
 }
 
-uint32_t VKWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }
+uint32_t VKBaseSampleWindow::getSwapChainImageCount() const noexcept { return this->swapChain->swapChainImages.size(); }
 
-uint32_t VKWindow::getCurrentFrameIndex() const noexcept { return this->swapChain->currentFrame; }
+uint32_t VKBaseSampleWindow::getCurrentFrameIndex() const noexcept { return this->swapChain->currentFrame; }
 
-VkDevice VKWindow::getDevice() const noexcept { return device->getHandle(); }
+VkDevice VKBaseSampleWindow::getDevice() const noexcept { return device->getHandle(); }
 
-VkFramebuffer VKWindow::getDefaultFrameBuffer() const noexcept {
+VkFramebuffer VKBaseSampleWindow::getDefaultFrameBuffer() const noexcept {
 	return this->swapChain->swapChainFramebuffers[this->swapChain->currentFrame];
 }
 
-VkRenderPass VKWindow::getDefaultRenderPass() const noexcept { return this->swapChain->renderPass; }
-VkImage VKWindow::getDefaultImage() const { return this->swapChain->swapChainImages[this->swapChain->currentFrame]; }
-VkImageView VKWindow::getDefaultImageView() const {
+VkRenderPass VKBaseSampleWindow::getDefaultRenderPass() const noexcept { return this->swapChain->renderPass; }
+VkImage VKBaseSampleWindow::getDefaultImage() const {
+	return this->swapChain->swapChainImages[this->swapChain->currentFrame];
+}
+VkImageView VKBaseSampleWindow::getDefaultImageView() const {
 	return this->swapChain->swapChainImageViews[this->swapChain->currentFrame];
 }
 
-VkFormat VKWindow::getDefaultImageFormat() const noexcept { return this->swapChain->swapChainImageFormat; }
+VkFormat VKBaseSampleWindow::getDefaultImageFormat() const noexcept { return this->swapChain->swapChainImageFormat; }
 
-const std::vector<VkImage> &VKWindow::getSwapChainImages() const noexcept { return this->swapChain->swapChainImages; }
-const std::vector<VkImageView> &VKWindow::getSwapChainImageViews() const noexcept {
+const std::vector<VkImage> &VKBaseSampleWindow::getSwapChainImages() const noexcept {
+	return this->swapChain->swapChainImages;
+}
+const std::vector<VkImageView> &VKBaseSampleWindow::getSwapChainImageViews() const noexcept {
 	return this->swapChain->swapChainImageViews;
 }
 
-const std::shared_ptr<PhysicalDevice> VKWindow::getPhysicalDevice() const noexcept {
+const std::shared_ptr<PhysicalDevice> VKBaseSampleWindow::getPhysicalDevice() const noexcept {
 	// TODO improve
 	return this->getVKDevice()->getPhysicalDevice(0);
 }
 
-VkPhysicalDevice VKWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
+// VkPhysicalDevice VKBaseSampleWindow::physicalDevice() const { return device->getPhysicalDevices()[0]->getHandle(); }
 
-void VKWindow::setPhysicalDevice(VkPhysicalDevice device) { /*	*/ }
-std::vector<VkQueue> VKWindow::getQueues() const noexcept { return {}; }
+// void VKBaseSampleWindow::setPhysicalDevice(VkPhysicalDevice device) { /*	*/ }
 
-VkCommandBuffer VKWindow::getCurrentCommandBuffer() const noexcept {
+std::vector<VkQueue> VKBaseSampleWindow::getQueues() const noexcept { return {}; }
+
+VkCommandBuffer VKBaseSampleWindow::getCurrentCommandBuffer() const noexcept {
 	return this->swapChain->commandBuffers[getCurrentFrameIndex()];
 }
-size_t VKWindow::getNrCommandBuffers() const noexcept { return this->swapChain->commandBuffers.size(); }
+size_t VKBaseSampleWindow::getNrCommandBuffers() const noexcept { return this->swapChain->commandBuffers.size(); }
 
-VkCommandBuffer VKWindow::getCommandBuffers(unsigned int index) const noexcept {
+VkCommandBuffer VKBaseSampleWindow::getCommandBuffers(unsigned int index) const noexcept {
 	return this->swapChain->commandBuffers[index];
 }
 
-VkFramebuffer VKWindow::getFrameBuffer(unsigned int index) const noexcept {
+VkFramebuffer VKBaseSampleWindow::getFrameBuffer(unsigned int index) const noexcept {
 	return this->swapChain->swapChainFramebuffers[index];
 }
 
-void VKWindow::swapBuffer() {
+void VKBaseSampleWindow::swapBuffer() {
 	VkResult result;
 
 	vkWaitForFences(this->getDevice(), 1, &this->inFlightFences[this->swapChain->currentFrame], VK_TRUE, UINT64_MAX);
@@ -204,7 +209,7 @@ void VKWindow::swapBuffer() {
 		(this->swapChain->currentFrame + 1) % std::min((uint32_t)this->inFlightFences.size(), getSwapChainImageCount());
 }
 
-void VKWindow::createQueueAndCommandPool() {
+void VKBaseSampleWindow::createQueueAndCommandPool() {
 
 	const std::vector<VkQueueFamilyProperties> &queueFamilies = this->getPhysicalDevice()->getQueueFamilyProperties();
 
@@ -230,7 +235,7 @@ void VKWindow::createQueueAndCommandPool() {
 	VKS_VALIDATE(vkCreateCommandPool(this->getDevice(), &cmdPoolCreateInfo, nullptr, &this->transfer_pool));
 }
 
-void VKWindow::createSwapChain() {
+void VKBaseSampleWindow::createSwapChain() {
 	/*	*/
 	const std::shared_ptr<PhysicalDevice> &physicalDevice = device->getPhysicalDevice(0);
 
@@ -343,10 +348,10 @@ void VKWindow::createSwapChain() {
 
 	const VkPhysicalDeviceMemoryProperties &memProps = getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties();
 
-	VKHelper::createImage(getDevice(), this->swapChain->chainExtend.width, this->swapChain->chainExtend.height, 1,
-						  depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProps, this->swapChain->depthImage,
-						  this->swapChain->depthImageMemory);
+	VKHelper::createImage2D(getDevice(), this->swapChain->chainExtend.width, this->swapChain->chainExtend.height, 1,
+							depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+							VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProps, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
+							this->swapChain->depthImage, this->swapChain->depthImageMemory);
 
 	this->swapChain->depthImageView = VKHelper::createImageView(
 		getDevice(), this->swapChain->depthImage, VK_IMAGE_VIEW_TYPE_2D, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
@@ -389,9 +394,8 @@ void VKWindow::createSwapChain() {
 	VkSubpassDependency dependency{};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
-	dependency.srcStageMask =
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency.srcAccessMask = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	dependency.dstStageMask =
 		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -440,7 +444,7 @@ void VKWindow::createSwapChain() {
 	VKS_VALIDATE(vkAllocateCommandBuffers(getDevice(), &cmdBufAllocInfo, this->swapChain->commandBuffers.data()));
 }
 
-void VKWindow::recreateSwapChain() {
+void VKBaseSampleWindow::recreateSwapChain() {
 
 	vkDeviceWaitIdle(getDevice());
 
@@ -449,7 +453,7 @@ void VKWindow::recreateSwapChain() {
 	this->createSwapChain();
 }
 
-void VKWindow::cleanSwapChain() {
+void VKBaseSampleWindow::cleanSwapChain() {
 	for (auto *framebuffer : swapChain->swapChainFramebuffers) {
 		vkDestroyFramebuffer(this->getDevice(), framebuffer, nullptr);
 	}
@@ -476,13 +480,13 @@ void VKWindow::cleanSwapChain() {
 	vkDestroySwapchainKHR(this->getDevice(), this->swapChain->swapchain, nullptr);
 }
 
-VkFormat VKWindow::findDepthFormat() {
+VkFormat VKBaseSampleWindow::findDepthFormat() {
 	return VKHelper::findSupportedFormat(
 		physicalDevice(), {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
 		VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
-VkSurfaceKHR VKWindow::createSurface() {
+VkSurfaceKHR VKBaseSampleWindow::createSurface() {
 
 	// VkXlibSurfaceCreateInfoKHR createInfo{};
 	// createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
@@ -497,26 +501,26 @@ VkSurfaceKHR VKWindow::createSurface() {
 	return surface;
 }
 
-void VKWindow::vsync(bool state) {
+void VKBaseSampleWindow::vsync(bool state) {
 	if (state != this->swapChain->vsync) {
 		this->swapChain->vsync = state;
 		recreateSwapChain();
 	}
 }
 
-void VKWindow::setFullScreen(bool fullscreen) { this->proxyWindow->setFullScreen(fullscreen); }
+void VKBaseSampleWindow::setFullScreen(bool fullscreen) { this->proxyWindow->setFullScreen(fullscreen); }
 
-void VKWindow::Initialize() {}
+void VKBaseSampleWindow::Initialize() {}
 
-void VKWindow::release() {}
+void VKBaseSampleWindow::release() {}
 
-void VKWindow::draw() {}
+void VKBaseSampleWindow::draw() {}
 
-void VKWindow::update() {}
+void VKBaseSampleWindow::update() {}
 
-void VKWindow::onResize(int width, int height) {}
+void VKBaseSampleWindow::onResize(int width, int height) {}
 
-void VKWindow::run() {
+void VKBaseSampleWindow::run() {
 	/*	*/
 	this->Initialize();
 
@@ -595,7 +599,7 @@ finished:
 	// this->cleanSwapChain();
 }
 
-void VKWindow::captureScreenShot() {
+void VKBaseSampleWindow::captureScreenShot() {
 	const int screen_grab_width_size = this->width();
 	const int screen_grab_height_size = this->height();
 
@@ -624,21 +628,21 @@ void VKWindow::captureScreenShot() {
 	process_thread.detach();
 }
 
-void VKWindow::show() { proxyWindow->show(); }
+void VKBaseSampleWindow::show() { proxyWindow->show(); }
 
-void VKWindow::hide() { proxyWindow->hide(); }
+void VKBaseSampleWindow::hide() { proxyWindow->hide(); }
 
-void VKWindow::close() { proxyWindow->close(); }
+void VKBaseSampleWindow::close() { proxyWindow->close(); }
 
-void VKWindow::focus() { proxyWindow->focus(); }
+void VKBaseSampleWindow::focus() { proxyWindow->focus(); }
 
-void VKWindow::restore() { proxyWindow->restore(); }
+void VKBaseSampleWindow::restore() { proxyWindow->restore(); }
 
-void VKWindow::maximize() { proxyWindow->maximize(); }
+void VKBaseSampleWindow::maximize() { proxyWindow->maximize(); }
 
-void VKWindow::minimize() { proxyWindow->minimize(); }
+void VKBaseSampleWindow::minimize() { proxyWindow->minimize(); }
 
-void VKWindow::setTitle(const std::string &title) {
+void VKBaseSampleWindow::setTitle(const std::string &title) {
 
 	/*	*/
 	std::string override_title = title + " | Vulkan version: " + this->device->getPhysicalDevice(0)->getDeviceName();
@@ -646,46 +650,47 @@ void VKWindow::setTitle(const std::string &title) {
 	this->proxyWindow->setTitle(override_title);
 }
 
-std::string VKWindow::getTitle() const { return proxyWindow->getTitle(); }
+std::string VKBaseSampleWindow::getTitle() const { return proxyWindow->getTitle(); }
 
-int VKWindow::x() const noexcept { return proxyWindow->x(); }
-int VKWindow::y() const noexcept { return proxyWindow->y(); }
+int VKBaseSampleWindow::x() const noexcept { return proxyWindow->x(); }
+int VKBaseSampleWindow::y() const noexcept { return proxyWindow->y(); }
 
-int VKWindow::width() const noexcept { return proxyWindow->width(); }
-int VKWindow::height() const noexcept { return proxyWindow->height(); }
+int VKBaseSampleWindow::width() const noexcept { return proxyWindow->width(); }
+int VKBaseSampleWindow::height() const noexcept { return proxyWindow->height(); }
 
-void VKWindow::getPosition(int *x, int *y) const { proxyWindow->getPosition(x, y); }
+void VKBaseSampleWindow::getPosition(int *x, int *y) const { proxyWindow->getPosition(x, y); }
 
-void VKWindow::setPosition(int x, int y) noexcept { proxyWindow->setPosition(x, y); }
+void VKBaseSampleWindow::setPosition(int x, int y) noexcept { proxyWindow->setPosition(x, y); }
 
-void VKWindow::setSize(int width, int height) noexcept { proxyWindow->setSize(width, height); }
+void VKBaseSampleWindow::setSize(int width, int height) noexcept { proxyWindow->setSize(width, height); }
 
-void VKWindow::getSize(int *width, int *height) const { proxyWindow->getSize(width, height); }
+void VKBaseSampleWindow::getSize(int *width, int *height) const { proxyWindow->getSize(width, height); }
 
-void VKWindow::resizable(bool resizable) noexcept { proxyWindow->resizable(resizable); }
+void VKBaseSampleWindow::resizable(bool resizable) noexcept { proxyWindow->resizable(resizable); }
 
-bool VKWindow::isFullScreen() const { return proxyWindow->isFullScreen(); }
+bool VKBaseSampleWindow::isFullScreen() const { return proxyWindow->isFullScreen(); }
 
-void VKWindow::setBordered(bool boarded) { proxyWindow->setBordered(boarded); }
+void VKBaseSampleWindow::setBordered(const bool boarded) { proxyWindow->setBordered(boarded); }
 
-float VKWindow::getGamma() const { return proxyWindow->getGamma(); }
+float VKBaseSampleWindow::getGamma() const { return proxyWindow->getGamma(); }
 
-void VKWindow::setGamma(float gamma) { proxyWindow->setGamma(gamma); }
+void VKBaseSampleWindow::setGamma(float gamma) { proxyWindow->setGamma(gamma); }
 
-void VKWindow::setMinimumSize(int width, int height) { proxyWindow->setMinimumSize(width, height); }
-void VKWindow::getMinimumSize(int *width, int *height) { proxyWindow->getMinimumSize(width, height); }
-void VKWindow::setMaximumSize(int width, int height) { proxyWindow->setMaximumSize(width, height); }
-void VKWindow::getMaximumSize(int *width, int *height) { proxyWindow->getMaximumSize(width, height); }
+void VKBaseSampleWindow::setMinimumSize(int width, int height) { proxyWindow->setMinimumSize(width, height); }
+void VKBaseSampleWindow::getMinimumSize(int *width, int *height) { proxyWindow->getMinimumSize(width, height); }
+void VKBaseSampleWindow::setMaximumSize(int width, int height) { proxyWindow->setMaximumSize(width, height); }
+void VKBaseSampleWindow::getMaximumSize(int *width, int *height) { proxyWindow->getMaximumSize(width, height); }
 
-intptr_t VKWindow::getNativePtr() const { return proxyWindow->getNativePtr(); }
+intptr_t VKBaseSampleWindow::getNativePtr() const { return proxyWindow->getNativePtr(); }
+intptr_t VKBaseSampleWindow::getNativeInternalPtr() const { return 0; }
 
-VkSurfaceKHR VKWindow::createSurface(const std::shared_ptr<VulkanCore> &instance) {
+VkSurfaceKHR VKBaseSampleWindow::createSurface(const std::shared_ptr<VulkanCore> &instance) {
 	return proxyWindow->createSurface(instance);
 }
 
 #include <SDL2/SDL_vulkan.h>
 
-std::vector<const char *> VKWindow::getRequiredDeviceExtensions() {
+std::vector<const char *> VKBaseSampleWindow::getRequiredDeviceExtensions() {
 
 	std::vector<const char *> usedInstanceExtensionNames;
 

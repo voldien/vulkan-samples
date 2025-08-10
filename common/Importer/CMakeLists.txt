@@ -3,9 +3,7 @@ FILE(GLOB SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 FILE(GLOB HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h
 )
 
-SOURCE_GROUP(Common FILES ${SOURCE_FILES} ${HEADER_FILES})	
-
-
+SOURCE_GROUP(Common FILES ${SOURCE_FILES} ${HEADER_FILES})
 
 ADD_LIBRARY(vk-sample-common-asset-importer ${SOURCE_FILES} ${HEADER_FILES} )
 TARGET_LINK_LIBRARIES(vk-sample-common-asset-importer fragcore-imageloader fmt freeimage assimp vk-sample-common )

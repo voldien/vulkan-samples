@@ -1,12 +1,19 @@
 #ifndef _COMMON_LIGHT_H_
 #define _COMMON_LIGHT_H_ 1
 
+struct ShadowLight {
+	mat4 lightSpaceMatrix;
+	vec4 shadow;	/*	Shadow, bias*/
+};
+
 struct DirectionalLight {
+	ShadowLight lightShadow;
 	vec4 direction;
 	vec4 lightColor;
 };
 
 struct PointLight {
+	ShadowLight lightShadow;
 	vec3 position;
 	float range;
 	vec4 color;
@@ -21,9 +28,13 @@ float computeLightContributionFactor(const in vec3 direction, const in vec3 norm
 	return max(0.0, dot(-direction, normalInput));
 }
 
-
-vec4 computePoint(const in PointLight light, const in vec3 normal, const in vec3 vertex, const in float shininess,
-					   const in vec3 specularColor) {
+vec4 computePoint(
+	const in PointLight light,
+	const in vec3 normal,
+	const in vec3 vertex,
+	const in float shininess,
+	const in vec3 specularColor
+) {
 
 	/*	*/
 	vec3 diffVertex = (light.position - vertex);
@@ -33,7 +44,7 @@ vec4 computePoint(const in PointLight light, const in vec3 normal, const in vec3
 
 	/*	*/
 	float attenuation = 1.0 / (light.constant_attenuation + light.linear_attenuation * dist +
-							   light.qudratic_attenuation * (dist * dist));
+		light.qudratic_attenuation * (dist * dist));
 
 	float contribution = max(dot(normal, normalize(diffVertex)), 0.0);
 
@@ -43,11 +54,15 @@ vec4 computePoint(const in PointLight light, const in vec3 normal, const in vec3
 	return vec4(pointLightColors.rgb, 1);
 }
 
-
 // Shadow.
 
-float ShadowCalculation(const in sampler2DShadow ShadowTexture0, const in vec4 fragPosLightSpace, const in vec3 normal,
-						const in vec3 lightDirection, const in float bias) {
+float ShadowCalculation(
+	const in sampler2DShadow ShadowTexture0,
+	const in vec4 fragPosLightSpace,
+	const in vec3 normal,
+	const in vec3 lightDirection,
+	const in float bias
+) {
 
 	/*	perform perspective divide	*/
 	vec4 projCoords = fragPosLightSpace.xyzw / fragPosLightSpace.w;

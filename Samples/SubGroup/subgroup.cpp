@@ -10,7 +10,7 @@ namespace vksample {
 	 * @brief
 	 *
 	 */
-	class SubGroup : public VKWindow {
+	class SubGroup : public VKBaseSampleWindow {
 	  private:
 		VkPipeline computePipeline = VK_NULL_HANDLE;
 		VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
@@ -24,7 +24,6 @@ namespace vksample {
 		std::vector<VkImageView> computeCellImageViews;
 
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
 		std::vector<VkDescriptorSet> descriptorSets;
 		VkCommandPool computeCmdPool = VK_NULL_HANDLE;
 		std::vector<VkCommandBuffer> computeCmds;
@@ -33,7 +32,7 @@ namespace vksample {
 
 	  public:
 		SubGroup(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle(std::string("Game Of Life"));
 
 			this->show();
@@ -44,9 +43,9 @@ namespace vksample {
 			vkDestroyCommandPool(this->getDevice(), this->computeCmdPool, nullptr);
 
 			/*	*/
-			VKS_VALIDATE(
-				vkFreeDescriptorSets(this->getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
-			vkDestroyDescriptorPool(this->getDevice(), descpool, nullptr);
+			VKS_VALIDATE(vkFreeDescriptorSets(this->getDevice(), getDescriptorPool(), descriptorSets.size(),
+											  descriptorSets.data()));
+
 			vkDestroyDescriptorSetLayout(this->getDevice(), descriptorSetLayout, nullptr);
 
 			/*	*/
@@ -72,7 +71,7 @@ namespace vksample {
 			VkPipeline pipeline = nullptr;
 
 			auto compShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->computeGameOfLifeShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->computeGameOfLifeShaderPath, this->getFileSystem());
 
 			VkShaderModule compShaderModule = VKHelper::createShaderModule(this->getDevice(), compShaderCode);
 
@@ -82,7 +81,7 @@ namespace vksample {
 			compShaderStageInfo.module = compShaderModule;
 			compShaderStageInfo.pName = "main";
 
-			std::array<VkDescriptorSetLayoutBinding, 3> uboLayoutBindings{};
+			std::vector<VkDescriptorSetLayoutBinding> uboLayoutBindings(3);
 			/*	Previous Cell.	*/
 			uboLayoutBindings[0].binding = 0;
 			uboLayoutBindings[0].descriptorCount = 1;
@@ -105,10 +104,10 @@ namespace vksample {
 			uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 			/*	*/
-			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings);
+			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings, 0);
 
 			/*	*/
-			VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
+			VKHelper::createPipelineLayout(getDevice(), *layout, 0, {descriptorSetLayout});
 
 			pipeline = VKHelper::createComputePipeline(getDevice(), *layout, compShaderStageInfo);
 
@@ -121,15 +120,6 @@ namespace vksample {
 
 			/*	Create pipeline.	*/
 			this->computePipeline = createComputePipeline(&computePipelineLayout);
-
-			/*	Allocate descriptor set.	*/
-			const std::vector<VkDescriptorPoolSize> poolSize = {{
-				VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				static_cast<uint32_t>(getSwapChainImageCount() * 3), /*	3 storage image for each chain.	*/
-			}};
-
-			/*	*/
-			this->descpool = VKHelper::createDescPool(getDevice(), poolSize, this->getSwapChainImageCount() * 3);
 
 			/*	Create game of life render image.	*/
 			this->gameoflifeRenderImage.resize(this->getSwapChainImageCount());
@@ -152,12 +142,13 @@ namespace vksample {
 				if (this->gameoflifeRenderImage[i] != nullptr) {
 					vkDestroyImage(this->getDevice(), this->gameoflifeRenderImage[i], nullptr);
 				}
-				VKHelper::createImage(
+				VKHelper::createImage2D(
 					this->getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM,
 					VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
-					this->gameoflifeRenderImage[i], this->gameoflifeRenderImageMemory[i]);
+					VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT, this->gameoflifeRenderImage[i],
+					this->gameoflifeRenderImageMemory[i]);
 			}
 
 			/*	Create cell state image.	*/
@@ -165,11 +156,12 @@ namespace vksample {
 				if (gameoflifeCellImage[i] != nullptr) {
 					vkDestroyImage(this->getDevice(), this->gameoflifeCellImage[i], nullptr);
 				}
-				VKHelper::createImage(
+				VKHelper::createImage2D(
 					this->getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8_UINT, VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-					this->getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(), this->gameoflifeCellImage[i],
+					this->getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+					VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT, this->gameoflifeCellImage[i],
 					this->gameoflifeCellImageMemory[i]);
 			}
 
@@ -244,12 +236,12 @@ namespace vksample {
 			}
 
 			/*	*/
-			VKS_VALIDATE(vkResetDescriptorPool(this->getDevice(), descpool, 0));
+			VKS_VALIDATE(vkResetDescriptorPool(this->getDevice(), getDescriptorPool(), 0));
 
 			std::vector<VkDescriptorSetLayout> layouts(this->getSwapChainImageCount(), descriptorSetLayout);
 			VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 			descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
+			descriptorSetAllocateInfo.descriptorPool = getDescriptorPool(); // pool to allocate from.
 			descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(this->getSwapChainImageCount());
 			descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 

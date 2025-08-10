@@ -12,7 +12,7 @@ namespace vksample {
 
 		 ~ShaderInfo() override = default;
 
-		VkPipeline loadPipeline() { return VK_NULL_HANDLE; }
+		VkPipeline loadPipeline0() { return VK_NULL_HANDLE; }
 
 	
 		 void run() override {

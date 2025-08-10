@@ -15,7 +15,7 @@ namespace vksample {
 	 * @brief
 	 *
 	 */
-	class Cube : public VKWindow {
+	class Cube : public VKBaseSampleWindow {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
@@ -24,24 +24,21 @@ namespace vksample {
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
-
 		std::vector<VkDescriptorSet> descriptorSets;
+
 		VkBuffer uniformBuffer{};
+		VkDeviceSize uniformMemSize{};
 		VkDeviceMemory uniformBufferMemory{};
 		std::vector<void *> mapMemory;
 
-		VkDeviceSize uniformMemSize{};
 		CameraController camera;
 
-		const std::string vertexShaderPath = "Shaders/triangle-mvp.vert.spv";
-		const std::string fragmentShaderPath = "Shaders/triangle-mvp.frag.spv";
+		const std::string vertexShaderPath = "Shaders/vertexinterpolation/VertexInterpolation.vert.spv";
+		const std::string fragmentShaderPath = "Shaders/vertexinterpolation/VertexInterpolation.frag.spv";
 
 		struct UniformBufferBlock {
-			glm::mat4 model;
-			glm::mat4 view;
-			glm::mat4 proj;
-		} mvp{};
+			glm::mat4 modelViewProjection;
+		} StageBuffer{};
 
 		using Vertex = struct _vertex_t {
 			float pos[3];
@@ -50,16 +47,21 @@ namespace vksample {
 
 	  public:
 		Cube(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle("Cube");
 			this->show();
 
-			this->camera.enableNavigation(false);
+			/*	Default camera position and orientation.	*/
+			this->camera.setPosition(glm::vec3(-2.5f));
+			this->camera.lookAt(glm::vec3(0.f));
+
+			this->camera.enableNavigation(true);
+			this->camera.enableLook(true);
 		}
 
 		void release() override {
 
-			vkDestroyDescriptorPool(getDevice(), this->descpool, nullptr);
+			vkDestroyDescriptorPool(getDevice(), this->getDescriptorPool(), nullptr);
 
 			vkDestroyBuffer(getDevice(), this->vertexBuffer, nullptr);
 			vkFreeMemory(getDevice(), this->vertexMemory, nullptr);
@@ -116,9 +118,9 @@ namespace vksample {
 		VkPipeline createGraphicPipeline() {
 
 			const auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 			const auto fragShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -170,7 +172,7 @@ namespace vksample {
 			uboLayoutBinding.pImmutableSamplers = nullptr;
 			uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-			VKHelper::createDescriptorSetLayout(this->getDevice(), descriptorSetLayout, {uboLayoutBinding});
+			VKHelper::createDescriptorSetLayout(this->getDevice(), descriptorSetLayout, {uboLayoutBinding}, 0);
 
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -236,7 +238,7 @@ namespace vksample {
 			depthStencil.depthBoundsTestEnable = VK_FALSE;
 			depthStencil.stencilTestEnable = VK_FALSE;
 
-			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
+			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, 0, {descriptorSetLayout});
 
 			VkDynamicState dynamicStateEnables[1];
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
@@ -276,8 +278,8 @@ namespace vksample {
 
 			this->uniformMemSize = sizeof(UniformBufferBlock);
 
-			this->uniformMemSize +=
-				uniformMemSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().nonCoherentAtomSize;
+			const size_t uniform_align_size = getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
+			this->uniformMemSize = Math::align(this->uniformMemSize, uniform_align_size);
 
 			const VkDeviceSize uniformBufferSize = this->getSwapChainImageCount() * uniformMemSize;
 
@@ -298,18 +300,6 @@ namespace vksample {
 				this->mapMemory[i] = &_data[this->uniformMemSize * i];
 			}
 
-			VkDescriptorPoolSize poolSize{};
-			poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			poolSize.descriptorCount = static_cast<uint32_t>(getSwapChainImageCount());
-
-			VkDescriptorPoolCreateInfo poolInfo{};
-			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			poolInfo.poolSizeCount = 1;
-			poolInfo.pPoolSizes = &poolSize;
-			poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount());
-
-			VKS_VALIDATE(vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool));
-
 			/*	Create pipeline.	*/
 			this->graphicsPipeline = createGraphicPipeline();
 
@@ -317,7 +307,7 @@ namespace vksample {
 			std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 			VkDescriptorSetAllocateInfo allocdescInfo{};
 			allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocdescInfo.descriptorPool = descpool;
+			allocdescInfo.descriptorPool = getDescriptorPool();
 			allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
 			allocdescInfo.pSetLayouts = layouts.data();
 
@@ -412,8 +402,12 @@ namespace vksample {
 				renderPassInfo.clearValueCount = clearValues.size();
 				renderPassInfo.pClearValues = clearValues.data();
 
-				VkViewport viewport = {
-					.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
+				const VkViewport viewport = {.x = 0,
+											 .y = static_cast<float>(height),
+											 .width = (float)width,
+											 .height = (float)-height,
+											 .minDepth = 0,
+											 .maxDepth = 1.0f};
 				vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 				vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -445,17 +439,12 @@ namespace vksample {
 			this->camera.update(this->getTimer().deltaTime<float>());
 
 			const float elapsedTime = this->getTimer().getElapsed<float>();
-
-			this->mvp.proj = this->camera.getProjectionMatrix();
-			this->mvp.model = glm::mat4(1.0f);
-			this->mvp.view = glm::mat4(1.0f);
-			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-			this->mvp.model =
-				glm::rotate(this->mvp.model, glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
+			this->StageBuffer.modelViewProjection =
+				(camera.getProjectionMatrix() * camera.getViewMatrix() *
+				 glm::rotate(glm::mat4(1), glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
 
 			/*	Copy new uniform data.	*/
-			memcpy(this->mapMemory[this->getCurrentFrameIndex()], &mvp, (size_t)sizeof(this->mvp));
+			memcpy(this->mapMemory[this->getCurrentFrameIndex()], &StageBuffer, (size_t)sizeof(this->StageBuffer));
 
 			// Setup the range
 			VkMappedMemoryRange stagingRange{};

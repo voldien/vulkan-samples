@@ -53,7 +53,7 @@ namespace vksample {
 
 		virtual void Render(const CameraController &camera);
 		virtual void Render(const glm::mat4 &viewProj);
-		
+
 		/**/
 		virtual void RenderImGUI();
 

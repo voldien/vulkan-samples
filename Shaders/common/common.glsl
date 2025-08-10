@@ -1,22 +1,17 @@
 #ifndef _COMMON_HEADER_
 #define _COMMON_HEADER_ 1
+
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_control_flow_attributes2 : enable
+
 #include "colorspace.glsl"
 #include "noise.glsl"
+#include "texture.glsl"
+#include "transformation.glsl"
+#include "math.glsl"
 
-// enum GBuffer : unsigned int {
 
-// 	WorldSpace = 1,
-// 	TextureCoordinate = 2,
-// 	Albedo = 0,
-// 	Normal = 3,
-// 	Specular = 4, // Roughness
-// 	Emission = 5,
-// };
-
-/*	Constants.	*/
-#define PI 3.1415926535897932384626433832795
-#define PI_HALF (PI / 2.0)
-#define E_CONSTANT 2.7182818284590
+/*	Application constant.	*/
 layout(constant_id = 0) const float EPSILON = 1.19209e-07;
 
 struct Camera {
@@ -24,12 +19,17 @@ struct Camera {
 	float far;			/*	*/
 	float aspect;		/*	*/
 	float fov;			/*	*/
+	
 	vec4 position;		/*	*/
 	vec4 viewDir;		/*	*/
 	vec4 position_size; /*	*/
 	uvec4 screen_width_padding;
+
 	mat4 view;
+	mat4 viewInv;
+	mat4 viewRot;
 	mat4 viewProj;
+	mat4 viewProjInv;
 	mat4 proj;
 	mat4 inverseProj;
 };
@@ -37,6 +37,7 @@ struct Camera {
 struct FogSettings {
 	/*	*/
 	vec4 fogColor;
+	// ec4 exposure; //
 	/*	*/
 	float CameraNear;
 	float CameraFar;
@@ -53,99 +54,6 @@ struct FogSettings {
 struct Frustum {
 	vec4 planes[6];
 };
-
-vec4 bump(const in sampler2D BumpTexture, const in vec2 uv, const in float dist) {
-
-	const vec2 size = vec2(2.0, 0.0);
-	const vec2 offset = 1.0 / textureSize(BumpTexture, 0);
-
-	const vec2 offxy = vec2(offset.x, offset.y);
-	const vec2 offzy = vec2(-offset.x, offset.y);
-	const vec2 offyx = vec2(offset.x, -offset.y);
-	const vec2 offyz = vec2(-offset.x, -offset.y);
-
-	const float bump_strength = 2.0;
-
-	const float s11 = texture(BumpTexture, uv).x;
-	const float s01 = texture(BumpTexture, uv + offxy).x;
-	const float s21 = texture(BumpTexture, uv + offzy).x;
-	const float s10 = texture(BumpTexture, uv + offyx).x;
-	const float s12 = texture(BumpTexture, uv + offyz).x;
-
-	vec3 va = bump_strength * vec3(size.x, size.y, s21 - s10);
-	vec3 vb = bump_strength * vec3(size.y, size.x, s12 - s01);
-
-	va = normalize(va);
-	vb = normalize(vb);
-
-	const vec4 normal = vec4(cross(va, vb) * 0.5 + 0.5, 1.0);
-
-	return normal;
-}
-
-vec4 bump(const in float height, const in float dist) {
-
-	const float x = 0; // dFdx(height) * dist;
-	const float y = 0; // dFdy(height) * dist;
-
-	const vec4 normal = vec4(x, y, 1, 0);
-
-	return normalize(normal);
-}
-
-/*
-vec3 world_to_ndc(vec3 x, bool is_position) {
-	vec4 ndc = mul(vec4(x, (float)is_position), buffer_frame.view_projection);
-	return ndc.xyz / ndc.w;
-}
-
-vec3 world_to_ndc(vec3 x, vec4x4 transform)
-{
-	vec4 ndc = mul(vec4(x, 1.0f), transform);
-	return ndc.xyz / ndc.w;
-}
-
-vec3 view_to_ndc(vec3 x, bool is_position = true) {
-	vec4 ndc = mul(vec4(x, (float)is_position), buffer_frame.projection);
-	return ndc.xyz / ndc.w;
-}
-
-vec2 world_to_uv(vec3 x, bool is_position = true) {
-	vec4 uv = mul(vec4(x, (float)is_position), buffer_frame.view_projection);
-	return (uv.xy / uv.w) * vec2(0.5f, -0.5f) + 0.5f;
-}
-
-vec2 view_to_uv(vec3 x, bool is_position = true) {
-	vec4 uv = mul(vec4(x, (float)is_position), buffer_frame.projection);
-	return (uv.xy / uv.w) * vec2(0.5f, -0.5f) + 0.5f;
-}
-
-vec2 ndc_to_uv(vec2 x) { return x * vec2(0.5f, -0.5f) + 0.5f; }
-
-vec2 ndc_to_uv(vec3 x) { return x.xy * vec2(0.5f, -0.5f) + 0.5f; }
-*/
-float getExpToLinear(const in float start, const in float end, const in float expValue) {
-	return ((2.0f * start) / (end + start - expValue * (end - start)));
-}
-
-vec3 calcViewPosition(const in vec2 coords, const in mat4 inverseProj, const in float fragmentDepth) {
-	/*	Convert from screenspace to Normalize Device Coordinate.	*/
-	const vec4 ndc = vec4(coords.x * 2.0 - 1.0, coords.y * 2.0 - 1.0, fragmentDepth * 2.0 - 1.0, 1.0);
-
-	/*	Transform to view space using inverse camera projection matrix.	*/
-	vec4 vs_pos = inverseProj * ndc;
-
-	/*	*/
-	vs_pos.xyz = vs_pos.xyz / vs_pos.w;
-
-	return vs_pos.xyz;
-}
-
-float get_depth_linear(const in sampler2D inDepthTexture, const in vec2 coords, const in float start,
-					   const in float end) {
-	const float depth = texture(inDepthTexture, coords).x;
-	return getExpToLinear(start, end, depth);
-}
 
 float rand(const in float seed) { return fract(sin(seed) * 100000.0); }
 float rand(const in vec2 co) { return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -200,7 +108,7 @@ vec3 CatmulRom(in float T, vec3 D, vec3 C, vec3 B, vec3 A) {
 }
 
 vec3 ColorRampConstant(in float T, const in vec4[4] A, const in int num) {
-	//[[unroll]]
+	[[unroll]]
 	for (uint i = 0; i < num; i++) {
 		if (T < A[i].w) {
 			return A[i].rgb;
@@ -291,6 +199,66 @@ float getGuas2D(const in float x, const in float y, const in float variance) {
 
 vec2 pixelate_screenUV(const in vec2 screenUV, const in float pixel_size, const in vec2 aspect_ratio) {
 	return floor(screenUV * pixel_size * aspect_ratio) / (pixel_size * aspect_ratio);
+}
+
+struct DrawElementsIndirectCommand {
+	uint count;
+	uint instanceCount;
+	uint firstIndex;
+	uint baseVertex;
+	uint baseInstance;
+};
+
+struct IndirectDrawArray {
+	uint count;			/*  */
+	uint instanceCount; /*  */
+	uint first;			/*  */
+	uint baseInstance;	/*  */
+};
+
+struct IndirectDispatchCommand {
+	uint num_groups_x;
+	uint num_groups_y;
+	uint num_groups_z;
+};
+
+vec2 sphere_uv_mapping(const vec3 position) { return inverse_equirectangular(normalize(position)); }
+
+struct Sphere {
+	vec4 position_radius;
+};
+
+float ray_sphere_intersect(const vec3 center, const float radius, const vec3 origin, const vec3 ray_dir) {
+	vec3 tmp = origin - center;
+	float t;
+	/*	*/
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_dir, tmp);
+	float c = dot(tmp, tmp) - (radius * radius);
+
+	/*	*/
+	const float discriminant = b * b - (4.0f * c * a);
+	if (discriminant < 0.0) {
+		return -1;
+	}
+	return (-b - sqrt(discriminant)) / (a * 2.0);
+}
+
+vec2 ray_sphere_intersect_samples(const vec3 center, const float radius, const vec3 origin, const vec3 ray_dir) {
+	vec3 tmp = origin - center;
+	float t;
+	/*	*/
+	float a = dot(ray_dir, ray_dir);
+	float b = 2.0 * dot(ray_dir, tmp);
+	float c = dot(tmp, tmp) - (radius * radius);
+
+	/*	*/
+	const float discriminant = b * b - (4.0f * c * a);
+	if (discriminant < 0.0) {
+		return vec2(-1.0, -1.0);
+	}
+
+	return vec2(-b - sqrt(discriminant), -b + sqrt(discriminant)) / (2.0 * a);
 }
 
 #endif

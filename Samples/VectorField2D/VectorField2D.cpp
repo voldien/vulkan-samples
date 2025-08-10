@@ -1,118 +1,143 @@
+#include "Importer/ImageImport.h"
 #include "Util/CameraController.h"
+#include "VKDataStructure.h"
 #include "VKSample.h"
+#include "vulkan/vulkan_core.h"
 #include <Util/IOUtil.h>
 #include <VKWindow.h>
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
 namespace vksample {
 
-	class ParticleSystem : public VKWindow {
+	/**
+	 *
+	 */
+	class VectorField2D : public VKBaseSampleWindow {
 	  private:
-		const std::string vertexShaderPath = "Shaders/particlesystem/particle.vert.spv";
-		const std::string fragmentShaderPath = "Shaders/particlesystem/particle.frag.spv";
-		const std::string computeShaderPath = "Shaders/particlesystem/particle.comp.spv";
+		using Motion = struct motion_t {
+			glm::vec2 normalizedPos{}; /*  Position in pixel space.    */
+			glm::vec2 velocity{};		 /*  direction and magnitude of mouse movement.  */
+			float radius = 10.0f;	 /*  Radius of incluense, also the pressure of input.    */
+			float amplitude = 1.0;
+			float noise = 0;
+			float pad2 = 0;
+		};
 
-		struct UniformBufferBlock {
-			alignas(16) glm::mat4 model{};
-			alignas(16) glm::mat4 view{};
-			alignas(16) glm::mat4 proj{};
-			alignas(16) glm::mat4 modelView{};
-			alignas(16) glm::mat4 modelViewProjection{};
-			glm::vec4 diffuseColor{};
-			float delta{};
+		using ParticleSetting = struct particle_setting_t {
+			glm::uvec4 particleBox = glm::uvec4(256, 256, 1, 0);
+			glm::uvec4 vectorfieldbox = glm::uvec4(32, 32, 32, 0); // Dummy
 
-			/*	*/
 			float speed = 1.0f;
 			float lifetime = 5.0f;
 			float gravity = 9.82f;
+			float strength = 1.0f;
 
-		} mvp;
-
-		struct ParticleSimulatorVariables {
-		} particleSimUniforms;
-
-		using Particle = struct particle_t {
-			glm::vec3 position; /*	Position.	*/
-			glm::vec4 velocity; /*	Velocity.	*/
-			float t;			/*	Time.	*/
+			float density = 1.0f;
+			uint32_t nrparticles{};
+			float spriteSize = 0.25f;
+			float dragMag = 0.1f;
 		};
 
-		/*	Compute pipeline.	*/
-		VkPipeline particleSim = VK_NULL_HANDLE;
-		VkPipelineLayout particleSimLayout = VK_NULL_HANDLE;
+		struct uniform_buffer_block {
+			glm::mat4 model{};
+			glm::mat4 view{};
+			glm::mat4 proj{};
+			glm::mat4 modelView{};
+			glm::mat4 modelViewProjection{};
+			glm::vec4 color = glm::vec4(1, 0.1, 0.1, 1);
 
-		/*	Graphic pipelines.	*/
-		VkPipeline particleGraphicPipeline = VK_NULL_HANDLE;
-		VkPipelineLayout particleGraphicLayout = VK_NULL_HANDLE;
+			/*	*/
+			ParticleSetting particleSetting;
+			Motion motion;
 
-		/*	TODO merge.	*/
+			/*	*/
+			float delta{};
+
+		} uniformStageBuffer;
+
+		using Particle = struct particle_t {
+			glm::vec4 position; /*	Position, time	*/
+			glm::vec4 velocity; /*	Velocity, mass	*/
+		};
+
+		using VectorForce = struct vector_force_t {
+			glm::vec3 position; /*	*/
+			glm::vec3 force;	/*	*/
+		};
+
+		UBOObject ParticleBuffer{};
 
 		VkBuffer particleBuffer{};
 		VkDeviceMemory particleBufferMemory{};
 
 		/*	*/
-		VkBuffer uniformBuffer{};
-		VkDeviceMemory uniformBufferMemory{};
+		UBOObject UniformBuffer{};
 		std::vector<void *> mapMemory;
+		size_t UniformParamMemSize = sizeof(uniformStageBuffer);
 
 		/*	*/
 		VkSampler sampler = VK_NULL_HANDLE;
-		VkImage texture = VK_NULL_HANDLE;
-		VkImageView textureView = VK_NULL_HANDLE;
-		VkDeviceMemory textureMemory = VK_NULL_HANDLE;
+		Texture texture{};
 
-		/*	*/
-		VkBuffer vectorFieldBuffer{};
-		VkDeviceMemory vectorFieldMemory{};
-
-		/*	*/
+		/*	Compute pipeline.	*/
+		VkPipeline particleSim = VK_NULL_HANDLE;
+		VkPipelineLayout particleSimLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout particleComputeDescriptorSetLayout = VK_NULL_HANDLE;
-		VkDescriptorSetLayout particleGraphicDescriptorSetLayout = VK_NULL_HANDLE;
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
 		std::vector<VkDescriptorSet> particleComputeDescriptorSets;
+
+		/*	Graphic pipelines.	*/
+		VkPipeline particleGraphicPipeline = VK_NULL_HANDLE;
+		VkPipelineLayout particleGraphicLayout = VK_NULL_HANDLE;
+		VkDescriptorSetLayout particleGraphicDescriptorSetLayout = VK_NULL_HANDLE;
 		std::vector<VkDescriptorSet> particleGraphicDescriptorSets;
 
-		VkDeviceSize UniformParamMemSize = sizeof(mvp);
 		/*	*/
 		CameraController cameraController;
-		// TODO add ass configurable param.
 
-		const int localInvokation = 32;
-		const unsigned int nrParticles = localInvokation * 256;
+		std::array<size_t, 3> localWorkGroupSize{};
+		std::array<size_t, 3> localWorkGroupSize0{};
+
+		const size_t particle_multiple_count = 8;
+		/*	*/
+		size_t nrParticles = 0;
 		const size_t nrParticleBuffers = 2;
-		size_t ParticleMemorySize = nrParticles * sizeof(Particle);
+		size_t ParticleMemorySize = 0;
+
+		/*	Particle.	*/
+		const std::string particleVertexShaderPath = "Shaders/vectorfield/particle.vert.spv";
+		const std::string particleGeometryShaderPath = "Shaders/vectorfield/particle.geom.spv";
+		const std::string particleFragmentShaderPath = "Shaders/vectorfield/particle.frag.spv";
+
+		const std::string particleInitComputeShaderPath = "Shaders/vectorfield/init_particle2D.comp.spv";
+		/*	Particle Simulation in Vector Field.	*/
+		const std::string particleComputeShaderPath = "Shaders/vectorfield/particle2D.comp.spv";
+		/*	Particle Simulation in Vector Field.	*/
+		const std::string particleMotionForceComputeShaderPath = "Shaders/vectorfield/apply_force_2D.comp.spv";
+
+		/*	Motion vector graphic shader.	*/
+		const std::string vectorFieldVertexShaderPath = "Shaders/vectorfield/vectorField.vert.spv";
+		const std::string vectorFieldGeometryShaderPath = "Shaders/vectorfield/motion2D.geom.spv";
+		const std::string vectorFieldFragmentPath = "Shaders/vectorfield/vectorField.frag.spv";
 
 	  public:
-		ParticleSystem(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
-			this->setTitle("Particle System");
+		VectorField2D(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
+			this->setTitle("VectorField2D");
 			this->show();
 		}
 
-		~ParticleSystem() override = default;
+		~VectorField2D() override = default;
 
 		void release() override {
-
-			/*	*/
-			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 			vkDestroySampler(getDevice(), sampler, nullptr);
 
 			/*	*/
-			vkDestroyImageView(getDevice(), textureView, nullptr);
-			vkDestroyImage(getDevice(), texture, nullptr);
-			vkFreeMemory(getDevice(), textureMemory, nullptr);
-
-			/*	*/
 			vkDestroyBuffer(getDevice(), particleBuffer, nullptr);
 			vkFreeMemory(getDevice(), particleBufferMemory, nullptr);
-
-			/*	*/
-			vkDestroyBuffer(getDevice(), uniformBuffer, nullptr);
-			vkUnmapMemory(getDevice(), uniformBufferMemory);
-			vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
 
 			/*	*/
 			vkDestroyDescriptorSetLayout(getDevice(), particleGraphicDescriptorSetLayout, nullptr);
@@ -128,13 +153,13 @@ namespace vksample {
 
 			VkPipeline graphicsPipeline = nullptr;
 
-			auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-			auto fragShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
+			const auto vertShaderCode =
+				fragcore::IOUtil::readFileData<uint32_t>(this->particleVertexShaderPath, this->getFileSystem());
+			const auto fragShaderCode =
+				fragcore::IOUtil::readFileData<uint32_t>(this->particleFragmentShaderPath, this->getFileSystem());
 
-			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
-			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
+			const VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
+			const VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
 
 			VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 			vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -149,6 +174,8 @@ namespace vksample {
 			fragShaderStageInfo.pName = "main";
 
 			VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+			const PipelineLayoutUtil::InputLayout input_layout = PipelineLayoutUtil::getInputLayout(vertShaderCode);
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -191,7 +218,7 @@ namespace vksample {
 			samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 			VKHelper::createDescriptorSetLayout(this->getDevice(), particleGraphicDescriptorSetLayout,
-												{uboLayoutBinding, samplerLayoutBinding});
+												{uboLayoutBinding, samplerLayoutBinding}, 0);
 
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -257,15 +284,18 @@ namespace vksample {
 			depthStencil.depthBoundsTestEnable = VK_FALSE;
 			depthStencil.stencilTestEnable = VK_FALSE;
 
-			VKHelper::createPipelineLayout(getDevice(), *layout, {particleComputeDescriptorSetLayout});
+			VKHelper::createPipelineLayout(getDevice(), *layout, 0, {particleComputeDescriptorSetLayout});
 
-			VkDynamicState dynamicStateEnables[1];
+			std::array<VkDynamicState,2> dynamicStateEnables{};
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
+			dynamicStateEnables[1] = VK_DYNAMIC_STATE_SCISSOR;
+
+
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 			dynamicStateInfo.pNext = nullptr;
-			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
-			dynamicStateInfo.dynamicStateCount = 1;
+			dynamicStateInfo.pDynamicStates = dynamicStateEnables.data();
+			dynamicStateInfo.dynamicStateCount = dynamicStateEnables.size();
 
 			VkGraphicsPipelineCreateInfo pipelineInfo{};
 			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -284,8 +314,8 @@ namespace vksample {
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 			pipelineInfo.pDynamicState = &dynamicStateInfo;
 
-			VKS_VALIDATE(
-				vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+			VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), getPipelineCache(), 1, &pipelineInfo, nullptr,
+												   &graphicsPipeline));
 
 			vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 			vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -297,7 +327,7 @@ namespace vksample {
 			VkPipeline pipeline = nullptr;
 
 			auto compShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->particleComputeShaderPath, this->getFileSystem());
 
 			VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -329,10 +359,11 @@ namespace vksample {
 			uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 			/*	*/
-			VKHelper::createDescriptorSetLayout(getDevice(), particleComputeDescriptorSetLayout, uboLayoutBindings);
+			VKHelper::createDescriptorSetLayout(this->getDevice(), particleComputeDescriptorSetLayout, 0,
+												uboLayoutBindings);
 
 			/*	*/
-			VKHelper::createPipelineLayout(getDevice(), *layout, {particleComputeDescriptorSetLayout});
+			VKHelper::createPipelineLayout(getDevice(), *layout, 0, {particleComputeDescriptorSetLayout});
 
 			pipeline = VKHelper::createComputePipeline(getDevice(), *layout, compShaderStageInfo);
 
@@ -343,22 +374,6 @@ namespace vksample {
 
 		void initDescriptor() {
 
-			std::array<VkDescriptorPoolSize, 3> poolSize{};
-			poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			poolSize[0].descriptorCount = static_cast<uint32_t>(getSwapChainImageCount() * 2);
-			poolSize[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			poolSize[1].descriptorCount = static_cast<uint32_t>(getSwapChainImageCount() * 3);
-			poolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			poolSize[2].descriptorCount = static_cast<uint32_t>(getSwapChainImageCount() * 2);
-
-			VkDescriptorPoolCreateInfo poolInfo{};
-			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			poolInfo.poolSizeCount = poolSize.size();
-			poolInfo.pPoolSizes = poolSize.data();
-			poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount() * 3);
-
-			vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
-
 			// TODO fix descriptor set allocation.
 			std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), particleComputeDescriptorSetLayout);
 			for (int i = 0; i < getSwapChainImageCount(); i++) {
@@ -367,7 +382,7 @@ namespace vksample {
 
 			VkDescriptorSetAllocateInfo allocdescInfo{};
 			allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocdescInfo.descriptorPool = descpool;
+			allocdescInfo.descriptorPool = getDescriptorPool();
 			allocdescInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
 			allocdescInfo.pSetLayouts = layouts.data();
 
@@ -403,9 +418,9 @@ namespace vksample {
 				bufferWriteParticleInfo.range = ParticleMemorySize;
 
 				VkDescriptorBufferInfo bufferUniformInfo{};
-				bufferUniformInfo.buffer = uniformBuffer;
-				bufferUniformInfo.offset = (i % getSwapChainImageCount()) * UniformParamMemSize;
-				bufferUniformInfo.range = UniformParamMemSize;
+				bufferUniformInfo.buffer = UniformBuffer.buffer;
+				// bufferUniformInfo.offset = (i % getSwapChainImageCount()) * UniformParamMemSize;
+				// bufferUniformInfo.range = UniformParamMemSize;
 
 				descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				descriptorWrites[0].dstSet = particleComputeDescriptorSets[i];
@@ -442,9 +457,9 @@ namespace vksample {
 				std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
 				VkDescriptorBufferInfo bufferInfo{};
-				bufferInfo.buffer = uniformBuffer;
-				bufferInfo.offset = i * UniformParamMemSize;
-				bufferInfo.range = UniformParamMemSize;
+				// bufferInfo.buffer = uniformBuffer;
+				// bufferInfo.offset = i * UniformParamMemSize;
+				// bufferInfo.range = UniformParamMemSize;
 
 				VkDescriptorImageInfo imageInfo{};
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -475,66 +490,63 @@ namespace vksample {
 
 		void Initialize() override {
 
-			// TODO improve memory to align with the required by the driver
-			this->UniformParamMemSize +=
-				UniformParamMemSize % getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().nonCoherentAtomSize;
+			/*	*/
+			const std::string particleTexturePath = this->getResult()["texture"].as<std::string>();
+
+			{
+				ImageImporter imageImporter(this->getFileSystem(), *this);
+
+				imageImporter.loadTexture2D(particleTexturePath.c_str(), texture, ColorSpace::RawLinear);
+
+				this->texture.imageView =
+					VKHelper::createImageView(getDevice(), this->texture.image, VK_IMAGE_VIEW_TYPE_2D,
+											  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+				VKHelper::createSampler(getDevice(), sampler, 0);
+			}
+
+			this->UniformParamMemSize =
+				Math::align(sizeof(uniformStageBuffer),
+							this->getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment);
 
 			const VkDeviceSize particleUniformBufferSize = UniformParamMemSize * getSwapChainImageCount();
-
-			const VkPhysicalDeviceMemoryProperties &memProperties =
-				this->getVKDevice()->getPhysicalDevice(0)->getMemoryProperties();
 
 			/*	Create pipelines.	*/
 			this->particleSim = createComputePipeline(&particleSimLayout);
 			this->particleGraphicPipeline = createGraphicPipeline(&particleGraphicLayout);
 
-			/*	Create uniform buffer.	*/
-			VKHelper::createBuffer(this->getDevice(), particleUniformBufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffer, uniformBufferMemory);
+			VkBufferUsageFlags usageFlag = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
+			VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+											 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+			this->allocateBuffer(particleUniformBufferSize, usageFlag, memFlags, ParticleBuffer.buffer,
+								 ParticleBuffer.memory);
+
+			uint8_t *_data = nullptr;
+			VKS_VALIDATE(vkMapMemory(this->getDevice(), UniformBuffer.memory, this->UniformParamMemSize,
+									 this->UniformParamMemSize, 0, (void**)&_data));
 			/*	Allocate memory.	*/
 			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
 
-				void *_data = nullptr;
-				VKS_VALIDATE(vkMapMemory(this->getDevice(), uniformBufferMemory, i * this->UniformParamMemSize,
-										 this->UniformParamMemSize, 0, &_data));
 				mapMemory.push_back(_data);
 			}
 
 			/*	Create particle buffer, on local device memory only.	*/
-			VKHelper::createBuffer(getDevice(), ParticleMemorySize * nrParticleBuffers, memProperties,
-								   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, particleBuffer, particleBufferMemory);
-
-			/*	Create init buffer to transfer.	*/
-			// std::vector<VkCommandBuffer> cmds =
-			// 	this->getVKDevice()->allocateCommandBuffers(getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-			// 1); VkCommandBufferBeginInfo beginInfo = {}; beginInfo.sType =
-			// VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO; beginInfo.flags = 0;
-			// VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
-
-			// vkCmdFillBuffer(cmds[0], particleBuffers, 0, ParticleMemorySize * nrParticleBuffers, 0);
-
-			// vkEndCommandBuffer(cmds[0]);
-			// this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
-
-			// VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-			// vkFreeCommandBuffers(getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
+			// VKHelper::createBuffer(getDevice(), ParticleMemorySize * nrParticleBuffers, memProperties,
+			// 					   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			// 					   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, particleBuffer, particleBufferMemory);
 
 			initDescriptor();
 
-			onResize(width(), height());
+			this->onResize(width(), height());
 		}
 
 		void onResize(int width, int height) override {
 
+			VKS_VALIDATE(vkQueueWaitIdle(getDefaultTransferQueue()));
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-			this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
-			this->mvp.model = glm::mat4(1.0f);
-			this->mvp.view = glm::mat4(1.0f);
+
 			/*	*/
 
 			for (uint32_t i = 0; i < this->getNrCommandBuffers(); i++) {
@@ -572,7 +584,7 @@ namespace vksample {
 										&this->particleComputeDescriptorSets[i], 0, nullptr);
 
 				/*	Update particle simulation.	*/
-				vkCmdDispatch(cmd, nrParticles / localInvokation, 1, 1);
+				//vkCmdDispatch(cmd, nrParticles / localInvokation, 1, 1);
 
 				// // Barrier between compute and vertex
 				// // TODO validate memory barrier. make sure that the particles has been updated before being read.
@@ -599,31 +611,51 @@ namespace vksample {
 
 				VKS_VALIDATE(vkEndCommandBuffer(cmd));
 			}
-		}
-		void draw() override {
 
-			cameraController.update(this->getTimer().deltaTime<float>());
+			this->cameraController.setAspect((float)width / (float)height);
+		}
+
+		void draw() override {}
+
+		void update() override {
+			this->cameraController.update(this->getTimer().deltaTime<float>());
 
 			/*	*/
-			this->mvp.model = glm::mat4(1.0f);
-			this->mvp.view = cameraController.getViewMatrix();
-			this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
-			this->mvp.delta = getTimer().deltaTime<float>();
-			this->mvp.speed = 1.0f;
+			{
+				const float xHalf = this->uniformStageBuffer.particleSetting.particleBox.x / 2.f;
+				const float yHalf = this->uniformStageBuffer.particleSetting.particleBox.y / 2.f;
+				glm::mat4 proj = glm::ortho(-xHalf, xHalf, -yHalf, yHalf, -10.0f, 10.0f);
 
+				glm::mat4 viewMatrix = glm::translate(glm::vec3(-xHalf, -yHalf, 0));
+				/*	*/
+				this->uniformStageBuffer.proj = proj;
+
+				this->uniformStageBuffer.delta = this->getTimer().deltaTime<float>();
+
+				this->uniformStageBuffer.model = glm::mat4(1.0f);
+				this->uniformStageBuffer.view = viewMatrix;
+				this->uniformStageBuffer.modelViewProjection =
+					this->uniformStageBuffer.proj * this->uniformStageBuffer.view * this->uniformStageBuffer.model;
+
+				if (this->getInput().getMousePressed(Input::MouseButton::LEFT_BUTTON)) {
+					int x = 0, y = 0;
+					this->getInput().getMousePosition(&x, &y);
+					this->uniformStageBuffer.motion.normalizedPos =
+						glm::vec2(1, 1) - (glm::vec2(x, y) / glm::vec2(this->width(), this->height()));
+					this->uniformStageBuffer.motion.normalizedPos.x =
+						1.0f - this->uniformStageBuffer.motion.normalizedPos.x;
+				}
+			}
+
+			/*	Update Memory.	*/
 			/*	Copy uniform memory.	*/
-			memcpy(mapMemory[getCurrentFrameIndex()], &mvp, this->UniformParamMemSize);
-
-			/* Setup the range	*/
-			// VkMappedMemoryRange stagingRange{};
-			// stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-			// stagingRange.memory = uniformBufferMemory;
-			// stagingRange.offset = (getCurrentFrameIndex() % getSwapChainImageCount()) * this->UniformParamMemSize;
-			// stagingRange.size = this->UniformParamMemSize;
-			// vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange);
+			memcpy(this->mapMemory[getCurrentFrameIndex()], &uniformStageBuffer, sizeof(uniformStageBuffer));
 		}
 	};
 } // namespace vksample
+
+// options("T,texture", "Particle Texture Path",
+// 		cxxopts::value<std::string>()->default_value("asset/particle-cell.png"));
 
 int main(int argc, const char **argv) {
 	std::unordered_map<const char *, bool> required_instance_extensions = {};
@@ -632,8 +664,8 @@ int main(int argc, const char **argv) {
 	// TODO add custom argument options for adding path of the texture and what type.
 
 	try {
-		VKSample<vksample::ParticleSystem> particleSystem;
-		particleSystem.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
+		VKSample<vksample::VectorField2D> VectorField2D;
+		VectorField2D.run(argc, argv, required_device_extensions, {}, required_instance_extensions);
 
 	} catch (const std::exception &ex) {
 		std::cerr << cxxexcept::getStackMessage(ex) << std::endl;

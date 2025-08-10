@@ -1,3 +1,6 @@
+#include "Util/MeshProcedural.h"
+#include "VKDataStructure.h"
+#include "vulkan/vulkan_core.h"
 #include <Importer/ImageImport.h>
 #include <Util/CameraController.h>
 #include <VKSample.h>
@@ -13,17 +16,14 @@ namespace vksample {
 	 * @brief
 	 *
 	 */
-	class SingleTexture : public VKWindow {
+	class SingleTexture : public VKBaseSampleWindow {
 	  private:
-		VkBuffer vertexBuffer = VK_NULL_HANDLE;
-		VkDeviceMemory vertexIndicesMemory = VK_NULL_HANDLE;
-		VkDeviceSize indices_offset = 0;
-		size_t nrIndices = 1;
+		MeshObject cubeMesh;
+		Texture texture;
 
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
 		VkSampler sampler = VK_NULL_HANDLE;
 
 		/*	*/
@@ -34,16 +34,9 @@ namespace vksample {
 
 		CameraController camera;
 
-		VkImage texture = VK_NULL_HANDLE;
-		VkImageView textureView = VK_NULL_HANDLE;
-		VkDeviceMemory textureMemory = VK_NULL_HANDLE;
-
-		struct alignas(16) UniformBufferBlock {
-			glm::mat4 model;
-			glm::mat4 view;
-			glm::mat4 proj;
-			glm::mat4 modelView;
-		} uniform_stage_buffer{};
+		struct UniformBufferBlock {
+			glm::mat4 modelViewProjection;
+		} uniformStageBuffer{};
 
 		VkDeviceSize uniformBufferSize = sizeof(UniformBufferBlock);
 
@@ -52,30 +45,27 @@ namespace vksample {
 
 	  public:
 		SingleTexture(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle("Texture");
 			this->show();
+
+			/*	Default camera position and orientation.	*/
+			this->camera.setPosition(glm::vec3(-2.5f));
+			this->camera.lookAt(glm::vec3(0.f));
+
+			this->camera.enableNavigation(true);
+			this->camera.enableLook(true);
 		}
 
 		void release() override {
-
-			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 			/*	*/
 			vkDestroySampler(getDevice(), sampler, nullptr);
 
 			/*	*/
-			vkDestroyImageView(getDevice(), textureView, nullptr);
-			vkDestroyImage(getDevice(), texture, nullptr);
-			vkFreeMemory(getDevice(), textureMemory, nullptr);
-
-			/*	*/
 			vkDestroyBuffer(getDevice(), uniformBuffer, nullptr);
 			vkUnmapMemory(getDevice(), uniformBufferMemory);
 			vkFreeMemory(getDevice(), uniformBufferMemory, nullptr);
-			/*	*/
-			vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
-			vkFreeMemory(getDevice(), vertexIndicesMemory, nullptr);
 
 			/*	*/
 			vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
@@ -86,12 +76,12 @@ namespace vksample {
 		VkPipeline createGraphicPipeline() {
 
 			const auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 			const auto fragShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
-			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
-			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
+			const VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
+			const VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
 
 			VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 			vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -105,7 +95,8 @@ namespace vksample {
 			fragShaderStageInfo.module = fragShaderModule;
 			fragShaderStageInfo.pName = "main";
 
-			VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+			const std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertShaderStageInfo,
+																			   fragShaderStageInfo};
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -148,7 +139,7 @@ namespace vksample {
 			samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout,
-												{uboLayoutBinding, samplerLayoutBinding});
+												{uboLayoutBinding, samplerLayoutBinding}, 0);
 
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -165,13 +156,15 @@ namespace vksample {
 
 			VkRect2D scissor{};
 			scissor.offset = {0, 0};
-			scissor.extent.width = width();
-			scissor.extent.height = height();
+			scissor.extent.width = static_cast<uint32_t>(this->width());
+			scissor.extent.height = static_cast<uint32_t>(this->height());
 
 			VkPipelineViewportStateCreateInfo viewportState{};
 			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 			viewportState.viewportCount = 1;
 			viewportState.pViewports = &viewport;
+			viewportState.scissorCount = 1;
+			viewportState.pScissors = &scissor;
 
 			VkPipelineRasterizationStateCreateInfo rasterizer{};
 			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -212,20 +205,22 @@ namespace vksample {
 			depthStencil.depthBoundsTestEnable = VK_FALSE;
 			depthStencil.stencilTestEnable = VK_FALSE;
 
-			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
+			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, 0, {descriptorSetLayout});
 
-			VkDynamicState dynamicStateEnables[1];
+			std::array<VkDynamicState, 2> dynamicStateEnables{};
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
+			dynamicStateEnables[1] = VK_DYNAMIC_STATE_SCISSOR;
+
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 			dynamicStateInfo.pNext = nullptr;
-			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
-			dynamicStateInfo.dynamicStateCount = 1;
+			dynamicStateInfo.pDynamicStates = dynamicStateEnables.data();
+			dynamicStateInfo.dynamicStateCount = dynamicStateEnables.size();
 
 			VkGraphicsPipelineCreateInfo pipelineInfo{};
 			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-			pipelineInfo.stageCount = 2;
-			pipelineInfo.pStages = shaderStages;
+			pipelineInfo.stageCount = shaderStages.size();
+			pipelineInfo.pStages = shaderStages.data();
 			pipelineInfo.pVertexInputState = &vertexInputInfo;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
 			pipelineInfo.pViewportState = &viewportState;
@@ -239,8 +234,8 @@ namespace vksample {
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 			pipelineInfo.pDynamicState = &dynamicStateInfo;
 
-			VKS_VALIDATE(
-				vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+			VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), getPipelineCache(), 1, &pipelineInfo, nullptr,
+												   &graphicsPipeline));
 
 			vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 			vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -249,66 +244,51 @@ namespace vksample {
 		}
 
 		void Initialize() override {
+
 			/*	*/
 			const std::string texturePath = this->getResult()["texture"].as<std::string>();
 
 			{
-				ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
-				imageImporter.loadImage2D(texturePath.c_str(), this->getDevice(), this->getGraphicCommandPool(),
-										  this->getDefaultGraphicQueue(), this->physicalDevice(), texture,
-										  textureMemory);
+				ImageImporter imageImporter(this->getFileSystem(), *this);
 
-				this->textureView = VKHelper::createImageView(getDevice(), this->texture, VK_IMAGE_VIEW_TYPE_2D,
-															  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+				imageImporter.loadTexture2D(texturePath.c_str(), texture, ColorSpace::RawLinear);
 
-				VKHelper::createSampler(getDevice(), sampler);
+				this->texture.imageView = VKHelper::createImageView(getDevice(), this->texture.image,
+																	VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8A8_SRGB,
+																	VK_IMAGE_ASPECT_COLOR_BIT, this->texture.mipLevels);
+
+				VKHelper::createSampler(getDevice(), sampler, 0);
 			}
 
 			/*	Allocate uniform buffer.	*/
 			this->uniformBufferSize = sizeof(UniformBufferBlock);
-			const size_t minMapBufferSize =
-				getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+			const size_t minMapBufferSize = getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
 			this->uniformBufferSize = fragcore::Math::align(this->uniformBufferSize, minMapBufferSize);
 
-			VkPhysicalDeviceMemoryProperties memProperties;
-			vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
-
-			VKHelper::createBuffer(getDevice(), this->uniformBufferSize * this->getSwapChainImageCount(), memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   this->uniformBuffer, this->uniformBufferMemory);
+			const VkBufferUsageFlags usageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			const VkMemoryPropertyFlags memoryFlag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |	/*	*/
+													 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | /*	*/
+													 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;	/*	*/
+			this->allocateBuffer(this->uniformBufferSize, usageFlags, memoryFlag, this->uniformBuffer,
+								 this->uniformBufferMemory);
 
 			uint8_t *_data = nullptr;
 			VKS_VALIDATE(vkMapMemory(getDevice(), this->uniformBufferMemory, 0,
 									 this->uniformBufferSize * this->getSwapChainImageCount(), 0, (void **)&_data));
 
-			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
-
-				mapMemory.push_back((void *)&_data[this->uniformBufferSize * i]);
+			for (size_t index = 0; index < this->getSwapChainImageCount(); index++) {
+				mapMemory.push_back((void *)&_data[this->uniformBufferSize * index]);
 			}
-
-			/*	Allocate descriptor set.	*/
-			const std::vector<VkDescriptorPoolSize> poolSize = {{
-																	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-																	static_cast<uint32_t>(getSwapChainImageCount()),
-																},
-																{
-																	VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-																	static_cast<uint32_t>(getSwapChainImageCount()),
-																}};
-
-			descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
 
 			/*	Create pipeline.	*/
 			this->graphicsPipeline = createGraphicPipeline();
 
 			/*	*/
-			std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
+			std::vector<VkDescriptorSetLayout> layouts(this->getSwapChainImageCount(), descriptorSetLayout);
 			VkDescriptorSetAllocateInfo allocdescInfo{};
 			allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocdescInfo.descriptorPool = descpool;
-			allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
+			allocdescInfo.descriptorPool = getDescriptorPool();
+			allocdescInfo.descriptorSetCount = getSwapChainImageCount();
 			allocdescInfo.pSetLayouts = layouts.data();
 
 			descriptorSets.resize(getSwapChainImageCount());
@@ -322,7 +302,7 @@ namespace vksample {
 
 				VkDescriptorImageInfo imageInfo{};
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				imageInfo.imageView = textureView;
+				imageInfo.imageView = texture.imageView;
 				imageInfo.sampler = sampler;
 
 				std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
@@ -348,48 +328,12 @@ namespace vksample {
 			}
 
 			{
-				/*	Load geometry.	*/
-				std::vector<fragcore::ProceduralGeometry::Vertex> vertices;
-				std::vector<unsigned int> indices;
-				fragcore::ProceduralGeometry::generateCube(1.0f, vertices, indices);
-
-				VkBufferCreateInfo bufferInfo = {};
-				bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-				bufferInfo.size = sizeof(vertices[0]) * vertices.size() + sizeof(indices[0]) * indices.size();
-				bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-				bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-				VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
-				this->indices_offset = sizeof(vertices[0]) * vertices.size();
-				this->nrIndices = indices.size();
-
-				VkMemoryRequirements memRequirements;
-				vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
-
-				VkMemoryAllocateInfo allocInfo = {};
-				allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-				allocInfo.allocationSize = memRequirements.size;
-				allocInfo.memoryTypeIndex =
-					VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-											 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-						.value();
-
-				VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexIndicesMemory));
-
-				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexIndicesMemory, 0));
-
-				/*	Upload vertex data.	*/
-				uint8_t *data = nullptr;
-				VKS_VALIDATE(vkMapMemory(getDevice(), vertexIndicesMemory, 0, bufferInfo.size, 0, (void **)&data));
-				memcpy(data, vertices.data(), (size_t)vertices.size() * sizeof(vertices[0]));
-				memcpy(data + indices_offset, indices.data(), (size_t)indices.size() * sizeof(indices[0]));
-				vkUnmapMemory(getDevice(), vertexIndicesMemory);
+				MeshProcedural procedural(*this);
+				procedural.loadCube(cubeMesh, 1);
 			}
 
 			/*	*/
-			this->uniform_stage_buffer.model = glm::mat4(1.0f);
-			this->uniform_stage_buffer.view = glm::mat4(1.0f);
-			this->uniform_stage_buffer.view = glm::translate(this->uniform_stage_buffer.view, glm::vec3(0, 0, -5));
+			this->uniformStageBuffer.modelViewProjection = glm::mat4(1.0f);
 
 			this->onResize(this->width(), this->height());
 		}
@@ -400,7 +344,10 @@ namespace vksample {
 
 			/*	*/
 			for (size_t i = 0; i < getNrCommandBuffers(); i++) {
+
 				VkCommandBuffer cmd = getCommandBuffers(i);
+
+				vkResetCommandBuffer(cmd, 0);
 
 				VkCommandBufferBeginInfo beginInfo = {};
 				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -417,31 +364,35 @@ namespace vksample {
 				renderPassInfo.renderArea.extent.height = height;
 
 				std::array<VkClearValue, 2> clearValues{};
-				clearValues[0].color = {{0.05f, 0.05f, 0.05f, 1.0f}};
+				clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
 				clearValues[1].depthStencil = {1.0f, 0};
 
-				renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+				renderPassInfo.clearValueCount = clearValues.size();
 				renderPassInfo.pClearValues = clearValues.data();
 
-				VkViewport viewport = {
+				vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+				const VkViewport viewport = {
 					.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 				vkCmdSetViewport(cmd, 0, 1, &viewport);
-
-				vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+				const VkRect2D scissor = {.offset = {0, 0},
+										  .extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)}};
+				vkCmdSetScissor(cmd, 0, 1, &scissor);
 
 				/*	*/
 				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 				/*	*/
-				VkBuffer vertexBuffers[] = {vertexBuffer};
-				VkDeviceSize offsets[] = {0};
+				const VkBuffer vertexBuffers[] = {this->cubeMesh.vertexBuffer};
+				const VkDeviceSize offsets[] = {this->cubeMesh.vertex_offset};
 				vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
-				vkCmdBindIndexBuffer(cmd, vertexBuffer, indices_offset, VK_INDEX_TYPE_UINT32);
+				vkCmdBindIndexBuffer(cmd, this->cubeMesh.indicesBuffer, this->cubeMesh.indices_offset,
+									 VK_INDEX_TYPE_UINT32);
 
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i],
 										0, nullptr);
 
-				vkCmdDrawIndexed(cmd, this->nrIndices, 1, 0, 0, 0);
+				vkCmdDrawIndexed(cmd, this->cubeMesh.nrIndicesElements, 1, 0, 0, 0);
 
 				vkCmdEndRenderPass(cmd);
 
@@ -453,23 +404,16 @@ namespace vksample {
 
 		void draw() override {
 
-			/*	*/
+			/*	Update Camera.	*/
 			float elapsedTime = this->getTimer().getElapsed<float>();
-			this->camera.update(this->getTimer().deltaTime<float>());
+			this->camera.update(getTimer().deltaTime<float>());
 
 			/*	*/
-			this->uniform_stage_buffer.proj = this->camera.getProjectionMatrix();
-			this->uniform_stage_buffer.model = glm::mat4(1.0f);
-			this->uniform_stage_buffer.model =
-				glm::translate(this->uniform_stage_buffer.model, glm::vec3(0.0f, 0.0f, 5.0f));
-			this->uniform_stage_buffer.model = glm::rotate(
-				this->uniform_stage_buffer.model, glm::radians(elapsedTime * 45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			this->uniform_stage_buffer.model = glm::scale(this->uniform_stage_buffer.model, glm::vec3(0.55f));
+			this->uniformStageBuffer.modelViewProjection =
+				(this->camera.getProjectionMatrix() * this->camera.getViewMatrix());
 
-			this->uniform_stage_buffer.modelView = camera.getViewMatrix();
-
-			memcpy(mapMemory[this->getCurrentFrameIndex()], &uniform_stage_buffer,
-				   (size_t)sizeof(this->uniform_stage_buffer));
+			memcpy(mapMemory[this->getCurrentFrameIndex()], &uniformStageBuffer,
+				   (size_t)sizeof(this->uniformStageBuffer));
 		}
 
 		void update() override {}

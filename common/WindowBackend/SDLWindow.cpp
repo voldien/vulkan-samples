@@ -68,11 +68,11 @@ void SDLVKWindow::setFullScreen(bool fullscreen) {
 		SDL_SetWindowFullscreen(this->window, 0);
 	}
 }
-void SDLVKWindow::setFullScreen(fragcore::Display &display) {}
+void SDLVKWindow::setFullScreen(const fragcore::Display &display) {}
 
 bool SDLVKWindow::isFullScreen() const { return false; }
 
-void SDLVKWindow::setBordered(bool bordered) { SDL_SetWindowBordered(this->window, (SDL_bool)bordered); }
+void SDLVKWindow::setBordered(const bool bordered) { SDL_SetWindowBordered(this->window, (SDL_bool)bordered); }
 
 int SDLVKWindow::width() const noexcept {
 	int w = 0, h = 0;
@@ -114,7 +114,7 @@ VkSurfaceKHR SDLVKWindow::createSurface(const std::shared_ptr<fvkcore::VulkanCor
 	return surface;
 }
 
-fragcore::Display *SDLVKWindow::getCurrentDisplay() const {}
+fragcore::Display *SDLVKWindow::getCurrentDisplay() const {return nullptr;}
 
 intptr_t SDLVKWindow::getNativePtr() const {
 	return (intptr_t)this->window;
@@ -165,3 +165,4 @@ intptr_t SDLVKWindow::getNativePtr() const {
 	// 	  //     throw RuntimeException(fmt::format("%s", SDL_GetError()));
 	// 	  // throw NotImplementedException("Window format not implemented");
 }
+intptr_t SDLVKWindow::getNativeInternalPtr() const {return 0;}

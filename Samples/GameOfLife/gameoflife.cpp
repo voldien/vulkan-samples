@@ -1,4 +1,5 @@
 #include "VKSample.h"
+#include "vulkan/vulkan_core.h"
 #include <VKWindow.h>
 #include <VksCommon.h>
 #include <cstddef>
@@ -10,10 +11,11 @@ namespace vksample {
 	 * @brief
 	 *
 	 */
-	class GameOfLife : public VKWindow {
+	class GameOfLife : public VKBaseSampleWindow {
 	  private:
 		VkPipeline computePipeline = VK_NULL_HANDLE;
 		VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+		std::array<size_t, 3> localSize{};
 
 		std::vector<VkImage> gameoflifeRenderImage;
 		std::vector<VkDeviceMemory> gameoflifeRenderImageMemory;
@@ -24,16 +26,14 @@ namespace vksample {
 		std::vector<VkImageView> computeCellImageViews;
 
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
 		std::vector<VkDescriptorSet> descriptorSets;
 		VkCommandPool computeCmdPool = VK_NULL_HANDLE;
-		std::vector<VkCommandBuffer> computeCmds;
 
 		const std::string computeGameOfLifeShaderPath = "Shaders/gameoflife/gameoflife.comp.spv";
 
 	  public:
 		GameOfLife(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle(std::string("Game Of Life"));
 
 			this->show();
@@ -44,9 +44,9 @@ namespace vksample {
 			vkDestroyCommandPool(this->getDevice(), this->computeCmdPool, nullptr);
 
 			/*	*/
-			VKS_VALIDATE(
-				vkFreeDescriptorSets(this->getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
-			vkDestroyDescriptorPool(this->getDevice(), descpool, nullptr);
+			VKS_VALIDATE(vkFreeDescriptorSets(this->getDevice(), getDescriptorPool(), descriptorSets.size(),
+											  descriptorSets.data()));
+
 			vkDestroyDescriptorSetLayout(this->getDevice(), descriptorSetLayout, nullptr);
 
 			/*	*/
@@ -72,7 +72,9 @@ namespace vksample {
 			VkPipeline pipeline = nullptr;
 
 			std::vector<uint32_t> compShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->computeGameOfLifeShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->computeGameOfLifeShaderPath, this->getFileSystem());
+
+			this->localSize = PipelineLayoutUtil::getLocalSize(compShaderCode).value();
 
 			VkShaderModule compShaderModule = VKHelper::createShaderModule(this->getDevice(), compShaderCode);
 
@@ -83,15 +85,14 @@ namespace vksample {
 			compShaderStageInfo.pName = "main";
 
 			const auto layoutBinding = PipelineLayoutUtil::getDefaultBinding(compShaderCode);
- 
-			/*	*/
-			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, layoutBinding[0].bindings);
 
 			/*	*/
-			VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
+			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, layoutBinding[0].bindings, 0);
 
+			/*	*/
+			VKHelper::createPipelineLayout(getDevice(), *layout, 0, {descriptorSetLayout});
 
-			pipeline = VKHelper::createComputePipeline(getDevice(), *layout, compShaderStageInfo);
+			pipeline = VKHelper::createComputePipeline(getDevice(), *layout, compShaderStageInfo, 0, getPipelineCache());
 
 			vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
 
@@ -102,15 +103,6 @@ namespace vksample {
 
 			/*	Create pipeline.	*/
 			this->computePipeline = createComputePipeline(&computePipelineLayout);
-
-			/*	Allocate descriptor set.	*/
-			const std::vector<VkDescriptorPoolSize> poolSize = {{
-				VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				static_cast<uint32_t>(getSwapChainImageCount() * 3), /*	3 storage image for each chain.	*/
-			}};
-
-			/*	*/
-			this->descpool = VKHelper::createDescPool(getDevice(), poolSize, this->getSwapChainImageCount() * 3);
 
 			/*	Create game of life render image.	*/
 			this->gameoflifeRenderImage.resize(this->getSwapChainImageCount());
@@ -131,14 +123,23 @@ namespace vksample {
 			/*	Create render images.	*/
 			for (size_t i = 0; i < this->gameoflifeRenderImageMemory.size(); i++) {
 				if (this->gameoflifeRenderImage[i] != nullptr) {
-					vkDestroyImage(this->getDevice(), this->gameoflifeRenderImage[i], nullptr);
+					vkDestroyImage(this->getDevice(), this->gameoflifeRenderImage[i], this->getAllocatorCallback());
 				}
-				VKHelper::createImage(
-					this->getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM,
-					VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
-					this->gameoflifeRenderImage[i], this->gameoflifeRenderImageMemory[i]);
+
+				/*	*/
+				VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+				VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
+				VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+				VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+				this->allocateImage(this->width(), this->height(), 1, imageFormat, tiling, usage, memFlags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
+									this->gameoflifeRenderImage[i], this->gameoflifeRenderImageMemory[i]);
+
+				// VKHelper::createImage(
+				// 	this->getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM,
+				// 	VK_IMAGE_TILING_OPTIMAL,
+				// 	VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+				// 	VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+				// 	this->gameoflifeRenderImage[i], this->gameoflifeRenderImageMemory[i]);
 			}
 
 			/*	Create cell state image.	*/
@@ -146,11 +147,11 @@ namespace vksample {
 				if (gameoflifeCellImage[i] != nullptr) {
 					vkDestroyImage(this->getDevice(), this->gameoflifeCellImage[i], nullptr);
 				}
-				VKHelper::createImage(
+				VKHelper::createImage2D(
 					this->getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8_UINT, VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-					this->getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(), this->gameoflifeCellImage[i],
+					this->getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(), VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT, this->gameoflifeCellImage[i],
 					this->gameoflifeCellImageMemory[i]);
 			}
 
@@ -166,39 +167,9 @@ namespace vksample {
 						textureData[(width * j) + i] = fragcore::Random::range(0, 2);
 					}
 				}
-
-				/*	*/
-				VkCommandPool commandPool = this->getGraphicCommandPool();
-				VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(this->getDevice(), commandPool);
-				VkBuffer stagingBuffer = nullptr;
-				VkDeviceMemory stagingBufferMemory = nullptr;
-
-				VkPhysicalDeviceMemoryProperties memProperties;
-
-				vkGetPhysicalDeviceMemoryProperties(this->getVKDevice()->getPhysicalDevice(0)->getHandle(),
-													&memProperties);
-
-				VKHelper::createBuffer(this->getDevice(), textureData.size(), memProperties,
-									   VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-									   stagingBuffer, stagingBufferMemory);
-
-				void *stageData = nullptr;
-				vkMapMemory(this->getDevice(), stagingBufferMemory, 0, textureData.size(), 0, &stageData);
-				memcpy(stageData, textureData.data(), static_cast<size_t>(textureData.size()));
-				vkUnmapMemory(this->getDevice(), stagingBufferMemory);
-
-				VKHelper::copyBufferToImageCmd(
-					cmd, stagingBuffer, this->gameoflifeCellImage[0],
-					{static_cast<uint32_t>(this->width()), static_cast<uint32_t>(this->height()), 1});
-				// for (size_t i = 0; i < this->gameoflifeRenderImage.size(); i++) {
-				//	VKHelper::transitionImageLayout(cmd, this->gameoflifeRenderImage[i], VK_IMAGE_LAYOUT_UNDEFINED,
-				//									VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-				//}
-
-				VKHelper::endSingleTimeCommands(this->getDevice(), this->getDefaultTransferQueue(), cmd, commandPool);
-
-				vkDestroyBuffer(this->getDevice(), stagingBuffer, nullptr);
-				vkFreeMemory(this->getDevice(), stagingBufferMemory, nullptr);
+				this->transferImageData(gameoflifeCellImage[0], gameoflifeCellImageMemory[0], this->width(),
+										this->height(), 1, textureData.data(),
+										textureData.size() * sizeof(textureData[0]));
 			}
 
 			/*	*/
@@ -218,19 +189,17 @@ namespace vksample {
 				if (computeCellImageViews[i] != nullptr) {
 					vkDestroyImageView(getDevice(), computeCellImageViews[i], nullptr);
 				}
+
 				/*	*/
 				computeCellImageViews[i] =
 					VKHelper::createImageView(this->getDevice(), this->gameoflifeCellImage[i], VK_IMAGE_VIEW_TYPE_2D,
 											  VK_FORMAT_R8_UINT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 			}
 
-			/*	*/
-			VKS_VALIDATE(vkResetDescriptorPool(this->getDevice(), descpool, 0));
-
 			std::vector<VkDescriptorSetLayout> layouts(this->getSwapChainImageCount(), descriptorSetLayout);
 			VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 			descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
+			descriptorSetAllocateInfo.descriptorPool = getDescriptorPool(); // pool to allocate from.
 			descriptorSetAllocateInfo.descriptorSetCount = this->getSwapChainImageCount();
 			descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
@@ -303,16 +272,15 @@ namespace vksample {
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, this->computePipelineLayout, 0, 1,
 										&descriptorSets[i], 0, nullptr);
 
-				const float localInvokation = 8; // TODO fetch
-				const size_t displatchX = std::ceil(width / localInvokation);
-				const size_t displatchY = std::ceil(height / localInvokation);
+				const size_t displatchX = std::ceil(width / localSize[0]);
+				const size_t displatchY = std::ceil(height / localSize[1]);
 
 				vkCmdDispatch(cmd, displatchX, displatchY, 1);
 
 				/*	Wait in till the dispatch is finished before blitting.	*/
 				std::vector<VkImageMemoryBarrier> dispatchBarrier(2);
 				dispatchBarrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				dispatchBarrier[0].oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+				dispatchBarrier[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 				dispatchBarrier[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 				dispatchBarrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				dispatchBarrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -322,7 +290,7 @@ namespace vksample {
 				dispatchBarrier[0].subresourceRange.levelCount = 1;
 				dispatchBarrier[0].subresourceRange.baseArrayLayer = 0;
 				dispatchBarrier[0].subresourceRange.layerCount = 1;
-				dispatchBarrier[0].srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+				dispatchBarrier[0].srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
 				dispatchBarrier[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
 				dispatchBarrier[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -340,7 +308,7 @@ namespace vksample {
 				dispatchBarrier[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
 				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
-									 nullptr, 0, nullptr, 2, dispatchBarrier.data());
+									 nullptr, 0, nullptr, dispatchBarrier.size(), dispatchBarrier.data());
 
 				/*	*/
 				VkImageBlit blitRegion{};

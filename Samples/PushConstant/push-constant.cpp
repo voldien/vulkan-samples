@@ -1,3 +1,4 @@
+#include "VKDataStructure.h"
 #include "VKSample.h"
 #include <SDL2/SDL.h>
 #include <Util/IOUtil.h>
@@ -12,8 +13,10 @@ namespace vksample {
 	 * @brief
 	 *
 	 */
-	class PushConstant : public VKWindow {
+	class PushConstant : public VKBaseSampleWindow {
 	  private:
+		MeshObject cubeMesh;
+
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexIndicesMemory = VK_NULL_HANDLE;
 		VkDeviceSize indices_offset = 0;
@@ -22,8 +25,6 @@ namespace vksample {
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
 
 		std::vector<VkDescriptorSet> descriptorSets;
 
@@ -35,27 +36,20 @@ namespace vksample {
 		const std::string vertexShaderPath = "Shaders/pushconstant/pushconstant.vert.spv";
 		const std::string fragmentShaderPath = "Shaders/pushconstant/pushconstant.frag.spv";
 
-		struct alignas(16) UniformBufferBlock {
+		struct UniformBufferBlock {
 			glm::mat4 model;
 			glm::mat4 view;
 			glm::mat4 proj;
 		} mvp{};
 
-		using Vertex = struct _vertex_t {
-			float pos[3];
-			float uv[2];
-		};
-
 	  public:
 		PushConstant(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle("Push Constant");
 			this->show();
 		}
 
 		void release() override {
-
-			vkDestroyDescriptorPool(this->getDevice(), descpool, nullptr);
 
 			vkDestroyBuffer(this->getDevice(), vertexBuffer, nullptr);
 			vkFreeMemory(this->getDevice(), vertexIndicesMemory, nullptr);
@@ -70,13 +64,14 @@ namespace vksample {
 		}
 
 		VkPipeline createGraphicPipeline() {
-			auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
-			auto fragShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
-			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
-			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
+			const auto vertShaderCode =
+				fragcore::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+			const auto fragShaderCode =
+				fragcore::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
+
+			const VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
+			const VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
 
 			VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 			vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -90,14 +85,15 @@ namespace vksample {
 			fragShaderStageInfo.module = fragShaderModule;
 			fragShaderStageInfo.pName = "main";
 
-			VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+			const std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages = {vertShaderStageInfo,
+																				 fragShaderStageInfo};
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
 			VkVertexInputBindingDescription bindingDescription = {};
 			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(Vertex);
+			bindingDescription.stride = sizeof(fragcore::ProceduralGeometry::Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
@@ -192,12 +188,12 @@ namespace vksample {
 			VkPushConstantRange pushRange = {
 				.stageFlags = VK_SHADER_STAGE_VERTEX_BIT, .offset = 0, .size = sizeof(glm::mat4x4)};
 
-			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout}, {pushRange});
+			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, 0, {descriptorSetLayout}, {pushRange});
 
 			VkGraphicsPipelineCreateInfo pipelineInfo{};
 			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-			pipelineInfo.stageCount = 2;
-			pipelineInfo.pStages = shaderStages;
+			pipelineInfo.stageCount = shaderStages.size();
+			pipelineInfo.pStages = shaderStages.data();
 			pipelineInfo.pVertexInputState = &vertexInputInfo;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
 			pipelineInfo.pViewportState = &viewportState;
@@ -210,8 +206,8 @@ namespace vksample {
 			pipelineInfo.subpass = 0;
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-			VKS_VALIDATE(
-				vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+			VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), this->getPipelineCache(), 1, &pipelineInfo, nullptr,
+												   &graphicsPipeline));
 
 			vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 			vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -224,8 +220,7 @@ namespace vksample {
 			// TODO align
 			uniformBufferSize = sizeof(UniformBufferBlock);
 			uniformBufferSize +=
-				uniformBufferSize %
-				getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+				uniformBufferSize % getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
 
 			VkPhysicalDeviceMemoryProperties memProperties;
 			vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
@@ -243,25 +238,13 @@ namespace vksample {
 				mapMemory.push_back(_data);
 			}
 
-			VkDescriptorPoolSize poolSize{};
-			poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			poolSize.descriptorCount = getSwapChainImageCount();
-
-			VkDescriptorPoolCreateInfo poolInfo{};
-			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			poolInfo.poolSizeCount = 1;
-			poolInfo.pPoolSizes = &poolSize;
-			poolInfo.maxSets = getSwapChainImageCount();
-
-			vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
-
 			/*	Create pipeline.	*/
 			graphicsPipeline = createGraphicPipeline();
 
 			std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 			VkDescriptorSetAllocateInfo allocdescInfo{};
 			allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocdescInfo.descriptorPool = descpool;
+			allocdescInfo.descriptorPool = getDescriptorPool();
 			allocdescInfo.descriptorSetCount = getSwapChainImageCount();
 			allocdescInfo.pSetLayouts = layouts.data();
 

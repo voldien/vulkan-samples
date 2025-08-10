@@ -15,6 +15,8 @@
 
 using namespace vksample;
 
+CameraController::CameraController() : input(new SDLInput()) {}
+
 void CameraController::update(const float deltaTime) noexcept {
 
 	const Uint8 *state = SDL_GetKeyboardState(nullptr);
@@ -36,8 +38,8 @@ void CameraController::update(const float deltaTime) noexcept {
 	float yDiff = 0;
 
 	if (this->enabled_Look) {
-		xDiff = -(xprev - x) * this->xspeed;
-		yDiff = -(yprev - y) * this->yspeed;
+		xDiff = -(float)(xprev - x) * this->xspeed;
+		yDiff = -(float)(yprev - y) * this->yspeed;
 		xprev = x;
 		yprev = y;
 	}

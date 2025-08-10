@@ -18,7 +18,6 @@ namespace vksample {
 		VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
 
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
 		std::vector<VkDescriptorSet> descriptorSets;
 
 		std::vector<VkBuffer> sourceBuffer = std::vector<VkBuffer>(memorySizes.size(), VK_NULL_HANDLE);
@@ -57,7 +56,7 @@ namespace vksample {
 			VkPipeline pipeline = nullptr;
 
 			const auto compShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->computeGameOfLifeShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->computeGameOfLifeShaderPath, this->getFileSystem());
 
 			VkShaderModule compShaderModule = VKHelper::createShaderModule(this->getDevice(), compShaderCode);
 
@@ -67,7 +66,7 @@ namespace vksample {
 			compShaderStageInfo.module = compShaderModule;
 			compShaderStageInfo.pName = "main";
 
-			std::array<VkDescriptorSetLayoutBinding, 3> uboLayoutBindings{};
+			std::vector<VkDescriptorSetLayoutBinding> uboLayoutBindings(3);
 
 			/*	Render Texture.	*/
 			uboLayoutBindings[2].binding = 0;
@@ -77,10 +76,10 @@ namespace vksample {
 			uboLayoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 			/*	*/
-			VKHelper::createDescriptorSetLayout(this->getDevice(), descriptorSetLayout, uboLayoutBindings);
+			VKHelper::createDescriptorSetLayout(this->getDevice(), descriptorSetLayout, uboLayoutBindings, 0);
 
 			/*	*/
-			VKHelper::createPipelineLayout(this->getDevice(), *layout, {descriptorSetLayout});
+			VKHelper::createPipelineLayout(this->getDevice(), *layout, 0, {descriptorSetLayout});
 
 			pipeline = VKHelper::createComputePipeline(this->getDevice(), *layout, compShaderStageInfo);
 
@@ -89,32 +88,22 @@ namespace vksample {
 			return pipeline;
 		}
 
-		 void Initialize() override {}
+		void Initialize() override {}
 
-		 void run() override {
+		void run() override {
 
 			const size_t primeCandidate = 1000;
 
 			/*	Create pipeline.	*/
 			this->computeWilsomPrimePipeline = createComputePipeline(&computePipelineLayout);
 
-			const size_t nrBuf = 3;
-			/*	Allocate descriptor set.	*/
-			const std::vector<VkDescriptorPoolSize> poolSize = {{
-				VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				static_cast<uint32_t>(nrBuf * 1), /*	3 storage image for each chain.	*/
-			}};
-
 			/*	*/
-			this->descpool = VKHelper::createDescPool(getDevice(), poolSize, nrBuf);
-
-			/*	*/
-			VKS_VALIDATE(vkResetDescriptorPool(this->getDevice(), descpool, 0));
+			VKS_VALIDATE(vkResetDescriptorPool(this->getDevice(), this->getDescriptorPool(), 0));
 
 			std::vector<VkDescriptorSetLayout> layouts(3, descriptorSetLayout);
 			VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 			descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
+			descriptorSetAllocateInfo.descriptorPool = getDescriptorPool(); // pool to allocate from.
 			descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(3);
 			descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
@@ -130,7 +119,7 @@ namespace vksample {
 				VkQueue transfer = this->getDefaultComputeQueue();
 
 				const VkPhysicalDeviceMemoryProperties &memProp =
-					this->getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties();
+					this->getPhysicalDevice()->getMemoryProperties();
 
 				VkCommandPool commandPool = this->getVKDevice()->createCommandPool(this->getDefaultComputeQueueIndex());
 				std::vector<VkCommandBuffer> cmds =
@@ -176,7 +165,7 @@ namespace vksample {
 	class PrimeVKSample : public VKSample<Prime> {
 	  public:
 		PrimeVKSample() : VKSample<Prime>() {}
-		 void customOptions(cxxopts::OptionAdder &options) override {
+		void customOptions(cxxopts::OptionAdder &options) override {
 			options("Q,queue-index", "Select Queue to perform the memory bencharmk",
 					cxxopts::value<int>()->default_value("-1"))("prime", "Prime Value",
 																cxxopts::value<int>()->default_value("1000"));

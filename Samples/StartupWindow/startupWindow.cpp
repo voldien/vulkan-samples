@@ -3,10 +3,10 @@
 
 namespace vksample {
 
-	class StartUpWindow : public VKWindow {
+	class StartUpWindow : public VKBaseSampleWindow {
 	  public:
 		StartUpWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle("StartUp Window");
 			this->show();
 		}

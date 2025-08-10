@@ -1,7 +1,9 @@
+#include "Util/PipelineLayoutUtil.h"
 #include "VKSample.h"
 #include <SDL_mouse.h>
 #include <VKWindow.h>
 #include <VksCommon.h>
+#include <array>
 #include <glm/glm.hpp>
 
 namespace vksample {
@@ -10,10 +12,11 @@ namespace vksample {
 	 * @brief
 	 *
 	 */
-	class MandelBrotWindow : public VKWindow {
+	class MandelBrotWindow : public VKBaseSampleWindow {
 	  private:
 		VkPipeline computePipeline = VK_NULL_HANDLE;
 		VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+		std::array<size_t, 3> localSize;
 
 		std::vector<VkImage> mandelBrotImage;
 		std::vector<VkDeviceMemory> mandelBrotImageMemory;
@@ -24,7 +27,6 @@ namespace vksample {
 		VkBuffer paramBuffer = VK_NULL_HANDLE;
 
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
 		std::vector<VkDescriptorSet> descriptorSets;
 		VkCommandPool computeCmdPool = VK_NULL_HANDLE;
 		std::vector<VkCommandBuffer> computeCmds;
@@ -44,7 +46,7 @@ namespace vksample {
 
 	  public:
 		MandelBrotWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle(std::string("MandelBrot"));
 			this->show();
 		}
@@ -55,8 +57,8 @@ namespace vksample {
 			vkDestroyCommandPool(getDevice(), this->computeCmdPool, nullptr);
 
 			/*	*/
-			VKS_VALIDATE(vkFreeDescriptorSets(getDevice(), descpool, descriptorSets.size(), descriptorSets.data()));
-			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
+			VKS_VALIDATE(
+				vkFreeDescriptorSets(getDevice(), getDescriptorPool(), descriptorSets.size(), descriptorSets.data()));
 			vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 
 			for (size_t i = 0; i < computeImageViews.size(); i++) {
@@ -74,9 +76,10 @@ namespace vksample {
 
 		VkPipeline createComputePipeline(VkPipelineLayout *layout) {
 			VkPipeline pipeline = nullptr;
+			const auto compShaderCode =
+				fragcore::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
 
-			auto compShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
+			this->localSize = PipelineLayoutUtil::getLocalSize(compShaderCode).value();
 
 			VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
 
@@ -86,7 +89,7 @@ namespace vksample {
 			compShaderStageInfo.module = compShaderModule;
 			compShaderStageInfo.pName = "main";
 
-			std::array<VkDescriptorSetLayoutBinding, 2> uboLayoutBindings{};
+			std::vector<VkDescriptorSetLayoutBinding> uboLayoutBindings(2);
 
 			/*	*/
 			uboLayoutBindings[0].binding = 0;
@@ -102,10 +105,10 @@ namespace vksample {
 			uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 			/*	*/
-			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings);
+			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings, 0);
 
 			/*	*/
-			VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
+			VKHelper::createPipelineLayout(getDevice(), *layout, 0, {descriptorSetLayout});
 
 			pipeline = VKHelper::createComputePipeline(getDevice(), *layout, compShaderStageInfo);
 
@@ -116,36 +119,20 @@ namespace vksample {
 
 		void Initialize() override {
 
-			// TODO fix physical device.
-			const size_t minMapBufferSize =
-				getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
-			this->paramMemSize = fragcore::Math::align(this->paramMemSize, minMapBufferSize);
-
 			/*	Create pipeline.	*/
 			computePipeline = createComputePipeline(&computePipelineLayout);
 
+			// TODO fix physical device.
+			const size_t minMapBufferSize = getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
+			this->paramMemSize = fragcore::Math::align(this->paramMemSize, minMapBufferSize);
+
 			VkDeviceSize bufferSize = paramMemSize * getSwapChainImageCount();
 
-			VkPhysicalDeviceMemoryProperties memProperties;
-			vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
-
-			VKHelper::createBuffer(getDevice(), bufferSize, memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   paramBuffer, paramMemory);
-
-			/*	Allocate descriptor set.	*/
-			const std::vector<VkDescriptorPoolSize> poolSize = {{
-																	VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-																	getSwapChainImageCount(),
-																},
-																{
-																	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-																	getSwapChainImageCount(),
-																}};
-
-			descpool = VKHelper::createDescPool(getDevice(), poolSize, getSwapChainImageCount() * 2);
+			const VkBufferUsageFlags usageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			const VkMemoryPropertyFlags memoryFlag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |	/*	*/
+													 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | /*	*/
+													 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;	/*	*/
+			this->allocateBuffer(bufferSize, usageFlags, memoryFlag, this->paramBuffer, this->paramMemory);
 
 			onResize(width(), height());
 		}
@@ -159,11 +146,11 @@ namespace vksample {
 			this->mandelBrotImageMemory.resize(getSwapChainImageCount());
 			for (size_t i = 0; i < mandelBrotImageMemory.size(); i++) {
 
-				VKHelper::createImage(
+				VKHelper::createImage2D(
 					getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
-					mandelBrotImage[i], mandelBrotImageMemory[i]);
+					VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT, mandelBrotImage[i], mandelBrotImageMemory[i]);
 			}
 
 			/*	*/
@@ -177,12 +164,12 @@ namespace vksample {
 			}
 
 			/*	*/
-			VKS_VALIDATE(vkResetDescriptorPool(getDevice(), descpool, 0));
+			VKS_VALIDATE(vkResetDescriptorPool(getDevice(), getDescriptorPool(), 0));
 
 			std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 			VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 			descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
+			descriptorSetAllocateInfo.descriptorPool = getDescriptorPool(); // pool to allocate from.
 			descriptorSetAllocateInfo.descriptorSetCount = getSwapChainImageCount();
 			descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
@@ -190,20 +177,20 @@ namespace vksample {
 			descriptorSets.resize(getSwapChainImageCount());
 			VKS_VALIDATE(vkAllocateDescriptorSets(getDevice(), &descriptorSetAllocateInfo, descriptorSets.data()));
 
-			for (size_t i = 0; i < descriptorSets.size(); i++) {
+			for (size_t desc_index = 0; desc_index < descriptorSets.size(); desc_index++) {
 				VkDescriptorImageInfo imageInfo{};
-				imageInfo.imageView = computeImageViews[i];
+				imageInfo.imageView = computeImageViews[desc_index];
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 				VkDescriptorBufferInfo bufferInfo{};
 				bufferInfo.buffer = paramBuffer;
-				bufferInfo.offset = paramMemSize * i;
+				bufferInfo.offset = paramMemSize * desc_index;
 				bufferInfo.range = paramMemSize;
 
 				std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
 				descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrites[0].dstSet = descriptorSets[i];
+				descriptorWrites[0].dstSet = descriptorSets[desc_index];
 				descriptorWrites[0].dstBinding = 0;
 				descriptorWrites[0].dstArrayElement = 0;
 				descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -212,7 +199,7 @@ namespace vksample {
 				descriptorWrites[0].pBufferInfo = nullptr;
 
 				descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrites[1].dstSet = descriptorSets[i];
+				descriptorWrites[1].dstSet = descriptorSets[desc_index];
 				descriptorWrites[1].dstBinding = 1;
 				descriptorWrites[1].dstArrayElement = 0;
 				descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -245,9 +232,10 @@ namespace vksample {
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
 										&descriptorSets[i], 0, nullptr);
 
-				const int localInvokation = 16;
+				const unsigned int WorkGroupX = std::ceil(width / (float)localSize[0]);
+				const unsigned int WorkGroupY = std::ceil(height / (float)localSize[1]);
 
-				vkCmdDispatch(cmd, std::ceil(width / localInvokation), std::ceil(height / localInvokation), 1);
+				vkCmdDispatch(cmd, WorkGroupX, WorkGroupY, 1);
 
 				VKHelper::imageBarrier(cmd, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
 									   getSwapChainImages()[i], VK_IMAGE_LAYOUT_GENERAL,

@@ -1,4 +1,5 @@
 #pragma once
+#include "FPSCounter.h"
 #include "IWindow.h"
 #include "SDLInput.h"
 #include "VKSampleBase.h"
@@ -15,22 +16,11 @@ namespace vksample {
 	 * @brief
 	 *
 	 */
-	class VKWindow : public vksample::VKSampleSessionBase, public IVKWindow {
+	class VKBaseSampleWindow : public vksample::VKSampleSessionBase, public IVKWindow {
 	  protected:
-		VKWindow() = delete;
+		VKBaseSampleWindow() = delete;
 
 	  public:
-		/**
-		 * @brief Construct a new VKWindow object
-		 *
-		 * @param core
-		 * @param x
-		 * @param y
-		 * @param width
-		 * @param height
-		 */
-		// VKWindow(std::shared_ptr<VulkanCore> &core, int x, int y, int width, int height);
-
 		/**
 		 * @brief Construct a new VKWindow object
 		 *
@@ -41,51 +31,48 @@ namespace vksample {
 		 * @param width
 		 * @param height
 		 */
-		VKWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y, int width,
-				 int height);
-		VKWindow(const VKWindow &other) = delete;
-		~VKWindow() override;
+		VKBaseSampleWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x, int y,
+						   int width, int height);
+		VKBaseSampleWindow(const VKBaseSampleWindow &other) = delete;
+		~VKBaseSampleWindow() override;
 
-	  public:
+	  public: /*	Override methods.	*/
 		/**
 		 * @brief
-		 *
 		 */
 		void Initialize() override;
+
 		/**
 		 * @brief
-		 *
 		 */
 		void release() override;
+
 		/**
 		 * @brief
-		 *
 		 */
 		virtual void draw();
 
 		/**
 		 * @brief
-		 *
 		 */
 		virtual void update();
 
 		/**
 		 * @brief
-		 *
 		 */
 		void run() override;
-		// virtual void run(VkCommandBuffer cmdBuffer);
+
 		/**
 		 * @brief
-		 *
 		 */
 		virtual void onResize(int width, int height);
 
 		// virtual void createLogisticDevice(VkQueueFlags queues);
 
+	  public:
 		void captureScreenShot();
 
-	  public: /*	Vulkan methods.	*/
+	  public: /*	Vulkan SwapChain methods.	*/
 		/*	*/
 		VkDevice getDevice() const noexcept;
 		/*	*/
@@ -109,22 +96,21 @@ namespace vksample {
 		VkImageView getDefaultImageView() const;
 		VkFormat getDefaultImageFormat() const noexcept;
 
+		// TODO: move base
 		/*	*/
 		VkCommandBuffer getCurrentCommandBuffer() const noexcept;
 		size_t getNrCommandBuffers() const noexcept;
 		VkCommandBuffer getCommandBuffers(unsigned int index) const noexcept;
 
-	  public:
-		// VkCommandPool getComputeCommandPool() const noexcept;
-		const VkPhysicalDeviceProperties &physicalDeviceProperties() const noexcept;
-
 		const std::vector<VkImage> &getSwapChainImages() const noexcept;
 		const std::vector<VkImageView> &getSwapChainImageViews() const noexcept;
 
+	  public:
+		// TODO: move to base
+		//  VkCommandPool getComputeCommandPool() const noexcept;
+
 		const std::shared_ptr<PhysicalDevice> getPhysicalDevice() const noexcept;
 
-		VkPhysicalDevice physicalDevice() const;
-		void setPhysicalDevice(VkPhysicalDevice device);
 		std::vector<VkQueue> getQueues() const noexcept;
 		const std::vector<VkPhysicalDevice> &availablePhysicalDevices() const;
 
@@ -177,15 +163,14 @@ namespace vksample {
 
 		void resizable(bool resizable) noexcept override;
 
-
 		virtual void vsync(bool state);
 
 		void setFullScreen(bool fullscreen) override;
-		void setFullScreen(fragcore::Display &display) override {}
+		void setFullScreen(const fragcore::Display &display) override {}
 
 		bool isFullScreen() const override;
 
-		void setBordered(bool boarded) override;
+		void setBordered(const bool boarded) override;
 
 		float getGamma() const override;
 
@@ -199,8 +184,11 @@ namespace vksample {
 		fragcore::Display *getCurrentDisplay() const override { return nullptr; }
 
 		intptr_t getNativePtr() const override; /*  Get native window reference object. */
+		intptr_t getNativeInternalPtr() const override;
+
 		VkSurfaceKHR createSurface(const std::shared_ptr<VulkanCore> &instance) override;
 
+	  public:
 		fragcore::Input &getInput() noexcept { return this->input; }
 		const fragcore::Input &getInput() const noexcept { return this->input; }
 
@@ -238,13 +226,17 @@ namespace vksample {
 		VkSurfaceKHR surface;
 		/*  Collection of swap chain variables. */
 		SwapchainBuffers *swapChain; // TODO remove as pointer
+
 		VkQueue presentQueue;
+		uint32_t presentation_queue_node_index{};
+
 		/*  Synchronization.	*/
 		std::vector<VkSemaphore> imageAvailableSemaphores;
 		std::vector<VkSemaphore> renderFinishedSemaphores;
 		std::vector<VkFence> inFlightFences;
 		std::vector<VkFence> imagesInFlight;
 		std::vector<VkFence> imageAvailableFence;
+
 		fragcore::SDLInput input;
 		IVKWindow *proxyWindow;
 		FPSCounter<float> fpsCounter;

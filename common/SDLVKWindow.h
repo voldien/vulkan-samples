@@ -14,8 +14,7 @@
 namespace vksample {
 
 	/**
-	 * @brief 
-	 * 
+	 * @brief
 	 */
 	class FVDECLSPEC SDLVKWindow : public IVKWindow {
 	  public:
@@ -57,11 +56,11 @@ namespace vksample {
 		void resizable(bool resizable) noexcept override;
 
 		void setFullScreen(bool fullscreen) override;
-		void setFullScreen(fragcore::Display &display) override;
+		void setFullScreen(const fragcore::Display &display) override;
 
 		bool isFullScreen() const override;
 
-		void setBordered(bool borded) override;
+		void setBordered(const bool borded) override;
 
 		float getGamma() const override;
 
@@ -75,6 +74,8 @@ namespace vksample {
 		fragcore::Display *getCurrentDisplay() const override;
 
 		intptr_t getNativePtr() const override; /*  Get native window reference object. */
+		intptr_t getNativeInternalPtr() const override;
+
 
 		VkSurfaceKHR createSurface(const std::shared_ptr<fvkcore::VulkanCore> &instance) override;
 		// virtual std::vector<const char*> requiredVulkanExtensions();

@@ -14,25 +14,11 @@
  * all copies or substantial portions of the Software.
  */
 #pragma once
-#include "ModelImporter.h"
-#include "VKDataStructure.h"
-#include "VKSampleBase.h"
 
 namespace vksample {
 
-	enum AttributeMapping : unsigned int {
-		Vertex = 0,
-		UV = 1,
-		ANormal = 2,
-		ATangent = 3,
-		ABoneIndex = 4,
-		ABoneWeight = 5,
-		AVertexColor = 6,
-	};
+	/*	*/
+	class VKSampleSessionBase;
+	class MeshProcedural;
 
-	class FVDECLSPEC ImportHelper {
-	  public:
-		static void loadModelBuffer(vksample::VKSampleSessionBase &engine, ModelImporter &modelLoader,
-									std::vector<MeshObject> &modelSet);
-	};
 } // namespace vksample

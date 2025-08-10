@@ -30,6 +30,7 @@ TARGET_INCLUDE_DIRECTORIES(vk-sample-common
     PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 	$<INSTALL_INTERFACE:vk-sample-common>
+	PRIVATE  ${CMAKE_SOURCE_DIR}/extern
 )
 
 INSTALL(TARGETS vk-sample-common fragcore-rvk fragcore-imageloader fragcore-shader-compiler DESTINATION lib)

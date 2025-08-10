@@ -25,10 +25,10 @@ namespace vksample {
 
 	/**
 	 * @brief
-	 *
 	 */
 	class FVDECLSPEC CameraController : public Camera {
 	  public:
+		CameraController();
 		~CameraController() override = default;
 
 		void update(const float deltaTime) noexcept;
@@ -77,6 +77,7 @@ namespace vksample {
 		glm::vec3 pos = {0.0f, 1.0f, 0.0f};
 		glm::vec3 look = {0.0f, 0.0f, 1.0f};
 		glm::vec3 up = {0.0f, 1.0f, 0.0f};
+		Input *input;
 	};
 
-} // namespace glsample
+} // namespace vksample

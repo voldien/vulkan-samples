@@ -14,25 +14,17 @@
  * all copies or substantial portions of the Software.
  */
 #pragma once
-#include "ModelImporter.h"
-#include "VKDataStructure.h"
+
+#include "Core/Object.h"
 #include "VKSampleBase.h"
+#include <vulkan/vulkan_core.h>
 
 namespace vksample {
 
-	enum AttributeMapping : unsigned int {
-		Vertex = 0,
-		UV = 1,
-		ANormal = 2,
-		ATangent = 3,
-		ABoneIndex = 4,
-		ABoneWeight = 5,
-		AVertexColor = 6,
-	};
-
-	class FVDECLSPEC ImportHelper {
+	class ImGuiModule : public fragcore::Object {
 	  public:
-		static void loadModelBuffer(vksample::VKSampleSessionBase &engine, ModelImporter &modelLoader,
-									std::vector<MeshObject> &modelSet);
+		ImGuiModule(VKSampleSessionBase &base);
+
+	  private:
 	};
 } // namespace vksample

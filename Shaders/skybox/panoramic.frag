@@ -10,6 +10,7 @@ layout(set = 0, binding = 1, std140) uniform UniformBufferBlock {
 	mat4 proj;
 	mat4 modelViewProjection;
 	vec4 tintColor;
+	/*	*/
 	float exposure;
 	float gamma;
 }
@@ -37,8 +38,9 @@ void main() {
 	const vec2 uv = inverse_equirectangular(normalize(vVertex));
 
 	fragColor = textureLod(panorama, uv, 0) * ubo.tintColor;
-	fragColor = vec4(1.0) - exp(-fragColor * ubo.exposure);
 
+	/*	*/
+	fragColor = vec4(1.0) - exp(-fragColor * ubo.exposure);
 	const float gamma = 2.2;
 	fragColor = pow(fragColor, vec4(1.0 / gamma));
 }

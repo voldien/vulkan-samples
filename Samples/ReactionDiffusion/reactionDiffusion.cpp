@@ -7,7 +7,10 @@
 
 namespace vksample {
 
-	class ReactionDiffusion : public VKWindow {
+	/**
+	 *
+	 */
+	class ReactionDiffusion : public VKBaseSampleWindow {
 	  private:
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 		VkPipelineLayout graphicPipelineLayout = VK_NULL_HANDLE;
@@ -29,7 +32,6 @@ namespace vksample {
 		VkBuffer paramBuffer = VK_NULL_HANDLE;
 
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
 		std::vector<VkDescriptorSet> descriptorSets;
 
 		const uint32_t nrChemicalComponents = 2;
@@ -56,14 +58,13 @@ namespace vksample {
 
 	  public:
 		ReactionDiffusion(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle(std::string("ReactionDiffusion Algorithm - Compute"));
 			this->show();
 		}
 		~ReactionDiffusion() override = default;
 
 		void release() override {
-			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 			vkDestroyDescriptorSetLayout(getDevice(), descriptorSetLayout, nullptr);
 
 			for (size_t i = 0; i < reactionDiffuseImage.size(); i++) {
@@ -91,7 +92,7 @@ namespace vksample {
 			VkPipeline pipeline = nullptr;
 
 			auto compShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
 
 			VkShaderModule compShaderModule = VKHelper::createShaderModule(this->getDevice(), compShaderCode);
 
@@ -101,7 +102,7 @@ namespace vksample {
 			compShaderStageInfo.module = compShaderModule;
 			compShaderStageInfo.pName = "main";
 
-			std::array<VkDescriptorSetLayoutBinding, 4> uboLayoutBindings{};
+			std::vector<VkDescriptorSetLayoutBinding> uboLayoutBindings(4);
 
 			/*	*/
 			uboLayoutBindings[0].binding = 0;
@@ -128,9 +129,9 @@ namespace vksample {
 			uboLayoutBindings[3].pImmutableSamplers = nullptr;
 			uboLayoutBindings[3].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings);
+			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings, 0);
 
-			VKHelper::createPipelineLayout(getDevice(), *layout, {descriptorSetLayout});
+			VKHelper::createPipelineLayout(getDevice(), *layout, 0, {descriptorSetLayout});
 
 			VkComputePipelineCreateInfo pipelineCreateInfo = {};
 			pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -148,7 +149,7 @@ namespace vksample {
 
 			paramMemSize = sizeof(params);
 			size_t minMapBufferSize =
-				getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+				getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
 			paramMemSize += minMapBufferSize - (paramMemSize % minMapBufferSize);
 
 			/*	Create pipeline.	*/
@@ -166,30 +167,6 @@ namespace vksample {
 									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 								   paramBuffer, paramMemory);
 
-			/*	Allocate descriptor set.	*/
-			std::vector<VkDescriptorPoolSize> poolSize = {
-				{
-					VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-					static_cast<uint32_t>(getSwapChainImageCount() * nrChemicalComponents),
-				},
-
-				{
-					VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-					getSwapChainImageCount(),
-				},
-				{
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-					getSwapChainImageCount(),
-				}};
-
-			VkDescriptorPoolCreateInfo poolInfo{};
-			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			poolInfo.poolSizeCount = poolSize.size();
-			poolInfo.pPoolSizes = poolSize.data();
-			poolInfo.maxSets = static_cast<uint32_t>(getSwapChainImageCount() * 4);
-
-			vkCreateDescriptorPool(getDevice(), &poolInfo, nullptr, &descpool);
-
 			onResize(width(), height());
 		}
 
@@ -202,7 +179,7 @@ namespace vksample {
 
 			// TODO fix get correct physical device.
 			VKHelper::createBuffer(getDevice(), cellBufferSize * nrCellBuffers,
-								   getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties(),
+								   getPhysicalDevice()->getMemoryProperties(),
 								   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 								   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 									   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -231,10 +208,10 @@ namespace vksample {
 			reactionDiffuseImageMemory.resize(getSwapChainImageCount());
 			for (size_t i = 0; i < reactionDiffuseImageMemory.size(); i++) {
 
-				VKHelper::createImage(
+				VKHelper::createImage2D(
 					getDevice(), this->width(), this->height(), 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(), VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
 					reactionDiffuseImage[i], reactionDiffuseImageMemory[i]);
 			}
 
@@ -249,13 +226,10 @@ namespace vksample {
 											  getDefaultImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
 			}
 
-			/*	*/
-			vkResetDescriptorPool(getDevice(), descpool, 0);
-
 			std::vector<VkDescriptorSetLayout> layouts(getSwapChainImageCount(), descriptorSetLayout);
 			VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 			descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			descriptorSetAllocateInfo.descriptorPool = descpool; // pool to allocate from.
+			descriptorSetAllocateInfo.descriptorPool = getDescriptorPool(); // pool to allocate from.
 			descriptorSetAllocateInfo.descriptorSetCount = getSwapChainImageCount();
 			descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 

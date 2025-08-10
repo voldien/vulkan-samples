@@ -75,6 +75,6 @@ memory on the device between various heap.
 
 ## License
 
-This project is licensed under the GPL+3 License - see the [LICENSE](LICENSE) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casual-effects.com/data)

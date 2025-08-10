@@ -1,5 +1,7 @@
 #include "Util/CameraController.h"
+#include "VKDataStructure.h"
 #include "VKSample.h"
+#include "vulkan/vulkan_core.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
 #include <VksCommon.h>
@@ -8,8 +10,10 @@
 
 namespace vksample {
 
-	class Instance : public VKWindow {
+	class Instance : public VKBaseSampleWindow {
 	  private:
+		MeshObject mesh;
+
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexMemory{};
 		VkDeviceSize indices_offset = 0;
@@ -25,7 +29,7 @@ namespace vksample {
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
+
 		VkSampler sampler = VK_NULL_HANDLE;
 
 		struct UniformBufferBlock {
@@ -62,7 +66,7 @@ namespace vksample {
 
 	  public:
 		Instance(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle(fmt::format("Instance: {}", nrInstances));
 
 			this->camera.setPosition(glm::vec3(0));
@@ -84,10 +88,10 @@ namespace vksample {
 
 		VkPipeline createGraphicPipeline() {
 
-			auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexInstanceShaderPath, this->getFileSystem());
-			auto fragShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->fragmentInstanceShaderPath, this->getFileSystem());
+			const auto vertShaderCode =
+				fragcore::IOUtil::readFileData<uint32_t>(this->vertexInstanceShaderPath, this->getFileSystem());
+			const auto fragShaderCode =
+				fragcore::IOUtil::readFileData<uint32_t>(this->fragmentInstanceShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(this->getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(this->getDevice(), fragShaderCode);
@@ -136,6 +140,8 @@ namespace vksample {
 			vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 			vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
+			const PipelineLayoutUtil::InputLayout layout = PipelineLayoutUtil::getInputLayout(vertShaderCode);
+
 			VkDescriptorSetLayoutBinding uboLayoutBinding{};
 			uboLayoutBinding.binding = 0;
 			uboLayoutBinding.descriptorCount = 1;
@@ -159,9 +165,9 @@ namespace vksample {
 
 			VKHelper::createDescriptorSetLayout(
 				this->getDevice(), descriptorSetLayout,
-				{uboLayoutBinding, uboInstanceLayoutBinding, samplerDiffuseLayoutBinding});
+				{uboLayoutBinding, uboInstanceLayoutBinding, samplerDiffuseLayoutBinding}, 0);
 
-			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
+			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, 0, {descriptorSetLayout});
 
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -227,13 +233,15 @@ namespace vksample {
 			depthStencil.depthBoundsTestEnable = VK_FALSE;
 			depthStencil.stencilTestEnable = VK_FALSE;
 
-			VkDynamicState dynamicStateEnables[1];
+			std::array<VkDynamicState, 2> dynamicStateEnables;
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
+			dynamicStateEnables[1] = VK_DYNAMIC_STATE_SCISSOR;
+
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 			dynamicStateInfo.pNext = nullptr;
-			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
-			dynamicStateInfo.dynamicStateCount = 1;
+			dynamicStateInfo.pDynamicStates = dynamicStateEnables.data();
+			dynamicStateInfo.dynamicStateCount = dynamicStateEnables.size();
 
 			VkGraphicsPipelineCreateInfo pipelineInfo{};
 			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -267,7 +275,7 @@ namespace vksample {
 			const std::string modelPath = this->getResult()["model"].as<std::string>();
 
 			/*	Create pipeline.	*/
-			graphicsPipeline = createGraphicPipeline();
+			this->graphicsPipeline = createGraphicPipeline();
 
 			VkBufferCreateInfo bufferInfo = {};
 			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -297,8 +305,7 @@ namespace vksample {
 			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
 			vkUnmapMemory(getDevice(), vertexMemory);
 
-
-			int minMapBufferSize =this->getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
+			int minMapBufferSize = this->getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
 
 			int uniformMaxSize = this->getPhysicalDevice()->getDeviceLimits().maxUniformBufferRange;
 			this->instanceBatch = uniformMaxSize / sizeof(glm::mat4);
@@ -360,6 +367,7 @@ namespace vksample {
 		void draw() override {}
 
 		void update() override {
+
 			/*	*/
 			float elapsedTime = this->getTimer().getElapsed<float>();
 			this->camera.update(this->getTimer().deltaTime<float>());
@@ -383,24 +391,6 @@ namespace vksample {
 			this->uniformData.view = camera.getViewMatrix();
 			this->uniformData.modelViewProjection = this->uniformData.model * camera.getViewMatrix();
 			this->uniformData.viewPos = glm::vec4(this->camera.getPosition(), 0);
-
-			/*	Update uniform.	*/
-			// glBindBuffer(GL_UNIFORM_BUFFER, this->uniform_mvp_buffer);
-			// void *uniformMVP = glMapBufferRange(
-			// GL_UNIFORM_BUFFER, ((this->getFrameCount() + 1) % this->nrUniformBuffers) * this->uniformSize,
-			// this->uniformSize, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-			// memcpy(uniformMVP, &this->uniformData, sizeof(this->uniformData));
-			// glUnmapBuffer(GL_UNIFORM_BUFFER);
-
-			// /*	Update instance buffer.	*/
-			// glBindBuffer(GL_UNIFORM_BUFFER, this->uniform_instance_buffer);
-			// void *uniformInstance = glMapBufferRange(
-			// GL_UNIFORM_BUFFER, ((this->getFrameCount() + 1) % this->nrUniformBuffers) * this->uniformInstanceSize,
-			// this->uniformInstanceSize, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-			// memcpy(uniformInstance, this->instance_model_matrices.data(),
-			//    sizeof(this->instance_model_matrices[0]) * this->instance_model_matrices.size());
-
-			// glUnmapBuffer(GL_UNIFORM_BUFFER);
 		}
 	};
 

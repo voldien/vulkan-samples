@@ -6,7 +6,7 @@
 
 namespace vksample {
 
-	class MultiSampling : public VKWindow {
+	class MultiSampling : public VKBaseSampleWindow {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
@@ -18,7 +18,7 @@ namespace vksample {
 
 	  public:
 		MultiSampling(std::shared_ptr<fvkcore::VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->show();
 			this->setTitle("MultiSampling");
 		}
@@ -45,9 +45,9 @@ namespace vksample {
 		VkPipeline createGraphicPipeline() {
 
 			auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 			auto fragShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);

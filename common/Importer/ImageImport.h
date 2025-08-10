@@ -1,4 +1,7 @@
 #pragma once
+#include "Image.h"
+#include "VKDataStructure.h"
+#include "VKSampleBase.h"
 #include <FragDef.h>
 #include <IO/IFileSystem.h>
 #include <VKDevice.h>
@@ -6,6 +9,16 @@
 #include <vulkan/vulkan.h>
 
 namespace vksample {
+
+	enum class ColorSpace : unsigned int {
+		RawLinear = 0,	   /*	Linear.	*/
+		SRGB,			   /*	SRGB encoded.	*/
+		ACES,			   /*	*/
+		Filmic,			   /*	*/
+		KhronosPBRNeutral, /*	*/
+		FalseColor,		   /*	*/
+		MaxColorSpaces
+	};
 
 	enum class TextureCompression {
 		None,	 /*	*/
@@ -20,26 +33,17 @@ namespace vksample {
 	 */
 	class FVDECLSPEC ImageImporter {
 	  public:
-		ImageImporter(fragcore::IFileSystem *filesystem, fvkcore::VKDevice &device);
+		ImageImporter(fragcore::IFileSystem *filesystem, VKSampleSessionBase &base); // TODO: change to base sample
 		virtual ~ImageImporter() = default;
 
 	  public:
-		static void *loadTextureData(const char *cfilename, unsigned int *pwidth, unsigned int *pheight,
-									 unsigned int *pformat, unsigned int *pinternalformat, unsigned int *ptype,
-									 unsigned long *pixelSize);
-		static void saveTextureData(const char *cfilename, const void *pixelData, unsigned int width,
-									unsigned int height, int layers, unsigned int format);
+		void loadTexture2D(const char *filename, Texture& texture, const ColorSpace colorSpace = ColorSpace::RawLinear,
+						   const TextureCompression compression = TextureCompression::None, const void *pNext = nullptr);
 
-		/**/
-		static void saveTextureData(const char *filename, VkDevice device, VkImage image);
+		void loadTexture2DAsync(const char *filename, Texture **texture,
+								const ColorSpace colorSpace = ColorSpace::RawLinear,
+								const TextureCompression compression = TextureCompression::None, void *pNext = nullptr);
 
-		static void createImage(const char *filename, const VkDevice &device, VkImage &image);
-
-		/*	*/
-		void loadImage2D(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue,
-						 VkPhysicalDevice physicalDevice, VkImage &textureImage, VkDeviceMemory &textureImageMemory);
-		// int loadImage2DRaw(const fragcore::Image &image, const ColorSpace colorSpace = ColorSpace::RawLinear,
-		// 				   const TextureCompression compression = TextureCompression::None);
 
 		static void createCubeMap(const std::vector<std::string> &paths, VkDevice device, VkCommandPool commandPool,
 								  VkQueue queue, VkPhysicalDevice physicalDevice, VkImage &textureImage,
@@ -51,6 +55,19 @@ namespace vksample {
 		// loadCubeMap(const std::vector<std::string> &paths, const ColorSpace colorSpace = ColorSpace::RawLinear,
 		// const TextureCompression compression = TextureCompression::None);
 
+		static void *loadTextureData(const char *cfilename, unsigned int *pwidth, unsigned int *pheight,
+									 unsigned int *pformat, unsigned int *pinternalformat, unsigned int *ptype,
+									 unsigned long *pixelSize);
+		static void saveTextureData(const char *cfilename, const void *pixelData, unsigned int width,
+									unsigned int height, int layers, unsigned int format);
+
+		/**/
+		static void saveTextureData(const char *filename, VkDevice device, VkImage image);
+
+	  protected:
+		VkFormat getImageFormat(fragcore::Image &image, const ColorSpace colorSpace,
+								const TextureCompression compression);
+
 		void generateMipmaps(VkDevice device, VkCommandPool commandPool, VkQueue queue, VkPhysicalDevice physicalDevice,
 							 VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight,
 							 uint32_t mipLevels);
@@ -58,6 +75,7 @@ namespace vksample {
 	  private:
 		fragcore::IFileSystem *filesystem;
 		fvkcore::VKDevice &device;
+		VKSampleSessionBase &base;
 	};
 
 } // namespace vksample

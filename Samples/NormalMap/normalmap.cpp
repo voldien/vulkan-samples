@@ -1,8 +1,10 @@
 #include "VKSample.h"
+#include "vulkan/vulkan_core.h"
 #include <Importer/ImageImport.h>
 #include <SDL2/SDL.h>
 #include <Util/CameraController.h>
 #include <VKWindow.h>
+#include <array>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
@@ -13,7 +15,7 @@ namespace vksample {
 	 * @brief
 	 *
 	 */
-	class NormalMap : public VKWindow {
+	class NormalMap : public VKBaseSampleWindow {
 	  private:
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory vertexIndicesMemory = VK_NULL_HANDLE;
@@ -25,18 +27,9 @@ namespace vksample {
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 
-		VkDescriptorPool descpool = VK_NULL_HANDLE;
-
 		VkSampler sampler = VK_NULL_HANDLE;
-		/*	*/
-		VkImage diffuse_texture = VK_NULL_HANDLE;
-		VkImageView diffuse_TextureView = VK_NULL_HANDLE;
-		VkDeviceMemory diffuse_textureMemory = VK_NULL_HANDLE;
-
-		/*	*/
-		VkImage normal_texture = VK_NULL_HANDLE;
-		VkImageView normal_texture_view = VK_NULL_HANDLE;
-		VkDeviceMemory normal_textureMemory = VK_NULL_HANDLE;
+		Texture DiffuseTexture;
+		Texture NormalTexture;
 
 		std::vector<VkDescriptorSet> descriptorSets;
 		VkBuffer uniformBuffer = VK_NULL_HANDLE;
@@ -75,7 +68,7 @@ namespace vksample {
 
 	  public:
 		NormalMap(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->setTitle("NormalMap");
 			this->show();
 		}
@@ -84,16 +77,6 @@ namespace vksample {
 		void release() override {
 
 			vkDestroySampler(getDevice(), sampler, nullptr);
-
-			vkDestroyImageView(getDevice(), diffuse_TextureView, nullptr);
-			vkDestroyImage(getDevice(), diffuse_texture, nullptr);
-			vkFreeMemory(getDevice(), diffuse_textureMemory, nullptr);
-
-			vkDestroyImageView(getDevice(), normal_texture_view, nullptr);
-			vkDestroyImage(getDevice(), normal_texture, nullptr);
-			vkFreeMemory(getDevice(), normal_textureMemory, nullptr);
-
-			vkDestroyDescriptorPool(getDevice(), descpool, nullptr);
 
 			vkDestroyBuffer(getDevice(), vertexBuffer, nullptr);
 			vkFreeMemory(getDevice(), vertexMemory, nullptr);
@@ -149,9 +132,9 @@ namespace vksample {
 		VkPipeline createGraphicPipeline() {
 
 			auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 			auto fragShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
 			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
 			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
@@ -168,7 +151,8 @@ namespace vksample {
 			fragShaderStageInfo.module = fragShaderModule;
 			fragShaderStageInfo.pName = "main";
 
-			std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
+			const std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertShaderStageInfo,
+																			   fragShaderStageInfo};
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -229,7 +213,7 @@ namespace vksample {
 
 			VKHelper::createDescriptorSetLayout(
 				this->getDevice(), descriptorSetLayout,
-				{uboLayoutBinding, samplerDiffuseLayoutBinding, samplerNormalLayoutBinding});
+				{uboLayoutBinding, samplerDiffuseLayoutBinding, samplerNormalLayoutBinding}, 0);
 
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -288,15 +272,16 @@ namespace vksample {
 			depthStencil.depthBoundsTestEnable = VK_FALSE;
 			depthStencil.stencilTestEnable = VK_FALSE;
 
-			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, {descriptorSetLayout});
+			VKHelper::createPipelineLayout(getDevice(), pipelineLayout, 0, {descriptorSetLayout});
 
-			VkDynamicState dynamicStateEnables[1];
+			std::array<VkDynamicState, 2> dynamicStateEnables{};
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
+			dynamicStateEnables[1] = VK_DYNAMIC_STATE_SCISSOR;
 			VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
 			dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 			dynamicStateInfo.pNext = nullptr;
-			dynamicStateInfo.pDynamicStates = dynamicStateEnables;
-			dynamicStateInfo.dynamicStateCount = 1;
+			dynamicStateInfo.pDynamicStates = dynamicStateEnables.data();
+			dynamicStateInfo.dynamicStateCount = dynamicStateEnables.size();
 
 			VkGraphicsPipelineCreateInfo pipelineInfo{};
 			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -315,8 +300,8 @@ namespace vksample {
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 			pipelineInfo.pDynamicState = &dynamicStateInfo;
 
-			VKS_VALIDATE(
-				vkCreateGraphicsPipelines(getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+			VKS_VALIDATE(vkCreateGraphicsPipelines(getDevice(), this->getPipelineCache(), 1, &pipelineInfo, nullptr,
+												   &graphicsPipeline));
 
 			vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
 			vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
@@ -330,47 +315,28 @@ namespace vksample {
 			const std::string diffuseTexturePath = this->getResult()["texture"].as<std::string>();
 			const std::string normalTexturePath = this->getResult()["normal-texture"].as<std::string>();
 
-			/*	Load and Create Texture.	*/
-			VkCommandBuffer cmd = nullptr;
-			std::vector<VkCommandBuffer> cmds = this->getVKDevice()->allocateCommandBuffers(
-				getGraphicCommandPool(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
-			VkCommandBufferBeginInfo beginInfo = {};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = 0;
-			VKS_VALIDATE(vkBeginCommandBuffer(cmds[0], &beginInfo));
-
-			ImageImporter imageImporter(this->getFileSystem(), *this->getVKDevice());
+			ImageImporter imageImporter(this->getFileSystem(), *this);
 
 			/*	Diffuse Texture.	*/
-			imageImporter.loadImage2D(this->diffuseTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
-										getDefaultGraphicQueue(), physicalDevice(), this->diffuse_texture,
-										this->diffuse_textureMemory);
+			imageImporter.loadTexture2D(this->diffuseTexturePath.c_str(), DiffuseTexture, ColorSpace::RawLinear);
 
 			/*	Normal Texture.	*/
-			imageImporter.loadImage2D(this->normalTexturePath.c_str(), getDevice(), getGraphicCommandPool(),
-										getDefaultGraphicQueue(), physicalDevice(), this->normal_texture,
-										this->normal_textureMemory);
+			imageImporter.loadTexture2D(this->diffuseTexturePath.c_str(), NormalTexture, ColorSpace::RawLinear);
 
-			vkEndCommandBuffer(cmds[0]);
-			this->getVKDevice()->submitCommands(getDefaultGraphicQueue(), cmds);
-
-			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-			vkFreeCommandBuffers(this->getDevice(), getGraphicCommandPool(), cmds.size(), cmds.data());
-
-			this->diffuse_TextureView =
-				VKHelper::createImageView(this->getDevice(), this->diffuse_texture, VK_IMAGE_VIEW_TYPE_2D,
+			this->DiffuseTexture.imageView =
+				VKHelper::createImageView(this->getDevice(), this->DiffuseTexture.image, VK_IMAGE_VIEW_TYPE_2D,
 										  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
-			this->normal_texture_view =
-				VKHelper::createImageView(this->getDevice(), this->normal_texture, VK_IMAGE_VIEW_TYPE_2D,
+			this->NormalTexture.imageView =
+				VKHelper::createImageView(this->getDevice(), this->NormalTexture.image, VK_IMAGE_VIEW_TYPE_2D,
 										  VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
-			VKHelper::createSampler(this->getDevice(), sampler);
+			VKHelper::createSampler(this->getDevice(), sampler, 0);
 
 			/*	Compute uniform buffer size, in respect to the alignment requirement.	*/
 			this->uniformBufferSize = sizeof(UniformBufferBlock);
 			const size_t minMapBufferSize =
-				this->getVKDevice()->getPhysicalDevices()[0]->getDeviceLimits().minUniformBufferOffsetAlignment;
+				this->getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
 			this->uniformBufferSize = fragcore::Math::align(uniformBufferSize, minMapBufferSize);
 
 			VkPhysicalDeviceMemoryProperties memProperties;
@@ -384,8 +350,8 @@ namespace vksample {
 
 			this->mapMemory.resize(this->getSwapChainImageCount());
 			uint8_t *_data = nullptr;
-			VKS_VALIDATE(vkMapMemory(this->getDevice(), uniformBufferMemory, 0,
-									 this->uniformBufferSize, 0, (void**)&_data));
+			VKS_VALIDATE(
+				vkMapMemory(this->getDevice(), uniformBufferMemory, 0, this->uniformBufferSize, 0, (void **)&_data));
 			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
 				this->mapMemory[i] = &_data[this->uniformBufferSize * i];
 			}
@@ -393,49 +359,37 @@ namespace vksample {
 			/*	Create pipeline.	*/
 			graphicsPipeline = createGraphicPipeline();
 
-			/*	Allocate descriptor set.	*/
-			const std::vector<VkDescriptorPoolSize> poolSize = {
-				{
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-					static_cast<uint32_t>(this->getSwapChainImageCount()),
-				},
-				{
-					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-					static_cast<uint32_t>(this->getSwapChainImageCount() * 2),
-				}};
-			descpool = VKHelper::createDescPool(this->getDevice(), poolSize, this->getSwapChainImageCount() * 3);
-
 			/*	*/
 			std::vector<VkDescriptorSetLayout> layouts(this->getSwapChainImageCount(), descriptorSetLayout);
 			VkDescriptorSetAllocateInfo allocdescInfo{};
 			allocdescInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocdescInfo.descriptorPool = descpool;
-			allocdescInfo.descriptorSetCount = static_cast<uint32_t>(getSwapChainImageCount());
+			allocdescInfo.descriptorPool = getDescriptorPool();
+			allocdescInfo.descriptorSetCount = getSwapChainImageCount();
 			allocdescInfo.pSetLayouts = layouts.data();
 
 			descriptorSets.resize(this->getSwapChainImageCount());
 			VKS_VALIDATE(vkAllocateDescriptorSets(this->getDevice(), &allocdescInfo, descriptorSets.data()));
 
-			for (size_t i = 0; i < this->getSwapChainImageCount(); i++) {
+			for (size_t desc_set_index = 0; desc_set_index < this->getSwapChainImageCount(); desc_set_index++) {
 				VkDescriptorBufferInfo bufferInfo{};
 				bufferInfo.buffer = this->uniformBuffer;
-				bufferInfo.offset = this->uniformBufferSize * i;
+				bufferInfo.offset = this->uniformBufferSize * desc_set_index;
 				bufferInfo.range = this->uniformBufferSize;
 
 				VkDescriptorImageInfo imageDiffuseInfo{};
 				imageDiffuseInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				imageDiffuseInfo.imageView = diffuse_TextureView;
+				imageDiffuseInfo.imageView = DiffuseTexture.imageView;
 				imageDiffuseInfo.sampler = sampler;
 
 				VkDescriptorImageInfo imageNormalInfo{};
 				imageNormalInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				imageNormalInfo.imageView = normal_texture_view;
+				imageNormalInfo.imageView = NormalTexture.imageView;
 				imageNormalInfo.sampler = sampler;
 
 				std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
 
 				descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrites[0].dstSet = descriptorSets[i];
+				descriptorWrites[0].dstSet = descriptorSets[desc_set_index];
 				descriptorWrites[0].dstBinding = 0;
 				descriptorWrites[0].dstArrayElement = 0;
 				descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -443,7 +397,7 @@ namespace vksample {
 				descriptorWrites[0].pBufferInfo = &bufferInfo;
 
 				descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrites[1].dstSet = descriptorSets[i];
+				descriptorWrites[1].dstSet = descriptorSets[desc_set_index];
 				descriptorWrites[1].dstBinding = 1;
 				descriptorWrites[1].dstArrayElement = 0;
 				descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -451,7 +405,7 @@ namespace vksample {
 				descriptorWrites[1].pImageInfo = &imageDiffuseInfo;
 
 				descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrites[2].dstSet = descriptorSets[i];
+				descriptorWrites[2].dstSet = descriptorSets[desc_set_index];
 				descriptorWrites[2].dstBinding = 2;
 				descriptorWrites[2].dstArrayElement = 0;
 				descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -536,20 +490,25 @@ namespace vksample {
 				VkViewport viewport = {
 					.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
 				vkCmdSetViewport(cmd, 0, 1, &viewport);
+				VkRect2D scissor = {.offset = {0, 0},
+									.extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)}};
+				vkCmdSetScissor(cmd, 0, 1, &scissor);
 
 				vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 				/*	*/
 				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-				VkBuffer vertexBuffers[] = {vertexBuffer};
-				VkDeviceSize offsets[] = {0};
+				/*	*/
+				const VkBuffer vertexBuffers[] = {vertexBuffer};
+				const VkDeviceSize offsets[] = {0};
 				vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
+				vkCmdBindIndexBuffer(cmd, vertexBuffer, indices_offset, VK_INDEX_TYPE_UINT32);
 
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i],
 										0, nullptr);
 
-				vkCmdDraw(cmd, vertices.size(), 1, 0, 0);
+				vkCmdDrawIndexed(cmd, nrIndices, 1, 0, 0, 0);
 
 				vkCmdEndRenderPass(cmd);
 

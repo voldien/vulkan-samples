@@ -153,7 +153,7 @@ namespace vksample {
 				VkQueue transfer = this->getDefaultTransferQueue();
 
 				const VkPhysicalDeviceMemoryProperties &memProp =
-					this->getVKDevice()->getPhysicalDevices()[0]->getMemoryProperties();
+					this->getPhysicalDevice()->getMemoryProperties();
 
 				VkCommandPool commandPool =
 					this->getVKDevice()->createCommandPool(this->getDefaultTransferQueueIndex());

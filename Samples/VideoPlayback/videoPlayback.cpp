@@ -30,7 +30,7 @@ extern "C" {
 
 namespace vksample {
 
-	class AVVideoPlayback : public VKWindow {
+	class AVVideoPlayback : public VKBaseSampleWindow {
 	  private:
 		static const int nrVideoFrames = 3;
 		int nthVideoFrame = 0;
@@ -76,7 +76,7 @@ namespace vksample {
 
 	  public:
 		AVVideoPlayback(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->show();
 		}
 
@@ -283,10 +283,10 @@ namespace vksample {
 			/*	*/
 			for (size_t i = 0; i < this->videoFrames.size(); i++) {
 
-				VKHelper::createImage(
+				VKHelper::createImage2D(
 					getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(),
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(), VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
 					videoFrames[i], videoFrameMemory[i]);
 			}
 			onResize(width(), height());

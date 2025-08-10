@@ -10,7 +10,7 @@ namespace vksample {
 	 * @brief
 	 *
 	 */
-	class Triangle : public VKWindow {
+	class Triangle : public VKBaseSampleWindow {
 	  private:
 		/*	*/
 		VkBuffer vertexBuffer = VK_NULL_HANDLE;
@@ -24,7 +24,7 @@ namespace vksample {
 
 	  public:
 		Triangle(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
-			: VKWindow(core, device, -1, -1, -1, -1) {
+			: VKBaseSampleWindow(core, device, -1, -1, -1, -1) {
 			this->show();
 			this->setTitle("Triangle");
 		}
@@ -54,12 +54,12 @@ namespace vksample {
 
 			/*	*/
 			const auto vertShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->vertexShaderPath, this->getFileSystem());
 			const auto fragShaderCode =
-				vksample::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
+				fragcore::IOUtil::readFileData<uint32_t>(this->fragmentShaderPath, this->getFileSystem());
 
-			VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
-			VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
+			const VkShaderModule vertShaderModule = VKHelper::createShaderModule(getDevice(), vertShaderCode);
+			const VkShaderModule fragShaderModule = VKHelper::createShaderModule(getDevice(), fragShaderCode);
 
 			VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 			vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -73,7 +73,8 @@ namespace vksample {
 			fragShaderStageInfo.module = fragShaderModule;
 			fragShaderStageInfo.pName = "main";
 
-			const VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+			const std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages = {vertShaderStageInfo,
+																				 fragShaderStageInfo};
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -169,7 +170,7 @@ namespace vksample {
 			pipelineLayoutInfo.setLayoutCount = 0;
 			pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-			VKS_VALIDATE(vkCreatePipelineLayout(getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
+			VKS_VALIDATE(vkCreatePipelineLayout(this->getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 			std::array<VkDynamicState, 2> dynamicStateEnables{};
 			dynamicStateEnables[0] = VK_DYNAMIC_STATE_VIEWPORT;
@@ -182,8 +183,8 @@ namespace vksample {
 
 			VkGraphicsPipelineCreateInfo pipelineInfo{};
 			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-			pipelineInfo.stageCount = 2;
-			pipelineInfo.pStages = shaderStages;
+			pipelineInfo.stageCount = shaderStages.size();
+			pipelineInfo.pStages = shaderStages.data();
 			pipelineInfo.pVertexInputState = &vertexInputInfo;
 			pipelineInfo.pInputAssemblyState = &inputAssembly;
 			pipelineInfo.pViewportState = &viewportState;
@@ -197,11 +198,11 @@ namespace vksample {
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 			pipelineInfo.pDynamicState = &dynamicStateInfo;
 
-			VKS_VALIDATE(vkCreateGraphicsPipelines(this->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+			VKS_VALIDATE(vkCreateGraphicsPipelines(this->getDevice(), getPipelineCache(), 1, &pipelineInfo, this->getAllocatorCallback(),
 												   &graphicsPipeline));
 
-			vkDestroyShaderModule(getDevice(), fragShaderModule, nullptr);
-			vkDestroyShaderModule(getDevice(), vertShaderModule, nullptr);
+			vkDestroyShaderModule(this->getDevice(), fragShaderModule, nullptr);
+			vkDestroyShaderModule(this->getDevice(), vertShaderModule, nullptr);
 
 			return graphicsPipeline;
 		}
@@ -210,39 +211,41 @@ namespace vksample {
 			/*	Create pipeline.	*/
 			graphicsPipeline = createGraphicPipeline();
 
-			/*	Allocate buffer for the triangle.	*/
-			VkBufferCreateInfo bufferInfo = {};
-			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			bufferInfo.size = sizeof(vertices[0]) * vertices.size();
-			bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			{
+				/*	Allocate buffer for the triangle.	*/
+				VkBufferCreateInfo bufferInfo = {};
+				bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+				bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+				bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+				bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-			VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
+				VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
 
-			/*	*/
-			VkMemoryRequirements memRequirements;
-			vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
+				/*	*/
+				VkMemoryRequirements memRequirements;
+				vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
 
-			VkMemoryAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex =
-				this->getVKDevice()
-					->findMemoryType(memRequirements.memoryTypeBits,
-									 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-					.value();
+				VkMemoryAllocateInfo allocInfo = {};
+				allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+				allocInfo.allocationSize = memRequirements.size;
+				allocInfo.memoryTypeIndex =
+					this->getVKDevice()
+						->findMemoryType(memRequirements.memoryTypeBits,
+										 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+						.value();
 
-			/*	Allocate memory that will be used for the buffer.	*/
-			VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
+				/*	Allocate memory that will be used for the buffer.	*/
+				VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexMemory));
 
-			/*	Bind the vertex buffer with the memory that contains the triangle vertices data.	*/
-			VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
+				/*	Bind the vertex buffer with the memory that contains the triangle vertices data.	*/
+				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexMemory, 0));
 
-			/*	Transfer the vertex data to the buffer.	*/
-			void *data = nullptr;
-			VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
-			memcpy(data, vertices.data(), (size_t)bufferInfo.size);
-			vkUnmapMemory(getDevice(), vertexMemory);
+				/*	Transfer the vertex data to the buffer.	*/
+				void *data = nullptr;
+				VKS_VALIDATE(vkMapMemory(getDevice(), vertexMemory, 0, bufferInfo.size, 0, &data));
+				memcpy(data, vertices.data(), (size_t)bufferInfo.size);
+				vkUnmapMemory(getDevice(), vertexMemory);
+			}
 
 			this->onResize(this->width(), this->height());
 		}
@@ -254,7 +257,6 @@ namespace vksample {
 			/*	Rebuild the command buffer.	*/
 			for (uint32_t i = 0; i < getNrCommandBuffers(); i++) {
 				VkCommandBuffer cmd = getCommandBuffers(i);
-
 
 				VkCommandBufferBeginInfo beginInfo = {};
 				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -294,8 +296,8 @@ namespace vksample {
 				/*	*/
 				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-				VkBuffer vertexBuffers[] = {vertexBuffer};
-				VkDeviceSize offsets[] = {0};
+				const VkBuffer vertexBuffers[] = {vertexBuffer};
+				const VkDeviceSize offsets[] = {0};
 				vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
 
 				vkCmdDraw(cmd, 3, 1, 0, 0);

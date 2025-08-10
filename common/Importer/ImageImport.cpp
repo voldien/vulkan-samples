@@ -1,5 +1,6 @@
 #include "ImageImport.h"
 #include "VKHelper.h"
+#include "vulkan/vulkan_core.h"
 #include <FreeImage.h>
 #include <ImageFormat.h>
 #include <Util/IOUtil.h>
@@ -10,163 +11,70 @@
 using namespace fvkcore;
 using namespace vksample;
 
-ImageImporter::ImageImporter(fragcore::IFileSystem *filesystem, VKDevice &device)
-	: filesystem(filesystem), device(device) {}
+ImageImporter::ImageImporter(fragcore::IFileSystem *filesystem, VKSampleSessionBase &base)
+	: filesystem(filesystem), base(base), device(*base.getVKDevice()) {}
 
-void ImageImporter::saveTextureData(const char *cfilename, const void *pixelData, unsigned int width,
-									unsigned int height, int layers, unsigned int format) {}
-
-void ImageImporter::saveTextureData(const char *cfilename, VkDevice device, VkImage image) {
-
-	void *pixelData = nullptr;
-	unsigned int width = 0, height = 0, layers = 0;
-
-	VkImageSubresource subResources = {};
-	VkSubresourceLayout subResourceLayout;
-	vkGetImageSubresourceLayout(device, image, &subResources, &subResourceLayout);
-
-	/*	Download texture data.	*/
-
-	// Seperate thread.
-	/*	Save data to texture.	*/
-	saveTextureData(cfilename, pixelData, width, height, layers, 0);
-}
-
-void ImageImporter::loadImage2D(const char *filename, VkDevice device, VkCommandPool commandPool, VkQueue queue,
-								  VkPhysicalDevice physicalDevice, VkImage &textureImage,
-								  VkDeviceMemory &textureImageMemory) {
+void ImageImporter::loadTexture2D(const char *filename, Texture &texture, const ColorSpace colorSpace,
+								  const TextureCompression compression, const void *pNext) {
 
 	fragcore::ImageLoader imageLoader;
 	fragcore::Image image = imageLoader.loadImage(filename);
 
-	uint32_t mipLevels = std::min(
-		static_cast<uint32_t>(std::floor(std::log2(std::max(image.width(), image.height())))) + 1, (uint32_t)8);
+	const size_t power_of_2 = std::floor(std::log(fragcore::Math::max(image.width(), image.height())) / std::log(2));
+	size_t mipLevels = fragcore::Math::clamp<size_t>(power_of_2 - 4, 0, std::numeric_limits<size_t>::max());
 
-	const VkDeviceSize imageSize = image.getSize();
-	VkPhysicalDeviceMemoryProperties memProperties;
+	VkFormat vkImageFormat = VK_FORMAT_UNDEFINED;
 
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-	/*	*/
-	VkCommandBuffer cmd = VKHelper::beginSingleTimeCommands(device, commandPool);
-
-	/*	*/
-	VkBuffer stagingBuffer = nullptr;
-	VkDeviceMemory stagingBufferMemory = nullptr;
-	VKHelper::createBuffer(device, imageSize, memProperties, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-						   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, stagingBuffer, stagingBufferMemory);
-
-	/*	Write image data.	*/
-	void *stageData = nullptr;
-	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &stageData);
-	memcpy(stageData, image.getPixelData(), static_cast<size_t>(imageSize));
-	vkUnmapMemory(device, stagingBufferMemory);
-
-	VkFormat vk_format = VK_FORMAT_R8G8B8_UNORM;
-	switch (image.getFormat()) {
-	case fragcore::ImageFormat::RGB24:
-		vk_format = VK_FORMAT_R8G8B8_UNORM;
-		break;
-	case fragcore::ImageFormat::RGBA32:
-		vk_format = VK_FORMAT_R8G8B8A8_UNORM;
-		break;
-	case fragcore::ImageFormat::BGR24:
-		vk_format = VK_FORMAT_B8G8R8_UNORM;
-		break;
-	case fragcore::ImageFormat::BGRA32:
-		vk_format = VK_FORMAT_B8G8R8A8_UNORM;
-		break;
-	case fragcore::ImageFormat::RGBAFloat:
-		vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		break;
-	case fragcore::ImageFormat::RGBFloat:
-		vk_format = VK_FORMAT_R32G32B32_SFLOAT;
-		break;
-	default:
-		throw fragcore::RuntimeException("None Supported Format: {}", magic_enum::enum_name(image.getFormat()));
-		break;
-	}
-
-	// TODO: relocat for reuse.
-	switch (image.getFormat()) {
-	case fragcore::ImageFormat::RGB24:
-		vk_format = VK_FORMAT_R8G8B8_UNORM;
-		break;
-	case fragcore::ImageFormat::RGBA32:
-		vk_format = VK_FORMAT_R8G8B8A8_UNORM;
-		break;
-	case fragcore::ImageFormat::BGR24:
-		vk_format = VK_FORMAT_B8G8R8_UNORM;
-		break;
-	case fragcore::ImageFormat::BGRA32:
-		vk_format = VK_FORMAT_B8G8R8A8_UNORM;
-		break;
-	case fragcore::ImageFormat::RGBAFloat:
-		vk_format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		break;
-	case fragcore::ImageFormat::RGBFloat:
-		vk_format = VK_FORMAT_R32G32B32_SFLOAT;
-		break;
-	case fragcore::ImageFormat::Alpha8: /*	Single Channel.	*/
-
-		break;
-	case fragcore::ImageFormat::RFloat:
-
-		break;
-	case fragcore::ImageFormat::R16:
-
-		break;
-	case fragcore::ImageFormat::R16U:
-
-		break;
-	case fragcore::ImageFormat::R32:
-
-		break;
-	case fragcore::ImageFormat::R32U:
-
-		break;
-	default:
-		throw cxxexcept::RuntimeException("None Supported Format: {}", magic_enum::enum_name(image.getFormat()));
-	}
+	vkImageFormat = getImageFormat(image, colorSpace, compression);
 
 	VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
-	// TODO fix VK_IMAGE_TILING_LINEAR or tiling
-	/*	TODO check if combination supported.	*/
-	if (!this->device.isFormatSupported(vk_format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_LINEAR,
-										VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-											VK_IMAGE_USAGE_SAMPLED_BIT)) {
+	VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-		throw fragcore::RuntimeException("None Supported Image Format on Device: {}", magic_enum::enum_name(vk_format));
+	VkImageFormatProperties capabilityProperties = {};
+	VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+
+	/*	Check if combination supported.	*/
+	if (!this->device.isFormatSupported(vkImageFormat, VK_IMAGE_TYPE_2D, tiling, imageUsage, flags,
+										&capabilityProperties)) {
+
+		tiling = VK_IMAGE_TILING_LINEAR;
+
+		if (!this->device.isFormatSupported(vkImageFormat, VK_IMAGE_TYPE_2D, tiling, imageUsage, flags,
+											&capabilityProperties)) {
+
+			throw fragcore::RuntimeException("None Supported Image Format on Device: {}",
+											 magic_enum::enum_name(vkImageFormat));
+		}
 	}
-
-	/*	Create staging buffer.	*/
-	VKHelper::createImage(device, image.width(), image.height(), mipLevels, vk_format, VK_IMAGE_TILING_LINEAR,
-						  VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-							  VK_IMAGE_USAGE_SAMPLED_BIT,
-						  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, textureImage, textureImageMemory);
-	/*	*/
-	VKHelper::transitionImageLayout(cmd, textureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-	VKHelper::copyBufferToImageCmd(
-		cmd, stagingBuffer, textureImage,
-		{static_cast<uint32_t>(image.width()), static_cast<uint32_t>(image.height()), image.layers()});
+	mipLevels = fragcore::Math::clamp<size_t>(mipLevels, 1, capabilityProperties.maxMipLevels);
 
 	/*	*/
-	VKHelper::endSingleTimeCommands(device, queue, cmd, commandPool);
+	this->base.allocateImage(image.width(), image.height(), image.layers(), vkImageFormat, tiling, imageUsage,
+							 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, flags, texture.image, texture.imageMemory);
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	vkFreeMemory(device, stagingBufferMemory, nullptr);
+	/*	*/
+	this->base.transferImageData(texture.image, texture.imageMemory, image.width(), image.height(), image.layers(),
+								 image.getPixelData(), image.getSize());
 
-	generateMipmaps(device, commandPool, queue, physicalDevice, textureImage, vk_format, image.width(), image.height(),
-					mipLevels);
+	(texture).width = image.width();
+	(texture).height = image.height();
+	(texture).depth = image.layers();
+	texture.mipLevels = mipLevels;
+
+	if (texture.mipLevels > 1) {
+		generateMipmaps(this->device.getHandle(), this->base.getTransferCommandPool(),
+						this->base.getDefaultTransferQueue(), this->base.getPhysicalDevice()->getHandle(),
+						texture.image, vkImageFormat, image.width(), image.height(), mipLevels);
+	}
 }
 
 void ImageImporter::generateMipmaps(VkDevice device, VkCommandPool commandPool, VkQueue queue,
 									VkPhysicalDevice physicalDevice, VkImage image, VkFormat imageFormat,
 									int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
-	// Check if image format supports linear blitting
+
+	/*	Check if image format supports linear blitting	*/
 	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties);
+	this->base.getPhysicalDevice()->getFormatProperties(imageFormat, formatProperties);
 
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
 		throw std::runtime_error("texture image format does not support linear blitting!");
@@ -282,4 +190,100 @@ void ImageImporter::createCubeMap(const std::vector<std::string> &paths, VkDevic
 	// VKHelper::endSingleTimeCommands(device, queue, cmd, commandPool);
 	// vkDestroyBuffer(device, stagingBuffer, nullptr);
 	// vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+void ImageImporter::saveTextureData(const char *cfilename, const void *pixelData, unsigned int width,
+									unsigned int height, int layers, unsigned int format) {}
+
+void ImageImporter::saveTextureData(const char *cfilename, VkDevice device, VkImage image) {
+
+	void *pixelData = nullptr;
+	unsigned int width = 0, height = 0, layers = 0;
+
+	VkImageSubresource subResources = {};
+	VkSubresourceLayout subResourceLayout;
+	vkGetImageSubresourceLayout(device, image, &subResources, &subResourceLayout);
+
+	/*	Download texture data.	*/
+
+	// Seperate thread.
+	/*	Save data to texture.	*/
+	saveTextureData(cfilename, pixelData, width, height, layers, 0);
+}
+
+VkFormat ImageImporter::getImageFormat(fragcore::Image &image, const ColorSpace colorSpace,
+									   const TextureCompression compression) {
+
+	if (colorSpace == ColorSpace::SRGB) {
+		switch (image.getFormat()) {
+		case fragcore::ImageFormat::RGB24: /*	Multiple Channels.	*/
+
+			break;
+		case fragcore::ImageFormat::BGR24:
+
+			break;
+		case fragcore::ImageFormat::ARGB32:
+			break;
+		case fragcore::ImageFormat::BGRA32:
+			return VK_FORMAT_B8G8R8A8_SRGB;
+		case fragcore::ImageFormat::RGBA32:
+			break;
+		case fragcore::ImageFormat::RGBAFloat:
+
+			break;
+		case fragcore::ImageFormat::RGBFloat:
+
+			break;
+		case fragcore::ImageFormat::R8:
+		case fragcore::ImageFormat::Alpha8: /*	Single Channel.	*/
+
+			break;
+		case fragcore::ImageFormat::RFloat:
+
+			break;
+		case fragcore::ImageFormat::R16:
+
+			break;
+		case fragcore::ImageFormat::R16U:
+
+			break;
+		case fragcore::ImageFormat::R32:
+
+			break;
+		case fragcore::ImageFormat::R32U:
+
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (colorSpace == ColorSpace::RawLinear)
+
+		switch (image.getFormat()) {
+		case fragcore::ImageFormat::RGB24:
+			return VK_FORMAT_R8G8B8_UNORM;
+		case fragcore::ImageFormat::RGBA32:
+			return VK_FORMAT_R8G8B8A8_UNORM;
+		case fragcore::ImageFormat::BGR24:
+			return VK_FORMAT_B8G8R8_SNORM;
+		case fragcore::ImageFormat::BGRA32:
+			return VK_FORMAT_B8G8R8A8_UNORM;
+		case fragcore::ImageFormat::RGBAFloat:
+			return VK_FORMAT_R32G32B32A32_SFLOAT;
+		case fragcore::ImageFormat::RGBFloat:
+			return VK_FORMAT_R32G32B32_SFLOAT;
+		case fragcore::ImageFormat::Alpha8: /*	Single Channel.	*/
+		case fragcore::ImageFormat::RFloat:
+		case fragcore::ImageFormat::R16:
+
+		case fragcore::ImageFormat::R16U:
+
+		case fragcore::ImageFormat::R32:
+		case fragcore::ImageFormat::R32U:
+		default:
+			break;
+		}
+
+	throw cxxexcept::RuntimeException("None Supported Format: {}", magic_enum::enum_name(image.getFormat()));
 }
