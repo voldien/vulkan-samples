@@ -14,7 +14,7 @@
  * all copies or substantial portions of the Software.
  */
 #pragma once
-#include "Util/Camera.h"
+#include "Scene/Camera.h"
 #include <SDL2/SDL_keyboard.h>
 #include <SDLInput.h>
 #include <glm/fwd.hpp>

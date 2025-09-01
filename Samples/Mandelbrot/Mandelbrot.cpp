@@ -1,8 +1,9 @@
 #include "Util/PipelineLayoutUtil.h"
+#include "Util/ShaderLoader.h"
+#include "VKDataStructure.h"
 #include "VKSample.h"
 #include <SDL_mouse.h>
 #include <VKWindow.h>
-#include <VksCommon.h>
 #include <array>
 #include <glm/glm.hpp>
 
@@ -14,8 +15,7 @@ namespace vksample {
 	 */
 	class MandelBrotWindow : public VKBaseSampleWindow {
 	  private:
-		VkPipeline computePipeline = VK_NULL_HANDLE;
-		VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+		ComputePipeline computePipeline;
 		std::array<size_t, 3> localSize;
 
 		std::vector<VkImage> mandelBrotImage;
@@ -31,7 +31,7 @@ namespace vksample {
 		VkCommandPool computeCmdPool = VK_NULL_HANDLE;
 		std::vector<VkCommandBuffer> computeCmds;
 
-		const std::string computeShaderPath = "Shaders/mandelbrot/mandelbrot.comp.spv";
+		const std::string computeMandelBrotShaderPath = "Shaders/mandelbrot/mandelbrot.comp.spv";
 
 		struct mandelbrot_param_t {
 			float posX{}, posY{};
@@ -70,57 +70,20 @@ namespace vksample {
 			vkDestroyBuffer(getDevice(), paramBuffer, nullptr);
 			vkFreeMemory(getDevice(), paramMemory, nullptr);
 
-			vkDestroyPipeline(getDevice(), computePipeline, nullptr);
-			vkDestroyPipelineLayout(getDevice(), computePipelineLayout, nullptr);
-		}
-
-		VkPipeline createComputePipeline(VkPipelineLayout *layout) {
-			VkPipeline pipeline = nullptr;
-			const auto compShaderCode =
-				fragcore::IOUtil::readFileData<uint32_t>(this->computeShaderPath, this->getFileSystem());
-
-			this->localSize = PipelineLayoutUtil::getLocalSize(compShaderCode).value();
-
-			VkShaderModule compShaderModule = VKHelper::createShaderModule(getDevice(), compShaderCode);
-
-			VkPipelineShaderStageCreateInfo compShaderStageInfo{};
-			compShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			compShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-			compShaderStageInfo.module = compShaderModule;
-			compShaderStageInfo.pName = "main";
-
-			std::vector<VkDescriptorSetLayoutBinding> uboLayoutBindings(2);
-
-			/*	*/
-			uboLayoutBindings[0].binding = 0;
-			uboLayoutBindings[0].descriptorCount = 1;
-			uboLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			uboLayoutBindings[0].pImmutableSamplers = nullptr;
-			uboLayoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-			uboLayoutBindings[1].binding = 1;
-			uboLayoutBindings[1].descriptorCount = 1;
-			uboLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			uboLayoutBindings[1].pImmutableSamplers = nullptr;
-			uboLayoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-			/*	*/
-			VKHelper::createDescriptorSetLayout(getDevice(), descriptorSetLayout, uboLayoutBindings, 0);
-
-			/*	*/
-			VKHelper::createPipelineLayout(getDevice(), *layout, 0, {descriptorSetLayout});
-
-			pipeline = VKHelper::createComputePipeline(getDevice(), *layout, compShaderStageInfo);
-
-			vkDestroyShaderModule(getDevice(), compShaderModule, nullptr);
-
-			return pipeline;
+			vkDestroyPipeline(getDevice(), computePipeline.pipeline, nullptr);
+			vkDestroyPipelineLayout(getDevice(), computePipeline.layout, nullptr);
 		}
 
 		void Initialize() override {
 
 			/*	Create pipeline.	*/
-			computePipeline = createComputePipeline(&computePipelineLayout);
+			ShaderLoader loader(*this);
+
+			const std::vector<uint32_t> compShaderCode =
+				fragcore::IOUtil::readFileData<uint32_t>(this->computeMandelBrotShaderPath, this->getFileSystem());
+
+			this->computePipeline = loader.loadComputeProgram(&compShaderCode);
+			this->localSize = PipelineLayoutUtil::getLocalSize(compShaderCode).value();
 
 			// TODO fix physical device.
 			const size_t minMapBufferSize = getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
@@ -227,9 +190,9 @@ namespace vksample {
 
 				VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
 
-				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline.pipeline);
 
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline.layout, 0, 1,
 										&descriptorSets[i], 0, nullptr);
 
 				const unsigned int WorkGroupX = std::ceil(width / (float)localSize[0]);

@@ -37,26 +37,10 @@ VKSampleSessionBase::VKSampleSessionBase(std::shared_ptr<fvkcore::VulkanCore> &c
 												hostImageCopyFeatures);
 		this->useHostImageCopy = false; // hostImageCopyFeatures.hostImageCopy;
 
-		VkFormat image_format = VK_FORMAT_R8_SNORM;
-
-		VkFormatProperties3 format_properties_3{};
-		format_properties_3.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR;
-
-		// Properties3 need to be chained into Properties2
-		VkFormatProperties2 format_properties_2{};
-		format_properties_2.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
-		format_properties_2.pNext = &format_properties_3;
-
-		// Get format properties for the select image format
-		vkGetPhysicalDeviceFormatProperties2(this->getPhysicalDevice()->getHandle(), image_format,
-											 &format_properties_2);
-		if ((format_properties_3.optimalTilingFeatures & VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT) == 0) {
-			// Fallback to a different format or use other means of uploading data
-		}
-
 		VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeaturesEXT;
 		VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extendedDynamicState2FeaturesEXT;
 		VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3FeaturesEXT;
+
 		this->getPhysicalDevice()->checkFeature(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
 												extendedDynamicStateFeaturesEXT);
 		this->getPhysicalDevice()->checkFeature(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT,
@@ -64,13 +48,13 @@ VKSampleSessionBase::VKSampleSessionBase(std::shared_ptr<fvkcore::VulkanCore> &c
 		this->getPhysicalDevice()->checkFeature(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
 												extendedDynamicState3FeaturesEXT);
 
-		hasDynamicState =
+		this->hasDynamicState =
 			this->getPhysicalDevice()->isExtensionSupported(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) &&
 			extendedDynamicStateFeaturesEXT.extendedDynamicState;
-		hasDynamicState2 =
+		this->hasDynamicState2 =
 			this->getPhysicalDevice()->isExtensionSupported(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME) &&
 			extendedDynamicState2FeaturesEXT.extendedDynamicState2;
-		hasDynamicState3 =
+		this->hasDynamicState3 =
 			this->getPhysicalDevice()->isExtensionSupported(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME) &&
 			extendedDynamicState3FeaturesEXT.extendedDynamicState3ColorBlendEnable &&
 			extendedDynamicState3FeaturesEXT.extendedDynamicState3ColorBlendEquation;
@@ -157,8 +141,10 @@ void VKSampleSessionBase::loadDescriptorPool() {
 												  {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 128},
 												  {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 128},
 												  {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 128},
-												  {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 128},
-												  {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 128}};
+												  {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 128}};
+	if (hasRayTracing) {
+		poolSize.push_back({VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 128});
+	}
 
 	const size_t max_descriptor_sets = 8192;
 

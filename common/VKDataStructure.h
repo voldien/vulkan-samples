@@ -1,4 +1,21 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2025 Valdemar Lindberg
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ */
 #pragma once
+#include "Core/Object.h"
+#include "DataStructure/MemoryAddress.h"
 #include "vulkan/vulkan_core.h"
 #include <array>
 #include <glm/ext/vector_int3.hpp>
@@ -9,15 +26,15 @@ namespace vksample {
 
 	class Texture {
 	  public:
-		VkImage image;
-		VkDeviceMemory imageMemory;
-		VkImageView imageView;
-		VkFormat format;
+		VkImage image{nullptr};
+		VkDeviceMemory imageMemory{nullptr};
+		VkImageView imageView{nullptr};
+		VkFormat internalformat;
 		VkImageTiling tiling;
-		unsigned int width;
-		unsigned int height;
-		unsigned int depth;
-		unsigned int mipLevels;
+		unsigned int width = 0;
+		unsigned int height = 0;
+		unsigned int depth = 0;
+		unsigned int mipLevels = 0;
 	};
 
 	class UBOObject {
@@ -27,6 +44,11 @@ namespace vksample {
 		size_t size;			/*	*/
 		size_t totalSize;		/*	*/
 		unsigned int alignment; /*	*/
+	};
+
+	using UBOPool = struct uniform_buffer_pool_object_t {
+		UBOObject buffer{};
+		fragcore::MemoryAddress addresser;
 	};
 
 	using FrameBuffer = struct framebuffer_t {
@@ -58,5 +80,32 @@ namespace vksample {
 
 		/*	*/
 		// fragcore::Bound bound{};
+	};
+
+	//: public fragcore::Object
+	class ShaderPipeline {
+	  public:
+		VkPipeline pipeline;	 /*	*/
+		VkPipelineLayout layout; /*	*/
+
+		std::array<VkDescriptorSetLayout, 8> setLayout; /*	*/
+		uint32_t numSetLayout;
+
+		VkDescriptorSet set; /*	*/
+	};
+
+	class GraphicPipeline : public ShaderPipeline {
+	  public:
+		GraphicPipeline() = default;
+	};
+
+	class ComputePipeline : public ShaderPipeline {
+	  public:
+		ComputePipeline() = default;
+	};
+
+	class RayTracingPipeline : public ShaderPipeline {
+	  public:
+		RayTracingPipeline() = default;
 	};
 } // namespace vksample

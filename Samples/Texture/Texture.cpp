@@ -2,10 +2,9 @@
 #include "VKDataStructure.h"
 #include "vulkan/vulkan_core.h"
 #include <Importer/ImageImport.h>
-#include <Util/CameraController.h>
+#include "Scene/CameraController.h"
 #include <VKSample.h>
 #include <VKWindow.h>
-#include <VksCommon.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
@@ -372,8 +371,12 @@ namespace vksample {
 
 				vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-				const VkViewport viewport = {
-					.x = 0, .y = 0, .width = (float)width, .height = (float)height, .minDepth = 0, .maxDepth = 1.0f};
+				const VkViewport viewport = {.x = 0,
+											 .y = static_cast<float>(height),
+											 .width = (float)width,
+											 .height = (float)-height,
+											 .minDepth = 0,
+											 .maxDepth = 1.0f};
 				vkCmdSetViewport(cmd, 0, 1, &viewport);
 				const VkRect2D scissor = {.offset = {0, 0},
 										  .extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)}};

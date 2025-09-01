@@ -45,19 +45,25 @@ SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${SIMD_FLA
 SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${SIMD_FLAGS}")
 
 
-############################################
+# ###########################################
 # Backend libraries
-############################################
-SET(MIMI_VULKAN_SUPPORT ON)
-SET(MIMI_TERMINAL_SUPPORT OFF)
-SET(MIMI_OPENGL_SUPPORT OFF)
-SET(MIMI_WINDOW_SDL2_SUPPORT ON)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi EXCLUDE_FROM_ALL)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/image/imageloader EXCLUDE_FROM_ALL)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/taskscheduler/TaskSch EXCLUDE_FROM_ALL)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/geometryutil EXCLUDE_FROM_ALL)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/audio EXCLUDE_FROM_ALL)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi/extern/fragcore/modules/audio/openal EXCLUDE_FROM_ALL)
+# ###########################################
+SET(BUILD_WITH_OPENMP ON)
+#ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/nekomimi EXCLUDE_FROM_ALL)
+# Fragcore specific libraries
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/image EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/image/imageloader EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/filenotify EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/taskscheduler/TaskSch EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/geometryutil EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/window EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/window/sdl EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/audio EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/audio/openal EXCLUDE_FROM_ALL)
+
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/renderer EXCLUDE_FROM_ALL)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/extern/fragcore/modules/renderer/vulkan EXCLUDE_FROM_ALL)
 
 ###################################################
 # Backend common logic for all vulkan Samples
@@ -102,7 +108,6 @@ ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/VideoPlayback)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/ReactionDiffusion)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Mandelbrot)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/GameOfLife)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/SubGroup)
 
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/Samples/Prime)
 
@@ -149,9 +154,9 @@ FOREACH(GLSL ${GLSL_SOURCE_FILES})
 	SET(SPIRV "${FILE_NAME}.spv")
 	IF(GLSLLANGVALIDATOR)
 		IF(CMAKE_BUILD_TYPE STREQUAL "Release")
-			SET(SPIRV_BUILD_SETTINGS -g0)
+			SET(SPIRV_BUILD_SETTINGS --invert-y)
 		ELSE()
-			SET(SPIRV_BUILD_SETTINGS -g -gVS -Od)
+			SET(SPIRV_BUILD_SETTINGS -g -gVS -Od --invert-y)
 		ENDIF()
 		ADD_CUSTOM_COMMAND(
 			OUTPUT ${SPIRV}
@@ -160,9 +165,9 @@ FOREACH(GLSL ${GLSL_SOURCE_FILES})
 			DEPENDS ${GLSL})
 	ELSEIF(GLSLC)
 		IF(CMAKE_BUILD_TYPE STREQUAL "Release")
-			SET(SPIRV_BUILD_SETTINGS -O)
+			SET(SPIRV_BUILD_SETTINGS -O -finvert-y)
 		ELSE()
-			SET(SPIRV_BUILD_SETTINGS -g -Od)
+			SET(SPIRV_BUILD_SETTINGS -g -Od -finvert-y)
 		ENDIF()
 
 		ADD_CUSTOM_COMMAND(

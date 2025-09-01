@@ -5,7 +5,9 @@
 #include "TaskScheduler/IScheduler.h"
 #include "assimp/Importer.hpp"
 #include "assimp/ProgressHandler.hpp"
+#include "assimp/camera.h"
 #include "assimp/config.h"
+#include "assimp/matrix4x4.h"
 #include "assimp/scene.h"
 #include <IO/IOUtil.h>
 #include <assimp/material.h>
@@ -47,6 +49,8 @@ static inline glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4 *from) noexcept {
 
 	return to;
 }
+
+static inline std::string aiStringToStdString(const aiString &from) { return std::string(from.data, from.length); }
 
 ModelImporter::ModelImporter(ModelImporter &&other) noexcept
 	: filepath(other.filepath), nodes(other.nodes), models(other.models), materials(other.materials),
@@ -105,6 +109,14 @@ void ModelImporter::loadContent(const std::string &path, unsigned long int suppo
 		throw RuntimeException("Failed to load file: {} - Error: {}", path, importer.GetErrorString());
 	}
 
+	std::cout << std::endl;
+	std::cout << "Number Lights: " << this->sceneRef->mNumLights << std::endl;
+	std::cout << "Number Cameras: " << this->sceneRef->mNumCameras << std::endl;
+	std::cout << "Number Materials: " << this->sceneRef->mNumMaterials << std::endl;
+	std::cout << "Number Textures: " << this->sceneRef->mNumTextures << std::endl;
+	std::cout << "Number Animations: " << this->sceneRef->mNumAnimations << std::endl;
+	std::cout << "Number Skeletons: " << this->sceneRef->mNumSkeletons << std::endl;
+
 	this->globalNodeTransform = aiMatrix4x4ToGlm(&this->sceneRef->mRootNode->mTransformation);
 
 	this->initScene(this->sceneRef);
@@ -112,13 +124,9 @@ void ModelImporter::loadContent(const std::string &path, unsigned long int suppo
 
 void ModelImporter::clear() noexcept {
 
-	for (size_t i = 0; i < this->textures.size(); i++) {
-		if (this->textures[i].data) {
-			free(this->textures[i].data);
-		}
-	}
+	this->TexturePoolData.clear();
 
-	this->nodePool.clean();
+	this->nodePool.clear();
 	this->nodes.clear();
 	this->models.clear();
 	this->materials.clear();
@@ -141,6 +149,15 @@ void ModelImporter::initScene(const aiScene *scene) {
 
 			this->textures.resize(scene->mNumTextures);
 
+			/*	Calculate the size of all textures.	*/
+			size_t total_texture_data = 0;
+			for (size_t i = 0; i < scene->mNumTextures; i++) {
+				total_texture_data += getTextureRequiredSize(scene->mTextures[i]);
+			}
+
+			this->TexturePoolData.allocateAligned(total_texture_data, 4);
+			this->TexturePoolData.clear();
+
 			for (size_t i = 0; i < scene->mNumTextures; i++) {
 				std::cout << scene->mTextures[i]->mFilename.C_Str() << std::endl;
 
@@ -158,6 +175,7 @@ void ModelImporter::initScene(const aiScene *scene) {
 			this->loadTexturesFromMaterials(scene->mMaterials[x]);
 		}
 
+		/*	Extract bounding volume.	*/
 		const size_t nrMeshes = scene->mNumMeshes;
 		for (size_t x = 0; x < nrMeshes; x++) {
 
@@ -185,7 +203,7 @@ void ModelImporter::initScene(const aiScene *scene) {
 	}
 	// TODO: fix
 	/*	Multithread the loading of all the geometry data.	*/
-	//	#pragma omp parallel for schedule(dynamic, 4)
+	//	#pragma omp parallel for schedule(static, 1)
 	/*
 	for (size_t index_thread = 0; index_thread < model_threads.size(); index_thread++) {
 
@@ -209,59 +227,79 @@ void ModelImporter::initScene(const aiScene *scene) {
 	// #pragma omp
 
 	/*	*/
-	std::thread process_animation_light_camera_thread([&]() {
-		if (scene->HasAnimations()) {
-			for (size_t x = 0; x < scene->mNumAnimations; x++) {
-				this->initAnimation(scene->mAnimations[x], x);
-			}
-		}
-
+	std::thread process_light_camera_thread([&]() {
+		/*	*/
 		if (scene->HasLights()) {
 			this->lights.resize(scene->mNumLights);
 			const size_t nrLights = scene->mNumLights;
-			for (unsigned int x = 0; x < nrLights; x++) {
-				this->initLight(scene->mLights[x], x);
+
+			for (unsigned int index = 0; index < nrLights; index++) {
+				this->initLight(scene->mLights[index], index);
 			}
 		}
 
+		/*	*/
 		if (scene->HasCameras()) {
 			cameras.resize(scene->mNumCameras);
 
-			for (unsigned int x = 0; x < scene->mNumCameras; x++) {
-				CameraData &cameraData = cameras[x];
+			for (unsigned int camera_index = 0; camera_index < scene->mNumCameras; camera_index++) {
+				CameraData &cameraData = cameras[camera_index];
+				const aiCamera *AiCamera = scene->mCameras[camera_index];
 
-				cameraData.name = scene->mCameras[x]->mName.C_Str();
-				// scene->mCameras[x]->mPosition;
+				cameraData.name = aiStringToStdString(AiCamera->mName);
+				cameraData.position.x = AiCamera->mPosition.x;
+				cameraData.position.y = AiCamera->mPosition.y;
+				cameraData.position.z = AiCamera->mPosition.z;
+
+				aiMatrix4x4 cameraMatrix;
+				AiCamera->GetCameraMatrix(cameraMatrix);
+
+				cameraData.near = AiCamera->mClipPlaneNear;
+				cameraData.far = AiCamera->mClipPlaneFar;
 			}
 		}
-
-		// TODO: compute
-		nodePool.resize(2048);
 	});
 	// process_animation_light_camera_thread.detach();
 
+	/*	*/
+	nodePool.resize(4096);
+
 	process_textures_thread.join();
-	process_animation_light_camera_thread.join();
+	process_light_camera_thread.join();
 
 	for (size_t i = 0; i < model_threads.size(); i++) {
 		//	model_threads[i].join();
 	}
 
-	/*	*/
-	if (scene->HasMaterials()) {
-
-		this->materials.resize(scene->mNumMaterials);
-		for (size_t x = 0; x < scene->mNumMaterials; x++) {
-			this->initMaterial(scene->mMaterials[x], x);
+	std::thread process_material_thread([&]() {
+		/*	Require Texture Data has been loaded.	*/
+		if (scene->HasMaterials()) {
+			this->materials.resize(scene->mNumMaterials);
+			for (size_t x = 0; x < scene->mNumMaterials; x++) {
+				this->initMaterial(scene->mMaterials[x], x);
+			}
 		}
-	}
+	});
 
+	/*	*/
 	this->initNodeRoot(scene->mRootNode, nullptr);
 
 	/*	*/
-	for (size_t x = 0; x < scene->mNumMeshes; x++) {
-		this->initBoneSkeleton(scene->mMeshes[x], x);
-	}
+	std::thread process_bone_animation_thread([&]() {
+		for (size_t x = 0; x < scene->mNumMeshes; x++) {
+			this->initBoneSkeleton(scene->mMeshes[x], x);
+		}
+
+		/*	*/
+		if (scene->HasAnimations()) {
+			for (size_t x = 0; x < scene->mNumAnimations; x++) {
+				this->initAnimation(scene->mAnimations[x], x);
+			}
+		}
+	});
+
+	process_material_thread.join();
+	process_bone_animation_thread.join();
 }
 
 void ModelImporter::initNodeRoot(const aiNode *ai_node, NodeObject *parent) {
@@ -273,10 +311,14 @@ void ModelImporter::initNodeRoot(const aiNode *ai_node, NodeObject *parent) {
 		aiVector3f position, scale;
 		aiQuaternion rotation;
 
-		NodeObject *pobject = nodePool.obtain();
+		// TODO: fix pool.
+
+		NodeObject *pobject = new NodeObject(); // nodePool.obtain();
+		//*pobject = NodeObject();
 
 		if (parent) {
 			pobject->parent = parent;
+			//parent->childrens.addChild(ITree<node_object_t *> *pchild)
 		} else {
 			pobject->parent = nullptr;
 		}
@@ -298,7 +340,8 @@ void ModelImporter::initNodeRoot(const aiNode *ai_node, NodeObject *parent) {
 			pobject->modelGlobalTransform = this->globalTransform() * pobject->modelLocalTransform;
 		}
 
-		pobject->name = ai_node->mChildren[node_index]->mName.C_Str();
+		pobject->name = std::string();
+		pobject->name = aiStringToStdString(ai_node->mChildren[node_index]->mName);
 
 		/*	*/
 		if (ai_node->mChildren[node_index]->mMeshes) {
@@ -322,7 +365,7 @@ void ModelImporter::initNodeRoot(const aiNode *ai_node, NodeObject *parent) {
 
 		/*	*/
 		this->nodes.push_back(pobject);
-		this->nodeByName[std::string(child_node->mName.C_Str())] = pobject;
+		this->nodeByName[pobject->name] = pobject;
 
 		/*	*/
 		this->initNodeRoot(child_node, pobject);
@@ -620,7 +663,7 @@ ModelSystemObject *ModelImporter::initMesh(const aiMesh *aimesh, unsigned int in
 	pmesh->vertexData = vertices;
 	pmesh->vertexStride = StrideSize;
 	pmesh->primitiveType = aimesh->mPrimitiveTypes;
-	pmesh->name = std::string(aimesh->mName.C_Str());
+	pmesh->name = aiStringToStdString(aimesh->mName);
 	pmesh->processed = true;
 
 	return pmesh;
@@ -648,7 +691,7 @@ MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t mat
 	/*	*/
 	aiString name;
 	if (ref_material->Get(AI_MATKEY_NAME, name) == aiReturn_SUCCESS) {
-		material_obj->name = name.C_Str();
+		material_obj->name = aiStringToStdString(name);
 	}
 
 	/*	load all texture assoicated with material.	*/
@@ -783,8 +826,10 @@ MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t mat
 				case aiTextureType::aiTextureType_AMBIENT_OCCLUSION:
 					material_obj->ambientOcclusionIndex = texTableIndex;
 					break;
-				case aiTextureType_UNKNOWN:
 				case aiTextureType_GLTF_METALLIC_ROUGHNESS:
+					material_obj->specularIndex = textureIndex; // TODO: Fix
+					break;
+				case aiTextureType_UNKNOWN:
 				case aiTextureType::aiTextureType_LIGHTMAP:
 				default:
 					std::cerr << "Can't find any image " << texTableIndex << std::endl;
@@ -802,78 +847,93 @@ MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t mat
 			material_obj->shade_model = model;
 		}
 
-		if (model < aiShadingMode_PBR_BRDF) {
-
-			if (ref_material->Get(AI_MATKEY_COLOR_AMBIENT, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				if (color[0] > 0.5f) {
-					material_obj->ambient = color;
-					material_obj->ambient[3] = 1;
-				}
-			}
-			if (ref_material->Get(AI_MATKEY_COLOR_DIFFUSE, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->diffuse = color;
-				material_obj->diffuse[3] = 1;
-			}
-			if (ref_material->Get(AI_MATKEY_COLOR_EMISSIVE, color[0]) == aiReturn::aiReturn_SUCCESS) { // TODO:
-																									   // determine
-				material_obj->emission = color;
-				material_obj->emission[3] = 1;
-			}
-			if (ref_material->Get(AI_MATKEY_COLOR_SPECULAR, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->specular = color;
-				material_obj->specular[3] = 0;
-			}
-			if (ref_material->Get(AI_MATKEY_COLOR_TRANSPARENT, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->transparent = color;
-			}
-			if (ref_material->Get(AI_MATKEY_COLOR_REFLECTIVE, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->reflectivity = color;
-				material_obj->reflectivity[3] = 1;
-			}
-			if (ref_material->Get(AI_MATKEY_SHININESS, shininessStrength) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->shinininess = shininessStrength;
-			}
-
-			float tmp = NAN;
-			if (ref_material->Get(AI_MATKEY_SHININESS_STRENGTH, tmp) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->shinininess *= tmp;
-			}
-
-			if (ref_material->Get(AI_MATKEY_OPACITY, tmp) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->opacity = tmp;
-				material_obj->transparent[3] = tmp;
-			} else {
-				material_obj->transparent[3] = 1;
-			}
-			if (ref_material->Get(AI_MATKEY_TRANSPARENCYFACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->shinininess *= tmp;
-			}
-
-			if (ref_material->Get(AI_MATKEY_REFRACTI, tmp) == aiReturn::aiReturn_SUCCESS) {
-			}
-			if (ref_material->Get(AI_MATKEY_REFLECTIVITY, tmp) == aiReturn::aiReturn_SUCCESS) {
-			}
-		} else {
-
-			material_obj->ambient = glm::vec4(1);
-
-			if (ref_material->Get(AI_MATKEY_BASE_COLOR, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->diffuse = color;
-				material_obj->diffuse[3] = 1;
-			}
-
-			/*	*/
-			if (ref_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->transparent *= color;
-			}
-
-			if (ref_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, color[0]) == aiReturn::aiReturn_SUCCESS) {
-				material_obj->emission = color;
-				material_obj->emission[3] = 1;
+		if (ref_material->Get(AI_MATKEY_COLOR_AMBIENT, color[0]) == aiReturn::aiReturn_SUCCESS) {
+			if (color[0] > 0.5f) {
+				material_obj->ambient = color;
+				material_obj->ambient[3] = 1;
 			}
 		}
+		if (ref_material->Get(AI_MATKEY_COLOR_DIFFUSE, color[0]) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->diffuse = color;
+			material_obj->diffuse[3] = 1;
+		}
+		if (ref_material->Get(AI_MATKEY_COLOR_EMISSIVE, color[0]) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->emission = color;
+			material_obj->emission[3] = 1;
+		}
+		if (ref_material->Get(AI_MATKEY_COLOR_SPECULAR, color[0]) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->specular = color;
+			material_obj->specular[3] = 0;
+		}
+		if (ref_material->Get(AI_MATKEY_COLOR_TRANSPARENT, color[0]) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->transparent = color;
+		}
+		if (ref_material->Get(AI_MATKEY_COLOR_REFLECTIVE, color[0]) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->reflectivity = color;
+			material_obj->reflectivity[3] = 1;
+		}
 
+		if (ref_material->Get(AI_MATKEY_SHININESS, shininessStrength) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->shinininess = shininessStrength;
+		}
 		float tmp = NAN;
+		if (ref_material->Get(AI_MATKEY_SHININESS_STRENGTH, tmp) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->shinininess *= tmp;
+		}
+
+		if (ref_material->Get(AI_MATKEY_OPACITY, tmp) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->opacity = tmp;
+			material_obj->transparent[3] = tmp;
+		} else {
+			material_obj->transparent[3] = 1;
+		}
+
+		if (ref_material->Get(AI_MATKEY_TRANSPARENCYFACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->transparent.a *= tmp;
+		}
+
+		if (ref_material->Get(AI_MATKEY_BASE_COLOR, color[0]) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->diffuse = color;
+			material_obj->diffuse[3] = 1;
+		}
+
+		/*	*/
+		if (ref_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, color[0]) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->transparent *= color;
+		}
+
+		if (ref_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, color[0]) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->emission = color;
+			material_obj->emission[3] = 1;
+		}
+
+		// float tmp;
+		if (ref_material->Get(AI_MATKEY_REFRACTI, tmp) == aiReturn::aiReturn_SUCCESS) {
+		}
+
+		if (ref_material->Get(AI_MATKEY_METALLIC_FACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->metalic = tmp;
+		}
+		if (ref_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->shinininess = tmp;
+		}
+		if (ref_material->Get(AI_MATKEY_ANISOTROPY_FACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
+		}
+		if (ref_material->Get(AI_MATKEY_GLOSSINESS_FACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
+		}
+
+		if (ref_material->Get(AI_MATKEY_SHEEN_COLOR_FACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
+		}
+		if (ref_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
+		}
+		if (ref_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, tmp) == aiReturn::aiReturn_SUCCESS) {
+		}
+		if (ref_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, tmp) == aiReturn::aiReturn_SUCCESS) {
+			material_obj->emission *= tmp;
+		}
+		//}
+
+		// float tmp = NAN;
 		if (ref_material->Get(AI_MATKEY_BUMPSCALING, tmp) == aiReturn::aiReturn_SUCCESS) {
 			material_obj->bumpiness = tmp;
 		}
@@ -896,7 +956,7 @@ MaterialObject *ModelImporter::initMaterial(aiMaterial *ref_material, size_t mat
 		}
 	}
 
-	material_obj->shinininess = fragcore::Math::max(material_obj->shinininess, 1.0f);
+	material_obj->shinininess = fragcore::Math::max(material_obj->shinininess, 0.0f);
 
 	return material_obj;
 }
@@ -951,19 +1011,25 @@ AnimationObject *ModelImporter::initAnimation(const aiAnimation *pAnimation, uns
 
 	AnimationObject animation_clip = AnimationObject();
 
-	animation_clip.name = pAnimation->mName.C_Str();
+	animation_clip.name = aiStringToStdString(pAnimation->mName);
+	animation_clip.duration = pAnimation->mDuration;
 
 	unsigned int channel_index = 0;
 
-	animation_clip.duration = pAnimation->mDuration;
-
+	/*	*/
 	for (size_t i = 0; i < pAnimation->mNumChannels; i++) {
+
 		const aiNodeAnim *nodeAnimation = pAnimation->mChannels[i];
 
+		/*	*/
+		NodeObject *nodeReference = getNodeByName(nodeAnimation->mNodeName.C_Str());
+
+		/*	*/
 		if (nodeAnimation->mNumPositionKeys > 0) {
 			Curve positionCurve;
 
 			positionCurve.name = nodeAnimation->mNodeName.C_Str();
+
 			positionCurve.keyframes.resize(nodeAnimation->mNumPositionKeys);
 
 			for (unsigned int x = 0; x < nodeAnimation->mNumPositionKeys; x++) {
@@ -974,6 +1040,7 @@ AnimationObject *ModelImporter::initAnimation(const aiAnimation *pAnimation, uns
 			animation_clip.curves.push_back(positionCurve);
 		}
 
+		/*	*/
 		if (nodeAnimation->mNumRotationKeys > 0) {
 
 			Curve rotation_curve;
@@ -989,6 +1056,7 @@ AnimationObject *ModelImporter::initAnimation(const aiAnimation *pAnimation, uns
 			animation_clip.curves.push_back(rotation_curve);
 		}
 
+		/*	*/
 		if (nodeAnimation->mNumScalingKeys > 0) {
 
 			Curve scale_curve;
@@ -1019,15 +1087,19 @@ AnimationObject *ModelImporter::initAnimation(const aiAnimation *pAnimation, uns
 }
 
 LightObject *ModelImporter::initLight(const aiLight *light, unsigned int index) {
+
 	LightObject *lightOb = &this->lights[index];
 
 	lightOb->name = light->mName.C_Str();
 
+	/*	*/
 	lightOb->position = glm::vec3(light->mPosition.x, light->mPosition.y, light->mPosition.z);
 	lightOb->direction = glm::vec3(light->mDirection.x, light->mDirection.y, light->mDirection.z);
 	lightOb->mUp = glm::vec3(light->mUp.x, light->mUp.y, light->mUp.z);
 
 	lightOb->mColorDiffuse = glm::vec4(light->mColorDiffuse.r, light->mColorDiffuse.g, light->mColorDiffuse.b, 1);
+
+	lightOb->type = light->mType;
 
 	return lightOb;
 }
@@ -1038,18 +1110,47 @@ TextureAssetObject *ModelImporter::initTexture(aiTexture *texture, unsigned int 
 	mTexture->width = texture->mWidth;
 	mTexture->height = texture->mHeight;
 
-	if (mTexture->height == 0) {
-		mTexture->dataSize = texture->mWidth;
-	} else if (texture->pcData != nullptr) {
-		mTexture->dataSize = static_cast<size_t>(texture->mWidth * texture->mHeight) * 4;
-	}
+	mTexture->dataSize = getTextureRequiredSize(texture);
+
 	mTexture->filepath = texture->mFilename.C_Str();
 
 	if (texture->pcData != nullptr) {
-		mTexture->data = (char *)malloc(mTexture->dataSize);
+		mTexture->data = (char *)this->TexturePoolData.fetch(mTexture->dataSize);
 		memcpy(mTexture->data, texture->pcData, mTexture->dataSize);
 	}
 	return mTexture;
+}
+
+size_t ModelImporter::getTextureRequiredSize(const aiTexture *texture) const noexcept {
+
+	/*	If 0 => Compressed data => mWidth contains the size in bytes.	*/
+	if (texture->mHeight == 0) {
+		return texture->mWidth;
+	}
+
+	unsigned int colorChannelSize = 8;
+	unsigned int numChannels = 4;
+	// TODO: use regex to extract digits.
+	if (std::strcmp(texture->achFormatHint, "rgba8888") == 0) {
+		numChannels = 4;
+	}
+	if (std::strcmp(texture->achFormatHint, "rgba8880") == 0) {
+		numChannels = 3;
+	}
+	if (std::strcmp(texture->achFormatHint, "argb8888") == 0) {
+		numChannels = 4;
+	}
+	if (std::strcmp(texture->achFormatHint, "argb8880") == 0) {
+		numChannels = 3;
+	}
+	const unsigned int pixelSizeInBits = colorChannelSize * numChannels;
+
+	if (texture->pcData != nullptr) {
+		return static_cast<size_t>(texture->mWidth * texture->mHeight) * numChannels;
+	}
+
+	/*	Failed to get any size data.	*/
+	return 0;
 }
 
 struct Face {
@@ -1094,6 +1195,10 @@ std::vector<MaterialObject *> ModelImporter::getMaterials(const size_t texture_i
 		if (getMaterials()[i].ambientOcclusionIndex == (int)texture_index) {
 			found = true;
 		}
+		if (getMaterials()[i].metalIndex == (int)texture_index) {
+			found = true;
+		}
+
 		// TODO: add more
 
 		/*	*/

@@ -121,6 +121,10 @@ namespace vksample {
 		const VkAllocationCallbacks *getAllocatorCallback() const noexcept { return this->g_Allocator; }
 		VkPipelineCache getPipelineCache() const noexcept { return this->pipelineCache; }
 
+		VkSampleCountFlagBits getMaxUsableSampleCount() const noexcept {
+			return this->getPhysicalDevice()->getMaxUsableSampleCount();
+		}
+
 	  protected: /*	*/
 		std::shared_ptr<fvkcore::VulkanCore> core;
 		std::shared_ptr<fvkcore::VKDevice> device;
@@ -146,6 +150,12 @@ namespace vksample {
 
 		VkQueryPool queryPool;
 
+		/*	Properties.	*/
+		VkPhysicalDeviceMemoryProperties2 prop;
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayProperties;
+		VkPhysicalDeviceRayTracingPropertiesNV s;
+		VkPhysicalDeviceAccelerationStructurePropertiesKHR ppp;
+
 		/*	Features.	*/
 		bool dynamic_rendering{false};
 		bool hasDynamicState{false};
@@ -154,6 +164,7 @@ namespace vksample {
 		bool useFragmentShadingRate{false};
 		bool useHostImageCopy{false};
 		bool useDescriptorIndex{false};
+		bool hasRayTracing{false};
 
 		/*	Properties.	*/
 

@@ -1,5 +1,7 @@
+#include "Util/MeshProcedural.h"
 #include "VKDataStructure.h"
 #include "VKSample.h"
+#include "vulkan/vulkan_core.h"
 #include <SDL2/SDL.h>
 #include <Util/IOUtil.h>
 #include <VKWindow.h>
@@ -17,11 +19,6 @@ namespace vksample {
 	  private:
 		MeshObject cubeMesh;
 
-		VkBuffer vertexBuffer = VK_NULL_HANDLE;
-		VkDeviceMemory vertexIndicesMemory = VK_NULL_HANDLE;
-		VkDeviceSize indices_offset = 0;
-		size_t nrIndices = 1;
-
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
@@ -33,6 +30,8 @@ namespace vksample {
 		VkDeviceMemory uniformBufferMemory = VK_NULL_HANDLE;
 		std::vector<void *> mapMemory;
 
+		CameraController camera;
+
 		const std::string vertexShaderPath = "Shaders/pushconstant/pushconstant.vert.spv";
 		const std::string fragmentShaderPath = "Shaders/pushconstant/pushconstant.frag.spv";
 
@@ -40,7 +39,7 @@ namespace vksample {
 			glm::mat4 model;
 			glm::mat4 view;
 			glm::mat4 proj;
-		} mvp{};
+		} stageBuffer{};
 
 	  public:
 		PushConstant(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device)
@@ -50,9 +49,6 @@ namespace vksample {
 		}
 
 		void release() override {
-
-			vkDestroyBuffer(this->getDevice(), vertexBuffer, nullptr);
-			vkFreeMemory(this->getDevice(), vertexIndicesMemory, nullptr);
 
 			vkUnmapMemory(this->getDevice(), uniformBufferMemory);
 			vkDestroyBuffer(this->getDevice(), uniformBuffer, nullptr);
@@ -217,25 +213,27 @@ namespace vksample {
 
 		void Initialize() override {
 
-			// TODO align
-			uniformBufferSize = sizeof(UniformBufferBlock);
-			uniformBufferSize +=
-				uniformBufferSize % getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
+			/*	Allocate uniform buffer.	*/
+			{
+				this->uniformBufferSize = sizeof(UniformBufferBlock);
+				const size_t minMapBufferSize = getPhysicalDevice()->getDeviceLimits().minUniformBufferOffsetAlignment;
+				this->uniformBufferSize = fragcore::Math::align(this->uniformBufferSize, minMapBufferSize);
 
-			VkPhysicalDeviceMemoryProperties memProperties;
-			vkGetPhysicalDeviceMemoryProperties(physicalDevice(), &memProperties);
+				const VkBufferUsageFlags usageFlags =
+					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+				const VkMemoryPropertyFlags memoryFlag = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |	/*	*/
+														 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | /*	*/
+														 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;	/*	*/
+				this->allocateBuffer(this->uniformBufferSize, usageFlags, memoryFlag, this->uniformBuffer,
+									 this->uniformBufferMemory);
 
-			VKHelper::createBuffer(getDevice(), uniformBufferSize * getSwapChainImageCount(), memProperties,
-								   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-								   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-									   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-								   uniformBuffer, uniformBufferMemory);
+				uint8_t *_data = nullptr;
+				VKS_VALIDATE(vkMapMemory(getDevice(), this->uniformBufferMemory, 0,
+										 this->uniformBufferSize * this->getSwapChainImageCount(), 0, (void **)&_data));
 
-			for (size_t i = 0; i < getSwapChainImageCount(); i++) {
-				void *_data = nullptr;
-				VKS_VALIDATE(
-					vkMapMemory(getDevice(), uniformBufferMemory, uniformBufferSize * i, uniformBufferSize, 0, &_data));
-				mapMemory.push_back(_data);
+				for (size_t index = 0; index < this->getSwapChainImageCount(); index++) {
+					mapMemory.push_back((void *)&_data[this->uniformBufferSize * index]);
+				}
 			}
 
 			/*	Create pipeline.	*/
@@ -270,42 +268,8 @@ namespace vksample {
 			}
 
 			{
-				/*	Load geometry.	*/
-				std::vector<fragcore::ProceduralGeometry::Vertex> vertices;
-				std::vector<unsigned int> indices;
-				fragcore::ProceduralGeometry::generateCube(1.0f, vertices, indices);
-
-				VkBufferCreateInfo bufferInfo = {};
-				bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-				bufferInfo.size = sizeof(vertices[0]) * vertices.size() + sizeof(indices[0]) * indices.size();
-				bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-				bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-				VKS_VALIDATE(vkCreateBuffer(getDevice(), &bufferInfo, nullptr, &vertexBuffer));
-				this->indices_offset = sizeof(vertices[0]) * vertices.size();
-				this->nrIndices = indices.size();
-
-				VkMemoryRequirements memRequirements;
-				vkGetBufferMemoryRequirements(getDevice(), vertexBuffer, &memRequirements);
-
-				VkMemoryAllocateInfo allocInfo = {};
-				allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-				allocInfo.allocationSize = memRequirements.size;
-				allocInfo.memoryTypeIndex =
-					VKHelper::findMemoryType(physicalDevice(), memRequirements.memoryTypeBits,
-											 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-						.value();
-
-				VKS_VALIDATE(vkAllocateMemory(getDevice(), &allocInfo, nullptr, &vertexIndicesMemory));
-
-				VKS_VALIDATE(vkBindBufferMemory(getDevice(), vertexBuffer, vertexIndicesMemory, 0));
-
-				/*	Upload vertex data.	*/
-				uint8_t *data = nullptr;
-				VKS_VALIDATE(vkMapMemory(getDevice(), vertexIndicesMemory, 0, bufferInfo.size, 0, (void **)&data));
-				memcpy(data, vertices.data(), (size_t)vertices.size() * sizeof(vertices[0]));
-				memcpy(data + indices_offset, indices.data(), (size_t)indices.size() * sizeof(indices[0]));
-				vkUnmapMemory(getDevice(), vertexIndicesMemory);
+				MeshProcedural procedural(*this);
+				procedural.loadCube(cubeMesh, 1);
 			}
 
 			this->onResize(this->width(), this->height());
@@ -314,15 +278,20 @@ namespace vksample {
 		void onResize(int width, int height) override {
 
 			VKS_VALIDATE(vkQueueWaitIdle(getDefaultGraphicQueue()));
-			this->mvp.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.15f, 100.0f);
-			this->mvp.model = glm::mat4(1.0f);
-			this->mvp.view = glm::mat4(1.0f);
-			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
+
+			this->stageBuffer.model = glm::mat4(1.0f);
+			this->stageBuffer.view = glm::mat4(1.0f);
+			this->stageBuffer.view = glm::translate(this->stageBuffer.view, glm::vec3(0, 0, -5));
 		}
 
 		void draw() override {
 
+			const int width = this->width();
+			const int height = this->height();
+
 			VkCommandBuffer cmd = getCommandBuffers(getCurrentFrameIndex());
+
+			vkResetCommandBuffer(cmd, 0);
 
 			VkCommandBufferBeginInfo beginInfo = {};
 			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -335,8 +304,8 @@ namespace vksample {
 			renderPassInfo.renderPass = getDefaultRenderPass();
 			renderPassInfo.framebuffer = getFrameBuffer(getCurrentFrameIndex());
 			renderPassInfo.renderArea.offset = {0, 0};
-			renderPassInfo.renderArea.extent.width = width();
-			renderPassInfo.renderArea.extent.height = height();
+			renderPassInfo.renderArea.extent.width = width;
+			renderPassInfo.renderArea.extent.height = height;
 
 			std::array<VkClearValue, 2> clearValues{};
 			clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
@@ -344,25 +313,36 @@ namespace vksample {
 			renderPassInfo.clearValueCount = clearValues.size();
 			renderPassInfo.pClearValues = clearValues.data();
 
-			vkCmdUpdateBuffer(cmd, uniformBuffer, uniformBufferSize * getCurrentFrameIndex(), sizeof(this->mvp),
-							  &this->mvp);
+			/*	*/
+			vkCmdUpdateBuffer(cmd, uniformBuffer, uniformBufferSize * getCurrentFrameIndex(), sizeof(this->stageBuffer),
+							  &this->stageBuffer);
 
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+			const VkViewport viewport = {.x = 0,
+										 .y = static_cast<float>(height),
+										 .width = (float)width,
+										 .height = (float)-height,
+										 .minDepth = 0,
+										 .maxDepth = 1.0f};
+			vkCmdSetViewport(cmd, 0, 1, &viewport);
+			const VkRect2D scissor = {.offset = {0, 0},
+									  .extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)}};
+			vkCmdSetScissor(cmd, 0, 1, &scissor);
 
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 			/*	*/
-			VkBuffer vertexBuffers[] = {vertexBuffer};
-			VkDeviceSize offsets[] = {0};
+			const VkBuffer vertexBuffers[] = {this->cubeMesh.vertexBuffer};
+			const VkDeviceSize offsets[] = {this->cubeMesh.vertex_offset};
 			vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(cmd, vertexBuffer, indices_offset, VK_INDEX_TYPE_UINT32);
-
-			vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4x4), &mvp.model);
+			vkCmdBindIndexBuffer(cmd, this->cubeMesh.indicesBuffer, this->cubeMesh.indices_offset,
+								 VK_INDEX_TYPE_UINT32);
 
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
 									&descriptorSets[getCurrentFrameIndex()], 0, nullptr);
 
-			vkCmdDrawIndexed(cmd, this->nrIndices, 1, 0, 0, 0);
+			vkCmdDrawIndexed(cmd, this->cubeMesh.nrIndicesElements, 1, 0, 0, 0);
 
 			vkCmdEndRenderPass(cmd);
 
@@ -370,12 +350,17 @@ namespace vksample {
 		}
 
 		void update() override {
-			this->mvp.model = glm::mat4(1.0f);
-			this->mvp.view = glm::mat4(1.0f);
-			this->mvp.view = glm::translate(this->mvp.view, glm::vec3(0, 0, -5));
-			this->mvp.model = glm::rotate(this->mvp.model, glm::radians(getTimer().getElapsed<float>() * 45),
-										  glm::vec3(0.0f, 1.0f, 0.0f));
-			this->mvp.model = glm::scale(this->mvp.model, glm::vec3(0.95f));
+
+			this->camera.update(getTimer().deltaTime<float>());
+
+			this->stageBuffer.proj = this->camera.getProjectionMatrix();
+			this->stageBuffer.model = glm::mat4(1.0f);
+			this->stageBuffer.view = glm::mat4(1.0f);
+			this->stageBuffer.view = glm::translate(this->stageBuffer.view, glm::vec3(0, 0, -5));
+			this->stageBuffer.model =
+				glm::rotate(this->stageBuffer.model, glm::radians(getTimer().getElapsed<float>() * 45),
+							glm::vec3(0.0f, 1.0f, 0.0f));
+			this->stageBuffer.model = glm::scale(this->stageBuffer.model, glm::vec3(0.95f));
 		}
 	};
 
@@ -384,8 +369,7 @@ namespace vksample {
 		PushConstantVKSample() : VKSample<PushConstant>() {}
 
 		void customOptions(cxxopts::OptionAdder &options) override {
-			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/diffuse.png"))(
-				"M,model", "Model Path", cxxopts::value<std::string>()->default_value("asset/bunny.obj"));
+			options("T,texture", "Texture Path", cxxopts::value<std::string>()->default_value("asset/diffuse.png"));
 		}
 	};
 } // namespace vksample

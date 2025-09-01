@@ -8,7 +8,11 @@ SOURCE_GROUP(Common FILES ${SOURCE_FILES} ${HEADER_FILES})
 ADD_LIBRARY(vk-sample-common-asset-importer ${SOURCE_FILES} ${HEADER_FILES} )
 TARGET_LINK_LIBRARIES(vk-sample-common-asset-importer fragcore-imageloader fmt freeimage assimp vk-sample-common )
 ADD_DEPENDENCIES(vk-sample-common-asset-importer vk-sample-common )
+
 # Vulkan dependencies headers.
 TARGET_INCLUDE_DIRECTORIES(vk-sample-common-asset-importer PRIVATE ${Vulkan_INCLUDE_DIRS} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+
+INSTALL(TARGETS vk-sample-common-asset-importer fragcore-rvk fragcore-imageloader fragcore-shader-compiler assimp DESTINATION lib)

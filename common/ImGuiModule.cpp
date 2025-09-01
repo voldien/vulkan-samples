@@ -1,14 +1,14 @@
-// #include "ImGuiModule.h"
+#include "ImGuiModule.h"
 // #include "ImGuiDebuggerOverlay.h"
-// #include "LainModule.h"
-// #include "RendererResourcePool.h"
 // #include "SDL_video.h"
 // #include "ShaderLoader.h"
 // #include "VKWindow.h"
 // #include "backends/imgui_impl_sdl2.h"
 // #include "backends/imgui_impl_vulkan.h"
-// #include "engine.h"
-// #include "vulkan/vulkan_core.h"
+#include "VKWindow.h"
+#include "vulkan/vulkan_core.h"
+
+using namespace vksample;
 
 // static ImGui_ImplVulkanH_Window g_MainWindowData;
 
@@ -22,7 +22,7 @@
 // 	}
 // }
 
-// ImGuiModule::ImGuiModule() { this->setName("ImGui Module"); }
+ImGuiModule::ImGuiModule(VKBaseSampleWindow &base) : base(base) { this->setName("ImGui Module"); }
 
 // void ImGuiModule::onInitialization(LainEngine *engine) {
 // 	LainModule::onInitialization(engine);

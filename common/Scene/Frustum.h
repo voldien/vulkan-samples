@@ -24,10 +24,6 @@ namespace vksample {
 
 	using namespace fragcore;
 
-	/**
-	 * @brief Positive
-	 *
-	 */
 	class FVDECLSPEC Frustum : public Node {
 	  public:
 		~Frustum() override = default;

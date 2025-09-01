@@ -37,17 +37,14 @@ namespace vksample {
 		virtual ~ImageImporter() = default;
 
 	  public:
-		void loadTexture2D(const char *filename, Texture& texture, const ColorSpace colorSpace = ColorSpace::RawLinear,
-						   const TextureCompression compression = TextureCompression::None, const void *pNext = nullptr);
+		void loadTexture2D(const char *filename, Texture &texture, const ColorSpace colorSpace = ColorSpace::RawLinear,
+						   const TextureCompression compression = TextureCompression::None,
+						   const void *pNext = nullptr);
 
 		void loadTexture2DAsync(const char *filename, Texture **texture,
 								const ColorSpace colorSpace = ColorSpace::RawLinear,
-								const TextureCompression compression = TextureCompression::None, void *pNext = nullptr);
-
-
-		static void createCubeMap(const std::vector<std::string> &paths, VkDevice device, VkCommandPool commandPool,
-								  VkQueue queue, VkPhysicalDevice physicalDevice, VkImage &textureImage,
-								  VkDeviceMemory &textureImageMemory);
+								const TextureCompression compression = TextureCompression::None,
+								const void *pNext = nullptr);
 
 		// int loadCubeMap(const std::string &px, const std::string &nx, const std::string &py, const std::string &ny,
 		// 				const std::string &pz, const std::string &nz, const ColorSpace colorSpace =
@@ -55,14 +52,19 @@ namespace vksample {
 		// loadCubeMap(const std::vector<std::string> &paths, const ColorSpace colorSpace = ColorSpace::RawLinear,
 		// const TextureCompression compression = TextureCompression::None);
 
-		static void *loadTextureData(const char *cfilename, unsigned int *pwidth, unsigned int *pheight,
-									 unsigned int *pformat, unsigned int *pinternalformat, unsigned int *ptype,
-									 unsigned long *pixelSize);
-		static void saveTextureData(const char *cfilename, const void *pixelData, unsigned int width,
-									unsigned int height, int layers, unsigned int format);
+		static void createCubeMap(const std::vector<std::string> &paths, VkDevice device, VkCommandPool commandPool,
+								  VkQueue queue, VkPhysicalDevice physicalDevice, VkImage &textureImage,
+								  VkDeviceMemory &textureImageMemory);
+
+		// static void *loadTextureData(const char *cfilename, unsigned int *pwidth, unsigned int *pheight,
+		// 							 unsigned int *pformat, unsigned int *pinternalformat, unsigned int *ptype,
+		// 							 unsigned long *pixelSize);
 
 		/**/
-		static void saveTextureData(const char *filename, VkDevice device, VkImage image);
+		void saveTextureData(const char *filename, const Texture &texture);
+
+		void saveTextureData(const char *cfilename, const void *pixelData, unsigned int width, unsigned int height,
+							 int layers, unsigned int format);
 
 	  protected:
 		VkFormat getImageFormat(fragcore::Image &image, const ColorSpace colorSpace,

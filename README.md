@@ -21,6 +21,39 @@ make
 make DownloadAsset
 ```
 
+## CLI - Command Line Options
+
+```bash
+Usage:
+  Vulkan Sample: VulkanSample [OPTION...]
+
+  -h, --help                    helper information.
+  -d, --debug                   Enable Debug. (default: true)
+  -t, --time arg                How long to run sample (default: 0)
+  -i, --instance-extensions arg
+                                . (default: 5)
+  -l, --instance-layers arg     . (default: 5)
+  -E, --device-extensions       .
+  -g, --gpu-device arg          GPU Device Select (default: -1)
+  -p, --present-mode arg        Present Mode () (default: -1)
+  -f, --fullscreen              FullScreen
+  -a, --headless                Headless Renderer
+  -r, --renderdoc               Enable RenderDoc ()
+  -F, --filesystem arg          Set FileSystem, either directory or archive 
+                                file (zip) (default: .)
+  -C, --color-space arg         Set the Display ColorSpace (Linear,SRGB) 
+                                (default: "")
+  -W, --width arg               Set Window Width in Pixels (default: -1)
+  -H, --height arg              Set Window Height in Pixels (default: -1)
+  -D, --display arg             Set Display index where the window will 
+                                show (default: -1)
+  -m, --multi-sample arg        Set MSAA (Multisampling Anti Aliasing) 
+                                (2,4,8) (default: 0)
+  -R, --dynamic-range arg       Set Dynamic Range ldr,hdr16,hdr32 (default: 
+                                hdr16)
+  -P, --use-postprocessing      Use Post Processing (default: true)
+```
+
 ## Window Based Samples
 
 ### Startup Window -
@@ -78,3 +111,15 @@ memory on the device between various heap.
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casual-effects.com/data)
+
+## Misc Notes
+
+### Export Build to Target Directory
+
+```baseh
+cmake .. -DCMAKE_INSTALL_PREFIX=/target -DCMAKE_BUILD_TYPE=Release
+```
+
+```bash
+cmake --build . --parallel $(nproc --all) --target install ;
+```

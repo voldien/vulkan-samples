@@ -14,12 +14,20 @@
  * all copies or substantial portions of the Software.
  */
 #pragma once
-#include "DataStructure/PoolAllocator.h"
+#include "DataStructure/ITree.h"
+#include "DataStructure/StackAllactor.h"
 #include "FragDef.h"
 #include "Math3D/LinAlg.h"
 #include "RenderDesc.h"
 #include <IO/IFileSystem.h>
 #include <Math3D/AABB.h>
+
+#include <cassert>
+#include <cstddef>
+#include <glm/fwd.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
+
 #include <assimp/Importer.hpp>
 #include <assimp/anim.h>
 #include <assimp/camera.h>
@@ -33,11 +41,6 @@
 #include <assimp/texture.h>
 #include <assimp/types.h>
 #include <assimp/vector3.h>
-#include <cassert>
-#include <cstddef>
-#include <glm/fwd.hpp>
-#include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
 
 namespace glsample {}
 
@@ -76,11 +79,16 @@ using MaterialObject = struct material_object_t : public AssetObject {
 	float shinininess = 1;
 	float bumpiness = 1;
 	float opacity = 1;
+	float metalic = 0;
 	int blend_func_mode = 0; /*	aiBlendMode*/
 	int wireframe_mode = 0;
 	bool culling_both_side_mode = false;
 	float clipping = 1;
 	/*	*/
+
+	enum class ShadingModel : unsigned int {
+
+	};
 
 	unsigned int shade_model = 0; /*	aiShadingMode	*/
 
@@ -127,6 +135,7 @@ using MaterialObject = struct material_object_t : public AssetObject {
 };
 
 using NodeObject = struct node_object_t : public AssetObject {
+
 	/*	*/
 	glm::vec3 localPosition;
 	glm::quat localRotation;
@@ -143,6 +152,7 @@ using NodeObject = struct node_object_t : public AssetObject {
 	std::vector<unsigned int> materialIndex;
 
 	struct node_object_t *parent = nullptr;
+	fragcore::ITree<struct node_object_t*> childrens;
 };
 
 using MeshData = struct mesh_data_t : public AssetObject {
@@ -190,11 +200,12 @@ using ModelSystemObject = struct model_system_object : public AssetObject {
 	bool processed = false;
 };
 
-using CameraData = struct camera_data_t : public AssetObject{
+using CameraData = struct camera_data_t : public AssetObject {
+	float near;
+	float far;
 	glm::vec3 position;
 	glm::vec3 up;
 	glm::vec3 lookAt;
-
 };
 
 using Bone = struct alignas(16) bone_t : public AssetObject {
@@ -205,8 +216,8 @@ using Bone = struct alignas(16) bone_t : public AssetObject {
 };
 
 using SkeletonSystem = struct model_skeleton_t : public AssetObject {
-
 	std::map<std::string, Bone> bones;
+	NodeObject *root;
 };
 
 using TextureAssetObject = struct alignas(32) texture_asset_object_t {
@@ -219,6 +230,7 @@ using TextureAssetObject = struct alignas(32) texture_asset_object_t {
 	char *data = nullptr;
 };
 
+//TOOD: relocate.
 using KeyFrame = struct alignas(16) key_frame_t {
 	float time;		  /*	*/
 	float value;	  /*	*/
@@ -242,6 +254,8 @@ using LightObject = struct alignas(32) light_object_t : public AssetObject {
 	glm::vec3 position;
 	glm::vec3 direction;
 	glm::vec3 mUp;
+
+	unsigned int type;
 
 	float mAttenuationConstant;
 
@@ -290,6 +304,7 @@ class FVDECLSPEC ModelImporter {
 	SkeletonSystem *initBoneSkeleton(const aiMesh *mesh, unsigned int index);
 
 	TextureAssetObject *initTexture(aiTexture *texture, unsigned int index);
+	size_t getTextureRequiredSize(const aiTexture *texture) const noexcept;
 
 	AnimationObject *initAnimation(const aiAnimation *animation, unsigned int index);
 	//
@@ -313,6 +328,10 @@ class FVDECLSPEC ModelImporter {
 
 	std::vector<MaterialObject *> getMaterials(const size_t texture_index) noexcept;
 
+	const std::vector<LightObject> &getLights() const noexcept { return this->lights; }
+
+	const std::vector<AnimationObject> &getAnimation() const noexcept { return this->animations; }
+
 	/*	*/
 	const std::vector<TextureAssetObject> &getTextures() const noexcept { return this->textures; }
 	std::vector<TextureAssetObject> &getTextures() noexcept { return this->textures; }
@@ -326,13 +345,14 @@ class FVDECLSPEC ModelImporter {
 
 	std::string filepath;
 	const aiScene *sceneRef = nullptr;
-	fragcore::PoolAllocator<NodeObject> nodePool;
+	std::vector<NodeObject> nodePool;
 	std::vector<NodeObject *> nodes;
 	std::map<std::string, NodeObject *> nodeByName;
 
 	std::vector<ModelSystemObject> models;
 	std::vector<MaterialObject> materials;
 	/*	*/
+	fragcore::StackAllocator TexturePoolData;
 	std::vector<TextureAssetObject> textures;
 	std::map<std::string, TextureAssetObject *> textureMapping;
 	std::map<std::string, unsigned int> textureIndexMapping;

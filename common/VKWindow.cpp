@@ -47,7 +47,7 @@ VKBaseSampleWindow::~VKBaseSampleWindow() {
 
 VKBaseSampleWindow::VKBaseSampleWindow(std::shared_ptr<VulkanCore> &core, std::shared_ptr<VKDevice> &device, int x,
 									   int y, int width, int height)
-	: VKSampleSessionBase(core, device), proxyWindow(new vksample::SDLVKWindow()) {
+	: VKSampleSessionBase(core, device), proxyWindow(new vksample::SDLVKWindow()), imgui(*this) {
 
 	SDL_DisplayMode displaymode;
 	SDL_GetCurrentDisplayMode(0, &displaymode);
@@ -562,11 +562,21 @@ void VKBaseSampleWindow::run() {
 			}
 		}
 
-		if (visible) {
-			this->update();
+		/*	*/
+		this->update();
 
+		if (visible) {
+
+
+			/*	*/
 			this->draw();
+
+			/*	*/
+
 			/*	ImGui.	*/
+			this->imgui.begin();
+			this->onImGUI();
+			this->imgui.end();
 
 			/*	*/
 			this->swapBuffer();

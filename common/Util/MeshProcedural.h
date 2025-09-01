@@ -1,5 +1,5 @@
 #pragma once
-#include "../Skybox.h"
+#include "../Scene/Skybox.h"
 #include "VKDataStructure.h"
 
 namespace vksample {

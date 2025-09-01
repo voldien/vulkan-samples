@@ -16,7 +16,7 @@
 #pragma once
 #include "Core/Object.h"
 #include "FragDef.h"
-#include "Util/Frustum.h"
+#include "Scene/Frustum.h"
 #include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
 #include <glm/glm.hpp>

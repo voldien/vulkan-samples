@@ -1,10 +1,10 @@
+#include "VKDataStructure.h"
 #include "VKSample.h"
 #include <FPSCounter.h>
 #include <Importer/ImageImport.h>
 #include <OpenALAudioInterface.h>
 
 #include <VKWindow.h>
-#include <VksCommon.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,8 +37,7 @@ namespace vksample {
 		int frameSize{};
 
 		/*	Decoded video frames.	*/
-		std::array<VkImage, nrVideoFrames> videoFrames{};
-		std::array<VkDeviceMemory, nrVideoFrames> videoFrameMemory{};
+		std::array<Texture, nrVideoFrames> videoFrames{};
 
 		/*	Stagning frames.	*/
 		VkBuffer videoStagingFrames{};
@@ -46,6 +45,7 @@ namespace vksample {
 		VkDeviceMemory videoStagingFrameMemory{};
 		size_t videoStagingSize{};
 		std::array<void *, nrVideoFrames> mapMemory{};
+
 		std::shared_ptr<fragcore::OpenALAudioInterface> audioInterface;
 
 		/*  */
@@ -90,9 +90,9 @@ namespace vksample {
 			avformat_close_input(&this->pformatCtx);
 			avformat_free_context(this->pformatCtx);
 
-			for (size_t i = 0; i < this->nrVideoFrames; i++) {
-				vkDestroyImage(this->getDevice(), this->videoFrames[i], nullptr);
-				vkFreeMemory(this->getDevice(), this->videoFrameMemory[i], nullptr);
+			for (size_t frame_index = 0; frame_index < this->videoFrames.size(); frame_index++) {
+				vkDestroyImage(this->getDevice(), this->videoFrames[frame_index].image, nullptr);
+				vkFreeMemory(this->getDevice(), this->videoFrames[frame_index].imageMemory, nullptr);
 			}
 			vkFreeMemory(this->getDevice(), this->videoStagingFrameMemory, nullptr);
 			vkDestroyBuffer(this->getDevice(), this->videoStagingFrames, nullptr);
@@ -283,11 +283,17 @@ namespace vksample {
 			/*	*/
 			for (size_t i = 0; i < this->videoFrames.size(); i++) {
 
-				VKHelper::createImage2D(
-					getDevice(), video_width, video_height, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, getVKDevice()->getPhysicalDevice(0)->getMemoryProperties(), VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
-					videoFrames[i], videoFrameMemory[i]);
+				VkFormat vkImageFormat = VK_FORMAT_R8G8B8A8_UNORM;
+				VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+				VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+				VkImageFormatProperties capabilityProperties = {};
+				VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+
+				/*	*/
+				this->allocateImage(video_width, video_height, 1, vkImageFormat, tiling, imageUsage,
+									VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, flags, videoFrames[i].image,
+									videoFrames[i].imageMemory);
 			}
 			onResize(width(), height());
 
@@ -306,6 +312,8 @@ namespace vksample {
 				beginInfo.flags = 0;
 
 				VKS_VALIDATE(vkBeginCommandBuffer(cmd, &beginInfo));
+
+				/*	*/
 				VkBufferImageCopy imageCopyRegion{};
 				imageCopyRegion.bufferOffset = this->videoStagingSize * (i % nrVideoFrames);
 				imageCopyRegion.bufferRowLength = 0;
@@ -316,10 +324,11 @@ namespace vksample {
 				imageCopyRegion.imageExtent.height = video_height;
 				imageCopyRegion.imageExtent.depth = 1;
 
-				vkCmdCopyBufferToImage(cmd, videoStagingFrames, videoFrames[nthVideoFrame],
+				vkCmdCopyBufferToImage(cmd, videoStagingFrames, videoFrames[nthVideoFrame].image,
 									   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 
-				VKHelper::transitionImageLayout(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VKHelper::transitionImageLayout(cmd, videoFrames[nthVideoFrame].image,
+												VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 												VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
 				VkImageBlit blitRegion{};
@@ -336,7 +345,7 @@ namespace vksample {
 				blitRegion.dstSubresource.layerCount = 1;
 				blitRegion.dstSubresource.mipLevel = 0;
 
-				vkCmdBlitImage(cmd, videoFrames[nthVideoFrame], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				vkCmdBlitImage(cmd, videoFrames[nthVideoFrame].image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 							   getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion,
 							   VK_FILTER_NEAREST);
 				VKHelper::transitionImageLayout(cmd, getSwapChainImages()[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -384,7 +393,8 @@ namespace vksample {
 						if (this->frame->format == AV_PIX_FMT_YUV420P) {
 
 							this->frame->data[0] =
-								this->frame->data[0] + static_cast<ptrdiff_t>(this->frame->linesize[0] * (this->pVideoCtx->height - 1));
+								this->frame->data[0] +
+								static_cast<ptrdiff_t>(this->frame->linesize[0] * (this->pVideoCtx->height - 1));
 							this->frame->data[1] =
 								this->frame->data[1] + this->frame->linesize[0] * this->pVideoCtx->height / 4 - 1;
 							this->frame->data[2] =
@@ -397,14 +407,14 @@ namespace vksample {
 									  this->frameoutput->data, this->frameoutput->linesize);
 
 							/*	Upload the image to staging.	*/
-							memcpy(mapMemory[nthVideoFrame], this->frameoutput->data[0], this->videoStagingSize);
+							memcpy(this->mapMemory[nthVideoFrame], this->frameoutput->data[0], this->videoStagingSize);
 
 							VkMappedMemoryRange stagingRange{};
 							stagingRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 							stagingRange.memory = videoStagingFrameMemory;
 							stagingRange.offset = (this->nthVideoFrame % this->nrVideoFrames) * this->videoStagingSize;
 							stagingRange.size = this->videoStagingSize;
-							VKS_VALIDATE(vkFlushMappedMemoryRanges(getDevice(), 1, &stagingRange));
+							VKS_VALIDATE(vkFlushMappedMemoryRanges(this->getDevice(), 1, &stagingRange));
 
 							VKS_VALIDATE(vkDeviceWaitIdle(getDevice()));
 							this->nthVideoFrame = (this->nthVideoFrame + 1) % this->nrVideoFrames;

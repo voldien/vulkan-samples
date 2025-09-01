@@ -16,8 +16,8 @@ namespace vksample {
 
 		~CachePipeline() override {
 
-			vkDestroyPipeline(getDevice(), graphicsPipeline, nullptr);
-			vkDestroyPipelineLayout(getDevice(), pipelineLayout, nullptr);
+			vkDestroyPipeline(getDevice(), this->graphicsPipeline, nullptr);
+			vkDestroyPipelineLayout(getDevice(), this->pipelineLayout, nullptr);
 		}
 
 		const std::string vertexShaderPath = "Shaders/instance/instance.vert.spv";

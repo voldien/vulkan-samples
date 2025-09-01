@@ -1,8 +1,8 @@
+#include "Scene/CameraController.h"
 #include "VKSample.h"
 #include "vulkan/vulkan_core.h"
 #include <Importer/ImageImport.h>
 #include <SDL2/SDL.h>
-#include <Util/CameraController.h>
 #include <VKWindow.h>
 #include <array>
 #include <glm/glm.hpp>
@@ -311,27 +311,31 @@ namespace vksample {
 
 		void Initialize() override {
 
-			const std::string modelPath = this->getResult()["model"].as<std::string>();
-			const std::string diffuseTexturePath = this->getResult()["texture"].as<std::string>();
-			const std::string normalTexturePath = this->getResult()["normal-texture"].as<std::string>();
+			const std::string &modelPath = this->getResult()["model"].as<std::string>();
+			const std::string &diffuseTexturePath = this->getResult()["texture"].as<std::string>();
+			const std::string &normalTexturePath = this->getResult()["normal-texture"].as<std::string>();
 
-			ImageImporter imageImporter(this->getFileSystem(), *this);
+			{
+				ImageImporter imageImporter(this->getFileSystem(), *this);
 
-			/*	Diffuse Texture.	*/
-			imageImporter.loadTexture2D(this->diffuseTexturePath.c_str(), DiffuseTexture, ColorSpace::RawLinear);
+				/*	Diffuse Texture.	*/
+				imageImporter.loadTexture2D(this->diffuseTexturePath.c_str(), this->DiffuseTexture,
+											ColorSpace::RawLinear);
 
-			/*	Normal Texture.	*/
-			imageImporter.loadTexture2D(this->diffuseTexturePath.c_str(), NormalTexture, ColorSpace::RawLinear);
+				/*	Normal Texture.	*/
+				imageImporter.loadTexture2D(this->normalTexturePath.c_str(), this->NormalTexture,
+											ColorSpace::RawLinear);
 
-			this->DiffuseTexture.imageView =
-				VKHelper::createImageView(this->getDevice(), this->DiffuseTexture.image, VK_IMAGE_VIEW_TYPE_2D,
-										  VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+				this->DiffuseTexture.imageView = VKHelper::createImageView(
+					this->getDevice(), this->DiffuseTexture.image, VK_IMAGE_VIEW_TYPE_2D,
+					this->DiffuseTexture.internalformat, VK_IMAGE_ASPECT_COLOR_BIT, this->DiffuseTexture.mipLevels);
 
-			this->NormalTexture.imageView =
-				VKHelper::createImageView(this->getDevice(), this->NormalTexture.image, VK_IMAGE_VIEW_TYPE_2D,
-										  VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+				this->NormalTexture.imageView = VKHelper::createImageView(
+					this->getDevice(), this->NormalTexture.image, VK_IMAGE_VIEW_TYPE_2D,
+					this->NormalTexture.internalformat, VK_IMAGE_ASPECT_COLOR_BIT, this->NormalTexture.mipLevels);
 
-			VKHelper::createSampler(this->getDevice(), sampler, 0);
+				VKHelper::createSampler(this->getDevice(), sampler, 0);
+			}
 
 			/*	Compute uniform buffer size, in respect to the alignment requirement.	*/
 			this->uniformBufferSize = sizeof(UniformBufferBlock);

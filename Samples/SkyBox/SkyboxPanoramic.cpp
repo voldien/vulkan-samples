@@ -1,11 +1,9 @@
+#include "Scene/CameraController.h"
 #include "Util/MeshProcedural.h"
 #include "VKSample.h"
 #include "vulkan/vulkan_core.h"
 #include <Importer/ImageImport.h>
-#include <SDL2/SDL.h>
-#include <Util/CameraController.h>
 #include <VKWindow.h>
-#include <VksCommon.h>
 #include <array>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

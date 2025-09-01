@@ -16,15 +16,21 @@
 #pragma once
 
 #include "Core/Object.h"
-#include "VKSampleBase.h"
 #include <vulkan/vulkan_core.h>
 
 namespace vksample {
 
+	class VKBaseSampleWindow;
+
 	class ImGuiModule : public fragcore::Object {
 	  public:
-		ImGuiModule(VKSampleSessionBase &base);
+		ImGuiModule(VKBaseSampleWindow &base);
+
+		virtual void begin() {}
+		virtual void end() {}
+		virtual void draw() {}
 
 	  private:
+		VKBaseSampleWindow &base;
 	};
 } // namespace vksample

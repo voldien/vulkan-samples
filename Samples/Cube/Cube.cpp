@@ -1,4 +1,4 @@
-#include "Util/CameraController.h"
+#include "Scene/CameraController.h"
 #include "VKSample.h"
 #include "vulkan/vulkan_core.h"
 #include <SDL2/SDL.h>

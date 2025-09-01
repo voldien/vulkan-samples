@@ -1,7 +1,9 @@
 #pragma once
 #include "FPSCounter.h"
 #include "IWindow.h"
+#include "ImGuiModule.h"
 #include "SDLInput.h"
+#include "VKDataStructure.h"
 #include "VKSampleBase.h"
 #include <memory>
 #include <vector>
@@ -50,6 +52,11 @@ namespace vksample {
 		/**
 		 * @brief
 		 */
+		void run() override;
+
+		/**
+		 * @brief
+		 */
 		virtual void draw();
 
 		/**
@@ -60,14 +67,9 @@ namespace vksample {
 		/**
 		 * @brief
 		 */
-		void run() override;
-
-		/**
-		 * @brief
-		 */
 		virtual void onResize(int width, int height);
 
-		// virtual void createLogisticDevice(VkQueueFlags queues);
+		virtual void onImGUI(){}
 
 	  public:
 		void captureScreenShot();
@@ -82,6 +84,7 @@ namespace vksample {
 		VkRenderPass getDefaultRenderPass() const noexcept;
 
 		VkFramebuffer getFrameBuffer(unsigned int index) const noexcept;
+
 		/*	*/
 		VkFormat depthStencilFormat() const noexcept;
 		VkImage depthStencilImage() const noexcept;
@@ -205,11 +208,13 @@ namespace vksample {
 
 			SwapChainSupportDetails details; /*  */
 
+			std::vector<FrameBuffer> frameBuffers;
 			std::vector<VkImage> swapChainImages;
 			std::vector<VkImageView> swapChainImageViews;
 			std::vector<VkFramebuffer> swapChainFramebuffers;
 			std::vector<VkCommandBuffer> commandBuffers;
 
+			/*	*/
 			VkImage depthImage;
 			VkDeviceMemory depthImageMemory;
 			VkImageView depthImageView;
@@ -230,6 +235,9 @@ namespace vksample {
 		VkQueue presentQueue;
 		uint32_t presentation_queue_node_index{};
 
+		/*	*/
+		FrameBuffer MSAAFramebuffer;
+
 		/*  Synchronization.	*/
 		std::vector<VkSemaphore> imageAvailableSemaphores;
 		std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -240,6 +248,8 @@ namespace vksample {
 		fragcore::SDLInput input;
 		IVKWindow *proxyWindow;
 		FPSCounter<float> fpsCounter;
+
+		ImGuiModule imgui;
 	};
 
 } // namespace vksample

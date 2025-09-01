@@ -1,14 +1,14 @@
-#include "Util/CameraController.h"
+#include "Scene/CameraController.h"
 #include "VKDataStructure.h"
 #include "VKSample.h"
 #include "vulkan/vulkan_core.h"
 #include <SDL2/SDL.h>
 #include <VKWindow.h>
-#include <VksCommon.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace vksample {
+
 
 	class Instance : public VKBaseSampleWindow {
 	  private:

@@ -1,0 +1,58 @@
+#version 460 core
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_compute_shader : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_ARB_shading_language_include : enable
+#extension GL_GOOGLE_include_directive : enable
+
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+#include "base.glsl"
+#include "noise.glsl"
+
+/*	*/
+layout(std430, binding = 1) readonly restrict buffer ReadBuffer { particle_t particle[]; }
+readBuffer;
+/*	*/
+layout(std430, binding = 2) writeonly restrict buffer WriteBuffer { particle_t particle[]; }
+writeBuffer;
+
+void main() {
+
+	[[unroll]] for (uint i = 0; i < NR_Particles; i++) {
+
+		/*	Particle index.	*/
+		const uint pindex = gl_GlobalInvocationID.x * NR_Particles + i;
+
+		if (pindex >= ubo.setting.nrParticles) {
+			return;
+		}
+
+		const float delta = ubo.deltaTime * ubo.setting.speed;
+
+		const vec2 maxBox = ubo.setting.particleBox.xy;
+
+		const vec2 worldMousePosition = maxBox * ubo.motion.pos;
+
+		/*  Get particle.   */
+		const vec2 position = readBuffer.particle[pindex].position.xy;
+		const vec2 velocity = readBuffer.particle[pindex].velocity.xy;
+		const float invMass = readBuffer.particle[pindex].velocity.w;
+
+		const vec2 noiseForce = normalize(vec2(0.5) - vec2(noise(position.xyx), noise(position.yxy))) *
+								ubo.motion.noise * noise(position.xyx);
+
+		/*	*/
+		const vec2 dir = normalize(position - worldMousePosition);
+		const float dist = max(EPSILON, distance(position, worldMousePosition));
+
+		const float influence_magnitude = ubo.motion.amplitude * (ubo.motion.radius * (1.0 / dist));
+
+		/*  Add force to particle position. */
+		const float MaxInflVelocity = 40;
+		const vec2 influenceVelocity = clamp(dir * influence_magnitude + noiseForce * influence_magnitude,
+											 vec2(-MaxInflVelocity), vec2(MaxInflVelocity));
+
+		writeBuffer.particle[pindex].velocity.xy = velocity + influenceVelocity;
+	}
+}
